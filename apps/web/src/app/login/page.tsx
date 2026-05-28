@@ -3,6 +3,21 @@
 import Link from 'next/link';
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { 
+  Trophy, 
+  Users, 
+  ClipboardCheck, 
+  Activity, 
+  ArrowLeft, 
+  AlertCircle, 
+  Sparkles, 
+  Mail, 
+  Lock, 
+  ShieldCheck, 
+  Zap, 
+  ChevronRight,
+  Loader2
+} from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,414 +57,232 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-root">
-      {/* Left panel — branding */}
-      <div className="login-left">
-        <div className="login-bg-orb login-bg-orb-1" />
-        <div className="login-bg-orb login-bg-orb-2" />
-        <div className="login-bg-grid" />
+    <div className="min-h-screen flex bg-slate-950 text-slate-100 overflow-hidden relative">
+      {/* Dynamic Background Glows */}
+      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none z-0" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-amber-600/5 blur-[100px] pointer-events-none z-0" />
 
-        <div className="login-left-content">
-          <Link href="/" className="login-logo">
-            <span className="login-logo-icon">🏓</span>
-            <span className="login-logo-text">GOLAB</span>
+      {/* Left panel — Branding & Promo (hidden on mobile) */}
+      <div className="hidden lg:flex relative w-[50%] flex-col justify-between p-12 border-r border-slate-900 bg-slate-950 z-10">
+        {/* Dot grid pattern overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(245,158,11,0.015)_1.5px,transparent_1.5px),linear-gradient(90deg,rgba(245,158,11,0.015)_1.5px,transparent_1.5px)] bg-[size:30px_30px] opacity-70 pointer-events-none" />
+
+        <div className="relative flex flex-col gap-10">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3 group text-decoration-none w-fit">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-lg shadow-amber-500/5 transition-all group-hover:scale-105">
+              <Trophy className="w-5 h-5 text-amber-500" />
+            </div>
+            <span className="text-2xl font-black text-slate-100 tracking-tight">
+              GOLAB <span className="text-amber-500">CÚP</span>
+            </span>
           </Link>
 
-          <div className="login-promo stagger">
-            <h1 className="login-promo-title">
-              Quản lý giải đấu<br />
-              <span className="text-gradient-hero">chuyên nghiệp</span>
+          {/* Promo Section */}
+          <div className="mt-8 flex flex-col gap-6 animate-[slide-right_0.6s_ease-out]">
+            <h1 className="text-4xl font-extrabold tracking-tight leading-tight text-white lg:text-5xl">
+              Hệ thống quản lý<br />
+              giải đấu <span className="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 bg-clip-text text-transparent font-black drop-shadow-sm">Pickleball</span>
             </h1>
-            <p className="login-promo-desc">
-              Hệ thống toàn diện cho BTC: từ bốc thăm đội hình đến chấm điểm realtime.
+            <p className="text-slate-400 text-lg leading-relaxed max-w-md">
+              Công cụ toàn diện chuyên nghiệp cho Ban tổ chức: bốc thăm chia đội, sắp xếp lịch thi đấu, giám sát đội hình và tính điểm trực tiếp chặng tiếp sức.
             </p>
 
-            <div className="login-features stagger">
+            {/* Features */}
+            <div className="grid grid-cols-1 gap-4 mt-4 max-w-lg">
               {[
-                { icon: '🎲', text: 'Bốc thăm đội hình tự động' },
-                { icon: '📋', text: 'Validate lineup theo ruleset' },
-                { icon: '📺', text: 'Live scoring WebSocket' },
-                { icon: '🏆', text: 'Bracket & bảng xếp hạng' },
-              ].map(f => (
-                <div key={f.text} className="login-feature-item">
-                  <span className="login-feature-icon">{f.icon}</span>
-                  <span>{f.text}</span>
+                { 
+                  icon: <Users className="w-5 h-5 text-amber-500" />, 
+                  title: "Bốc thăm ngẫu nhiên", 
+                  desc: "Thuật toán chia đội cân bằng lực lượng Nam & Nữ tự động." 
+                },
+                { 
+                  icon: <ClipboardCheck className="w-5 h-5 text-amber-500" />, 
+                  title: "Kiểm soát Lineup", 
+                  desc: "Tự động kiểm tra chặng đấu, giới tính và giới hạn sân." 
+                },
+                { 
+                  icon: <Activity className="w-5 h-5 text-amber-500" />, 
+                  title: "Chấm điểm trực tiếp", 
+                  desc: "Ghi điểm thời gian thực với kết nối WebSocket siêu nhạy." 
+                },
+                { 
+                  icon: <Trophy className="w-5 h-5 text-amber-500" />, 
+                  title: "Nhánh đấu & BXH", 
+                  desc: "Tự động xếp hạng vòng tròn tie-breaker và sơ đồ Playoffs chéo." 
+                },
+              ].map((f, i) => (
+                <div 
+                  key={i} 
+                  className="flex gap-4 p-4 rounded-xl bg-slate-900/30 border border-slate-900/60 backdrop-blur-sm transition-all hover:bg-slate-900/50 hover:border-slate-800/80"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/5 border border-amber-500/10 flex items-center justify-center shrink-0">
+                    {f.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-200 text-sm">{f.title}</h3>
+                    <p className="text-slate-400 text-xs mt-0.5">{f.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Floating score card */}
-          <div className="login-score-card animate-float">
-            <div className="lsc-header">
-              <span className="dot dot-green animate-pulse-soft" />
-              <span>Đang thi đấu · Chặng 2</span>
+        {/* Floating live score card */}
+        <div className="relative mt-8 max-w-sm bg-slate-900/65 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-5 shadow-2xl animate-[float_6s_ease-in-out_infinite] z-20">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 tracking-wider uppercase mb-3.5 border-b border-slate-800/60 pb-2">
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              ĐANG THI ĐẤU · CHẶNG 2
+            </span>
+            <span className="text-amber-500">24 ĐIỂM TIẾP SỨC</span>
+          </div>
+          <div className="flex items-center justify-between gap-6 my-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-sky-600 text-white font-extrabold flex items-center justify-center text-sm shadow-md shadow-sky-500/10">A</div>
+              <span className="font-bold text-slate-200 text-sm">Đội Xanh</span>
             </div>
-            <div className="lsc-body">
-              <div className="lsc-team">
-                <div className="lsc-avatar" style={{ background: 'linear-gradient(135deg,#0ea5e9,#6366f1)' }}>A</div>
-                <span>Đội Xanh</span>
-              </div>
-              <div className="lsc-score">
-                <span className="lsc-score-a">16</span>
-                <span className="lsc-score-sep">:</span>
-                <span className="lsc-score-b">12</span>
-              </div>
-              <div className="lsc-team lsc-team-right">
-                <span>Đội Đỏ</span>
-                <div className="lsc-avatar" style={{ background: 'linear-gradient(135deg,#ef4444,#f97316)' }}>B</div>
-              </div>
+            <div className="flex items-center gap-3 bg-slate-950/80 px-4 py-1.5 rounded-xl border border-slate-800 font-mono tracking-wider">
+              <span className="text-2xl font-black text-sky-400">16</span>
+              <span className="text-slate-600 text-lg font-black">:</span>
+              <span className="text-2xl font-black text-rose-400">12</span>
             </div>
-            <div className="lsc-bar"><div className="lsc-bar-fill" style={{ width: '67%' }} /></div>
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-slate-200 text-sm">Đội Hồng</span>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 text-white font-extrabold flex items-center justify-center text-sm shadow-md shadow-rose-500/10">B</div>
+            </div>
+          </div>
+          <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
+            <div className="h-full bg-gradient-to-r from-sky-500 to-amber-500 rounded-full transition-all duration-300" style={{ width: '67%' }} />
           </div>
         </div>
       </div>
 
       {/* Right panel — login form */}
-      <div className="login-right">
-        <div className="login-form-wrap animate-fade-in">
-          <div className="login-form-header">
-            <h2 className="login-form-title">Đăng nhập</h2>
-            <p className="login-form-desc">Chào mừng quay lại! Nhập thông tin để tiếp tục.</p>
+      <div className="flex-1 flex flex-col justify-center items-center p-6 md:p-12 z-10 bg-slate-950/40 backdrop-blur-xs">
+        <div className="w-full max-w-[420px] bg-slate-900/40 backdrop-blur-xl border border-slate-900 p-8 rounded-2xl shadow-2xl relative overflow-hidden animate-[scale-in_0.4s_ease-out]">
+          
+          {/* Subtle line glow */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+
+          <div className="mb-8">
+            <div className="lg:hidden flex items-center gap-2 mb-6 justify-center">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <Trophy className="w-4 h-4 text-amber-500" />
+              </div>
+              <span className="text-xl font-bold tracking-tight">GOLAB CÚP</span>
+            </div>
+            <h2 className="text-2xl font-black text-slate-100 tracking-tight">Đăng nhập Hệ thống</h2>
+            <p className="text-slate-400 text-sm mt-1.5">Nhập tài khoản để tiếp tục quyền quản trị hoặc trọng tài.</p>
           </div>
 
           {/* Quick fill buttons */}
-          <div className="login-quick-btns">
+          <div className="grid grid-cols-2 gap-3 mb-6">
             <button
               type="button"
-              className="login-quick-btn"
+              className="flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold text-slate-300 bg-slate-900/60 border border-slate-800 hover:border-amber-500/30 hover:bg-slate-900 rounded-xl transition-all cursor-pointer"
               onClick={() => { setEmail('admin@golab.vn'); setPassword('admin123'); }}
             >
-              👤 Admin
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+              BTC Admin
             </button>
             <button
               type="button"
-              className="login-quick-btn"
+              className="flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold text-slate-300 bg-slate-900/60 border border-slate-800 hover:border-amber-500/30 hover:bg-slate-900 rounded-xl transition-all cursor-pointer"
               onClick={() => { setEmail('scorer@golab.vn'); setPassword('scorer123'); }}
             >
-              🏓 Scorer
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              Trọng tài Scorer
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="login-form">
-            <div className="form-group">
-              <label className="label" htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                className="input"
-                placeholder="admin@golab.vn"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider" htmlFor="email">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                <input
+                  id="email"
+                  type="email"
+                  className="w-full bg-slate-950/80 border border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none rounded-xl pl-10 pr-4 py-3 text-sm transition-all"
+                  placeholder="admin@golab.vn"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="label" htmlFor="password">Mật khẩu</label>
-              <input
-                id="password"
-                type="password"
-                className="input"
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider" htmlFor="password">Mật khẩu</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-500" />
+                <input
+                  id="password"
+                  type="password"
+                  className="w-full bg-slate-950/80 border border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none rounded-xl pl-10 pr-4 py-3 text-sm transition-all"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
             </div>
 
             {error && (
-              <div className="login-error">
-                <span>⚠️</span> {error}
+              <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
             <button
               type="submit"
-              className="btn btn-primary btn-full"
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-sm rounded-xl cursor-pointer shadow-lg shadow-amber-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
               disabled={loading}
-              style={{ padding: '13px', fontSize: '15px', marginTop: '8px' }}
             >
               {loading ? (
-                <span className="login-spinner" />
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Đang đăng nhập...
+                </>
               ) : (
-                'Đăng nhập →'
+                <>
+                  Đăng nhập hệ thống
+                  <ChevronRight className="w-4 h-4" />
+                </>
               )}
             </button>
           </form>
 
-          <div className="login-divider">
-            <hr className="divider" />
+          <div className="flex items-center gap-4 my-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            <div className="h-px bg-slate-800/80 flex-1" />
             <span>Tài khoản demo</span>
-            <hr className="divider" />
+            <div className="h-px bg-slate-800/80 flex-1" />
           </div>
 
-          <div className="login-demo-accounts">
-            <div className="login-demo-card">
-              <div className="login-demo-role">👤 Admin</div>
-              <div className="login-demo-cred">admin@golab.vn · admin123</div>
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-900 hover:border-slate-800 transition-all">
+              <span className="text-xs font-bold text-slate-300">👤 Admin</span>
+              <span className="text-[11px] text-slate-500 font-mono">admin@golab.vn / admin123</span>
             </div>
-            <div className="login-demo-card">
-              <div className="login-demo-role">🏓 Scorer</div>
-              <div className="login-demo-cred">scorer@golab.vn · scorer123</div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-900 hover:border-slate-800 transition-all">
+              <span className="text-xs font-bold text-slate-300">🏓 Scorer</span>
+              <span className="text-[11px] text-slate-500 font-mono">scorer@golab.vn / scorer123</span>
             </div>
           </div>
 
-          <p className="login-back">
-            <Link href="/" className="login-back-link">← Về trang chủ</Link>
-          </p>
+          <div className="mt-8 text-center">
+            <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-amber-500 transition-all">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Quay lại Trang chủ
+            </Link>
+          </div>
         </div>
       </div>
-
-      <style>{loginStyles}</style>
     </div>
   );
 }
-
-const loginStyles = `
-  .login-root {
-    min-height: 100vh;
-    display: flex;
-  }
-
-  /* Left */
-  .login-left {
-    position: relative;
-    flex: 0 0 52%;
-    background: var(--gradient-hero);
-    display: none;
-    overflow: hidden;
-  }
-  @media (min-width: 960px) { .login-left { display: flex; } }
-
-  .login-bg-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(80px);
-    pointer-events: none;
-  }
-  .login-bg-orb-1 {
-    width: 500px; height: 500px;
-    background: rgba(99,102,241,.35);
-    top: -150px; right: -80px;
-    animation: float 9s ease-in-out infinite;
-  }
-  .login-bg-orb-2 {
-    width: 350px; height: 350px;
-    background: rgba(217,70,239,.2);
-    bottom: -100px; left: -60px;
-    animation: float 11s ease-in-out infinite reverse;
-  }
-  .login-bg-grid {
-    position: absolute; inset: 0;
-    background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
-    background-size: 50px 50px;
-  }
-
-  .login-left-content {
-    position: relative; z-index: 2;
-    padding: 48px;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    gap: 48px;
-  }
-
-  .login-logo {
-    display: flex; align-items: center; gap: 10px;
-    text-decoration: none;
-  }
-  .login-logo-icon { font-size: 32px; }
-  .login-logo-text {
-    font-size: 26px; font-weight: 900;
-    color: white; letter-spacing: -.5px;
-    font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
-  }
-
-  .login-promo {}
-  .login-promo-title {
-    font-size: clamp(28px, 3vw, 42px);
-    font-weight: 900;
-    color: white;
-    letter-spacing: -.02em;
-    font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
-    line-height: 1.1;
-    margin-bottom: 16px;
-  }
-  .login-promo-desc {
-    font-size: 16px;
-    color: rgba(255,255,255,.6);
-    line-height: 1.65;
-    margin-bottom: 32px;
-    max-width: 400px;
-  }
-  .login-features { display: flex; flex-direction: column; gap: 14px; }
-  .login-feature-item {
-    display: flex; align-items: center; gap: 12px;
-    font-size: 14px; font-weight: 500;
-    color: rgba(255,255,255,.8);
-  }
-  .login-feature-icon {
-    width: 36px; height: 36px;
-    background: rgba(255,255,255,.1);
-    border-radius: var(--radius-md);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-
-  /* Floating score card on left */
-  .login-score-card {
-    background: rgba(15,23,42,.75);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,.1);
-    border-radius: var(--radius-lg);
-    padding: 18px;
-    box-shadow: 0 24px 48px rgba(0,0,0,.4);
-    max-width: 300px;
-    margin-top: auto;
-  }
-  .lsc-header {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 11px; font-weight: 600;
-    color: rgba(255,255,255,.5);
-    text-transform: uppercase; letter-spacing: .07em;
-    margin-bottom: 14px;
-  }
-  .lsc-body {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 10px; margin-bottom: 12px;
-  }
-  .lsc-team, .lsc-team-right {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 13px; font-weight: 600; color: white;
-  }
-  .lsc-team-right { justify-content: flex-end; }
-  .lsc-avatar {
-    width: 30px; height: 30px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 800; color: white;
-  }
-  .lsc-score {
-    display: flex; align-items: center; gap: 4px;
-    font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
-  }
-  .lsc-score-a { font-size: 26px; font-weight: 900; color: #38bdf8; }
-  .lsc-score-b { font-size: 26px; font-weight: 900; color: rgba(255,255,255,.45); }
-  .lsc-score-sep { font-size: 18px; color: rgba(255,255,255,.25); }
-  .lsc-bar {
-    height: 3px; background: rgba(255,255,255,.1);
-    border-radius: 100px; overflow: hidden;
-  }
-  .lsc-bar-fill {
-    height: 100%; background: var(--gradient-brand); border-radius: 100px;
-  }
-
-  /* Right */
-  .login-right {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 48px 24px;
-    background: var(--bg-base);
-  }
-
-  .login-form-wrap {
-    width: 100%;
-    max-width: 400px;
-  }
-
-  .login-form-header { margin-bottom: 28px; }
-  .login-form-title {
-    font-size: 26px; font-weight: 800;
-    color: var(--text-primary);
-    font-family: var(--font-space-grotesk), 'Space Grotesk', sans-serif;
-    letter-spacing: -.02em;
-    margin-bottom: 6px;
-  }
-  .login-form-desc { font-size: 14px; color: var(--text-secondary); }
-
-  .login-quick-btns {
-    display: flex; gap: 8px; margin-bottom: 24px;
-  }
-  .login-quick-btn {
-    flex: 1;
-    padding: 9px;
-    font-size: 13px; font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--bg-subtle);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--trans-fast);
-    font-family: inherit;
-  }
-  .login-quick-btn:hover {
-    background: var(--bg-muted);
-    border-color: var(--brand-400);
-    color: var(--brand-600);
-  }
-
-  .login-form { display: flex; flex-direction: column; gap: 16px; }
-  .form-group { display: flex; flex-direction: column; }
-
-  .login-error {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 14px;
-    background: #fee2e2;
-    border: 1px solid #fecaca;
-    border-radius: var(--radius-md);
-    font-size: 13px; font-weight: 500;
-    color: #b91c1c;
-  }
-
-  .login-spinner {
-    display: inline-block;
-    width: 18px; height: 18px;
-    border: 2.5px solid rgba(255,255,255,.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: login-spin .6s linear infinite;
-  }
-  @keyframes login-spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .login-divider {
-    display: flex; align-items: center; gap: 12px;
-    margin: 24px 0 16px;
-    font-size: 12px; font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: .05em;
-  }
-  .login-divider .divider { flex: 1; }
-
-  .login-demo-accounts {
-    display: flex; flex-direction: column; gap: 8px;
-    margin-bottom: 20px;
-  }
-  .login-demo-card {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 14px;
-    background: var(--bg-subtle);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-  }
-  .login-demo-role { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-  .login-demo-cred { font-size: 12px; color: var(--text-muted); font-family: monospace; }
-
-  .login-back { text-align: center; }
-  .login-back-link {
-    font-size: 13px; font-weight: 500;
-    color: var(--text-muted);
-    text-decoration: none;
-    transition: color var(--trans-fast);
-  }
-  .login-back-link:hover { color: var(--brand-600); }
-`;
