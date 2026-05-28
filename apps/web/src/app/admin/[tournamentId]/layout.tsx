@@ -26,8 +26,16 @@ function areaFromPath(pathname: string): AreaKey {
   return 'dashboard';
 }
 
-function isAdminShellRole(role: AppRole): boolean {
-  return role === 'btc_admin' || role === 'super_admin';
+function getRoleFallbackHref(role: AppRole, tournamentId: string): string {
+  if (role === 'scorer') {
+    return `/admin/${tournamentId}/scoring`;
+  }
+
+  if (role === 'captain') {
+    return `/admin/${tournamentId}/lineup`;
+  }
+
+  return `/admin/${tournamentId}`;
 }
 
 const guestUser: CurrentUserState = {
@@ -63,7 +71,6 @@ export default function TournamentLayout({ children }: { children: React.ReactNo
   );
 
   const currentArea = areaFromPath(pathname);
-  const publicDashboardHref = tournament?.slug ? `/t/${tournament.slug}` : '/login';
   const visibleAreas = useMemo(() => {
     return new Set(getVisibleAreasForRole(currentUser.role, context));
   }, [context, currentUser.role]);
@@ -73,18 +80,13 @@ export default function TournamentLayout({ children }: { children: React.ReactNo
     && currentUser
     && currentUser.role === 'guest',
   );
-  const shouldRedirectForbiddenRole = Boolean(
-    tournament
-    && currentUser
-    && !isAdminShellRole(currentUser.role),
-  );
   const shouldRedirectForbiddenArea = Boolean(
     tournament
     && currentUser
-    && isAdminShellRole(currentUser.role)
     && visibleAreas
     && !visibleAreas.has(currentArea),
   );
+  const fallbackHref = tournament ? getRoleFallbackHref(currentUser.role, tournament.id) : '/login';
 
   useEffect(() => {
     if (loading || !tournament) {
@@ -96,25 +98,19 @@ export default function TournamentLayout({ children }: { children: React.ReactNo
       return;
     }
 
-    if (shouldRedirectForbiddenRole) {
-      router.replace(publicDashboardHref);
-      return;
-    }
-
     if (shouldRedirectForbiddenArea) {
-      router.replace(`/admin/${tournament.id}`);
+      router.replace(fallbackHref);
     }
   }, [
+    fallbackHref,
     loading,
-    publicDashboardHref,
     router,
     shouldRedirectForbiddenArea,
-    shouldRedirectForbiddenRole,
     shouldRedirectGuest,
     tournament,
   ]);
 
-  if (loading || shouldRedirectGuest || shouldRedirectForbiddenRole || shouldRedirectForbiddenArea) {
+  if (loading || shouldRedirectGuest || shouldRedirectForbiddenArea) {
     return <PageLoading />;
   }
 
