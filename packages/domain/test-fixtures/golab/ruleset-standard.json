@@ -1,0 +1,30 @@
+{
+  "name": "Thể thức Tiếp sức 24 (GOLAB Standard)",
+  "sport": "pickleball",
+  "isTemplate": true,
+  "segments": [
+    { "segmentKey": "mixed_doubles", "name": "Đôi Nam Nữ", "targetScore": 8, "playerCount": 2, "genderRule": "mixed", "orderIndex": 0, "isDrawable": true },
+    { "segmentKey": "mens_doubles", "name": "Đôi Nam", "targetScore": 16, "playerCount": 2, "genderRule": "male_only", "orderIndex": 1, "isDrawable": true },
+    { "segmentKey": "womens_doubles", "name": "Đôi Nữ", "targetScore": 24, "playerCount": 2, "genderRule": "female_only", "orderIndex": 2, "isDrawable": true }
+  ],
+  "teamComposition": {
+    "teamSize": 5,
+    "maleCount": 3,
+    "femaleCount": 2,
+    "allMustPlay": true
+  },
+  "playerLimits": [
+    { "gender": "MALE", "minSegments": 1, "maxSegments": 1 },
+    { "gender": "FEMALE", "minSegments": 1, "maxSegments": 2 }
+  ],
+  "overlapRules": [
+    { "segmentAKey": "mens_doubles", "segmentBKey": "mixed_doubles", "gender": "MALE", "isForbidden": true }
+  ],
+  "scoringConfig": {
+    "winScore": 24,
+    "noDeuce": true,
+    "sideSwitchAfterSegments": 0,
+    "pointsForWin": 3,
+    "pointsForLoss": 0
+  }
+}

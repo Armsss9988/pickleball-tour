@@ -1,0 +1,6 @@
+{
+  "name": "Golab Tournament Pickleball",
+  "description": "Hệ thống quản lý giải đấu pickleball đồng đội Golab chuyên nghiệp, hỗ trợ quản lý vận động viên, xếp đội, chia bảng, xếp lịch thi đấu vòng tròn và cập nhật bảng xếp hạng trực tiếp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

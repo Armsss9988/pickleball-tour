@@ -1,0 +1,21 @@
+{
+  "name": "golab-tournament-platform",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "db:generate": "pnpm --filter @golab/db generate",
+    "db:migrate": "pnpm --filter @golab/db migrate:dev",
+    "db:seed": "pnpm --filter @golab/db seed",
+    "db:studio": "pnpm --filter @golab/db studio",
+    "test:schemathesis": "schemathesis run http://localhost:3001/api/docs-json --base-url=http://localhost:3001/api --checks=all"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  }
+}

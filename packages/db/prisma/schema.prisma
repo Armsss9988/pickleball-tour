@@ -1,0 +1,849 @@
+// ============================================================
+// GOLAB Tournament Platform — Prisma Schema
+// PostgreSQL, multi-tenant-ready (organization_id on all tables)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  PENDING
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
+}
+
+enum ClaimStatus {
+  UNCLAIMED
+  CLAIMED
+  PENDING_CLAIM
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum RegistrationSource {
+  ADMIN_IMPORT
+  MANUAL_ADMIN
+  SELF_REGISTER
+}
+
+enum TournamentStatus {
+  DRAFT
+  PLAYER_IMPORT
+  PLAYERS_READY
+  TEAM_DRAW_COMPLETED
+  GROUP_ASSIGNED
+  SCHEDULE_GENERATED
+  RUNNING
+  GROUP_COMPLETED
+  KNOCKOUT_GENERATED
+  KNOCKOUT_RUNNING
+  COMPLETED
+  PUBLISHED
+}
+
+enum TeamMemberRole {
+  CAPTAIN
+  MEMBER
+}
+
+enum DrawStatus {
+  PREVIEW
+  CONFIRMED
+  CANCELLED
+}
+
+enum StageType {
+  GROUP
+  PLAYOFF
+  SEMIFINAL
+  FINAL
+  THIRD_PLACE
+  CUSTOM
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LINEUP_PENDING
+  LINEUP_READY
+  READY
+  RUNNING
+  SEGMENT_BREAK
+  COMPLETED
+  RESULT_CONFIRMED
+  CANCELLED
+}
+
+enum SegmentStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  SKIPPED
+}
+
+enum LineupStatus {
+  DRAFT
+  SUBMITTED
+  VALID
+  INVALID
+  LOCKED
+}
+
+// ============================================================
+// IDENTITY TABLES
+// ============================================================
+
+model Organization {
+  id             String   @id @default(uuid())
+  name           String
+  slug           String   @unique
+  status         String   @default("active")
+  brandingConfig Json     @default("{}") @map("branding_config")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  users              User[]
+  tournaments        Tournament[]
+  playerProfiles     PlayerProfile[]
+  rulesets           TournamentRuleset[]
+  registrations      TournamentRegistration[]
+  teams              Team[]
+  teamMembers        TeamMember[]
+  teamDraws          TeamDraw[]
+  stages             Stage[]
+  groups             Group[]
+  groupTeams         GroupTeam[]
+  matches            Match[]
+  matchSegments      MatchSegment[]
+  matchLineups       MatchLineup[]
+  matchLineupPlayers MatchLineupPlayer[]
+  scoreEvents        ScoreEvent[]
+  matchResults       MatchResult[]
+  standings          Standing[]
+  bracketNodes       BracketNode[]
+  awards             Award[]
+  awardRecipients    AwardRecipient[]
+  auditLogs          AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String     @id @default(uuid())
+  organizationId String     @map("organization_id")
+  email          String?    @unique
+  phone          String?
+  passwordHash   String?    @map("password_hash")
+  displayName    String     @map("display_name")
+  avatarUrl      String?    @map("avatar_url")
+  status         UserStatus @default(ACTIVE)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  userRoles          UserRole[]
+  playerProfile      PlayerProfile?
+  createdTournaments Tournament[]        @relation("TournamentCreatedBy")
+  createdRulesets    TournamentRuleset[] @relation("RulesetCreatedBy")
+  submittedLineups   MatchLineup[]
+  scoredEvents       ScoreEvent[]        @relation("ScoreCreatedBy")
+  undoneEvents       ScoreEvent[]        @relation("ScoreUndoneBy")
+  confirmedResults   MatchResult[]
+  auditLogs          AuditLog[]
+  confirmedDraws     TeamDraw[]          @relation("DrawConfirmedBy")
+  createdDraws       TeamDraw[]          @relation("DrawCreatedBy")
+
+  @@map("users")
+}
+
+model UserRole {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  role           String
+  organizationId String?  @map("organization_id")
+  tournamentId   String?  @map("tournament_id")
+  teamId         String?  @map("team_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([organizationId, tournamentId, teamId])
+  @@map("user_roles")
+}
+
+// ============================================================
+// TOURNAMENT + RULESET TABLES
+// ============================================================
+
+model Tournament {
+  id                   String           @id @default(uuid())
+  organizationId       String           @map("organization_id")
+  name                 String
+  slug                 String
+  description          String?
+  venueName            String?          @map("venue_name")
+  openingTime          DateTime?        @map("opening_time")
+  registrationDeadline DateTime?        @map("registration_deadline")
+  status               TournamentStatus @default(DRAFT)
+  publicEnabled        Boolean          @default(false) @map("public_enabled")
+  rulesetId            String?          @map("ruleset_id")
+  metadata             Json             @default("{}")
+  createdById          String?          @map("created_by")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  organization       Organization             @relation(fields: [organizationId], references: [id])
+  createdBy          User?                    @relation("TournamentCreatedBy", fields: [createdById], references: [id])
+  ruleset            TournamentRuleset?       @relation(fields: [rulesetId], references: [id])
+  registrations      TournamentRegistration[]
+  teams              Team[]
+  teamMembers        TeamMember[]
+  teamDraws          TeamDraw[]
+  stages             Stage[]
+  groups             Group[]
+  groupTeams         GroupTeam[]
+  matches            Match[]
+  matchSegments      MatchSegment[]
+  matchLineups       MatchLineup[]
+  matchLineupPlayers MatchLineupPlayer[]
+  scoreEvents        ScoreEvent[]
+  matchResults       MatchResult[]
+  standings          Standing[]
+  bracketNodes       BracketNode[]
+  awards             Award[]
+  awardRecipients    AwardRecipient[]
+  auditLogs          AuditLog[]
+
+  @@unique([organizationId, slug])
+  @@map("tournaments")
+}
+
+// Ruleset: named config, can be a template
+model TournamentRuleset {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  version        Int      @default(1)
+  sport          String   @default("pickleball")
+  isTemplate     Boolean  @default(false) @map("is_template")
+  createdById    String?  @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  createdBy           User?                @relation("RulesetCreatedBy", fields: [createdById], references: [id])
+  tournaments         Tournament[]
+  segmentDefinitions  SegmentDefinition[]
+  teamCompositionRule TeamCompositionRule?
+  playerLimitRules    PlayerLimitRule[]
+  overlapRules        OverlapRule[]
+  scoringConfig       ScoringConfig?
+
+  @@map("tournament_rulesets")
+}
+
+// Each segment in a relay match (e.g. mixed_doubles, mens_doubles, womens_doubles)
+model SegmentDefinition {
+  id          String  @id @default(uuid())
+  rulesetId   String  @map("ruleset_id")
+  segmentKey  String  @map("segment_key") // e.g. "mixed_doubles"
+  name        String // Display name: "Đôi Nam Nữ"
+  targetScore Int     @map("target_score") // Running total target (e.g. 8, 16, 24)
+  playerCount Int     @map("player_count") // Players per team per segment (e.g. 2)
+  genderRule  String  @map("gender_rule") // "mixed" | "male_only" | "female_only" | "any"
+  orderIndex  Int     @map("order_index") // Default position (0-based)
+  isDrawable  Boolean @default(true) @map("is_drawable") // Can order be randomized by draw?
+
+  ruleset TournamentRuleset @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
+
+  @@unique([rulesetId, segmentKey])
+  @@map("segment_definitions")
+}
+
+// Team size + gender composition rule
+model TeamCompositionRule {
+  id          String  @id @default(uuid())
+  rulesetId   String  @unique @map("ruleset_id")
+  teamSize    Int     @map("team_size") // Total players (e.g. 5)
+  maleCount   Int     @map("male_count") // Required male players (e.g. 3)
+  femaleCount Int     @map("female_count") // Required female players (e.g. 2)
+  allMustPlay Boolean @default(true) @map("all_must_play") // All members must appear in ≥1 segment
+
+  ruleset TournamentRuleset @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
+
+  @@map("team_composition_rules")
+}
+
+// Per-gender min/max segment appearance limits
+model PlayerLimitRule {
+  id          String @id @default(uuid())
+  rulesetId   String @map("ruleset_id")
+  gender      Gender
+  minSegments Int    @map("min_segments") // Min segments a player of this gender must play
+  maxSegments Int    @map("max_segments") // Max segments a player of this gender can play
+
+  ruleset TournamentRuleset @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
+
+  @@unique([rulesetId, gender])
+  @@map("player_limit_rules")
+}
+
+// Forbidden player overlap between two segments (e.g. male cannot play both mens_doubles + mixed_doubles)
+model OverlapRule {
+  id          String  @id @default(uuid())
+  rulesetId   String  @map("ruleset_id")
+  segmentAKey String  @map("segment_a_key")
+  segmentBKey String  @map("segment_b_key")
+  gender      Gender
+  isForbidden Boolean @default(true) @map("is_forbidden")
+
+  ruleset TournamentRuleset @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
+
+  @@unique([rulesetId, segmentAKey, segmentBKey, gender])
+  @@map("overlap_rules")
+}
+
+// Scoring configuration for the relay format
+model ScoringConfig {
+  id                      String  @id @default(uuid())
+  rulesetId               String  @unique @map("ruleset_id")
+  winScore                Int     @map("win_score") // Overall match win score (e.g. 24)
+  noDeuce                 Boolean @default(true) @map("no_deuce") // No win-by-two
+  sideSwitchAfterSegments Int     @default(0) @map("side_switch_after_segments") // Switch sides after N segments
+  pointsForWin            Int     @default(3) @map("points_for_win") // Standing points for win
+  pointsForLoss           Int     @default(0) @map("points_for_loss") // Standing points for loss
+
+  ruleset TournamentRuleset @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
+
+  @@map("scoring_configs")
+}
+
+// ============================================================
+// PLAYER + REGISTRATION TABLES
+// ============================================================
+
+model PlayerProfile {
+  id             String      @id @default(uuid())
+  organizationId String      @map("organization_id")
+  userId         String?     @unique @map("user_id")
+  fullName       String      @map("full_name")
+  normalizedName String      @map("normalized_name")
+  gender         Gender      @default(UNKNOWN)
+  phone          String?
+  note           String?
+  source         String      @default("admin_import")
+  claimStatus    ClaimStatus @default(UNCLAIMED) @map("claim_status")
+  metadata       Json        @default("{}")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  organization      Organization             @relation(fields: [organizationId], references: [id])
+  user              User?                    @relation(fields: [userId], references: [id])
+  registrations     TournamentRegistration[]
+  teamMemberships   TeamMember[]
+  captainOf         Team[]
+  lineupAppearances MatchLineupPlayer[]
+  awardRecipients   AwardRecipient[]
+
+  @@index([organizationId])
+  @@index([normalizedName])
+  @@map("player_profiles")
+}
+
+model TournamentRegistration {
+  id              String             @id @default(uuid())
+  organizationId  String             @map("organization_id")
+  tournamentId    String             @map("tournament_id")
+  playerProfileId String             @map("player_profile_id")
+  status          RegistrationStatus @default(APPROVED)
+  source          RegistrationSource @default(ADMIN_IMPORT)
+  seedNo          Int?               @map("seed_no")
+  note            String?
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  tournament    Tournament    @relation(fields: [tournamentId], references: [id])
+  playerProfile PlayerProfile @relation(fields: [playerProfileId], references: [id])
+
+  @@unique([tournamentId, playerProfileId])
+  @@index([tournamentId])
+  @@index([playerProfileId])
+  @@map("tournament_registrations")
+}
+
+// ============================================================
+// TEAM TABLES
+// ============================================================
+
+model Team {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  tournamentId    String   @map("tournament_id")
+  name            String
+  code            String // Short code e.g. "A", "B"
+  captainPlayerId String?  @map("captain_player_id")
+  status          String   @default("active")
+  seedNo          Int?     @map("seed_no")
+  metadata        Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  tournament      Tournament       @relation(fields: [tournamentId], references: [id])
+  captain         PlayerProfile?   @relation(fields: [captainPlayerId], references: [id])
+  members         TeamMember[]
+  groupTeams      GroupTeam[]
+  matchesAsA      Match[]          @relation("MatchTeamA")
+  matchesAsB      Match[]          @relation("MatchTeamB")
+  wonMatches      Match[]          @relation("MatchWinner")
+  lineups         MatchLineup[]
+  scoreEvents     ScoreEvent[]
+  matchResultsAsA MatchResult[]    @relation("ResultTeamA")
+  matchResultsAsB MatchResult[]    @relation("ResultTeamB")
+  wonResults      MatchResult[]    @relation("ResultWinner")
+  standings       Standing[]
+  bracketNodesAsA BracketNode[]    @relation("BracketTeamA")
+  bracketNodesAsB BracketNode[]    @relation("BracketTeamB")
+  awardRecipients AwardRecipient[]
+
+  @@unique([tournamentId, code])
+  @@map("teams")
+}
+
+model TeamMember {
+  id              String         @id @default(uuid())
+  organizationId  String         @map("organization_id")
+  tournamentId    String         @map("tournament_id")
+  teamId          String         @map("team_id")
+  playerProfileId String         @map("player_profile_id")
+  role            TeamMemberRole @default(MEMBER)
+  joinedMethod    String         @default("random_draw") @map("joined_method")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  tournament    Tournament    @relation(fields: [tournamentId], references: [id])
+  team          Team          @relation(fields: [teamId], references: [id])
+  playerProfile PlayerProfile @relation(fields: [playerProfileId], references: [id])
+
+  @@unique([tournamentId, playerProfileId])
+  @@unique([teamId, playerProfileId])
+  @@index([teamId])
+  @@map("team_members")
+}
+
+model TeamDraw {
+  id               String     @id @default(uuid())
+  organizationId   String     @map("organization_id")
+  tournamentId     String     @map("tournament_id")
+  status           DrawStatus @default(PREVIEW)
+  randomSeed       String     @map("random_seed")
+  algorithmVersion String     @map("algorithm_version")
+  inputSnapshot    Json       @map("input_snapshot")
+  outputSnapshot   Json       @map("output_snapshot")
+  createdById      String?    @map("created_by")
+  confirmedById    String?    @map("confirmed_by")
+  confirmedAt      DateTime?  @map("confirmed_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  createdBy    User?        @relation("DrawCreatedBy", fields: [createdById], references: [id])
+  confirmedBy  User?        @relation("DrawConfirmedBy", fields: [confirmedById], references: [id])
+
+  @@map("team_draws")
+}
+
+// ============================================================
+// STAGE + GROUP + SCHEDULE TABLES
+// ============================================================
+
+model Stage {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  tournamentId   String    @map("tournament_id")
+  name           String
+  type           StageType
+  orderNo        Int       @map("order_no")
+  status         String    @default("pending")
+  metadata       Json      @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  tournament   Tournament    @relation(fields: [tournamentId], references: [id])
+  groups       Group[]
+  matches      Match[]
+  bracketNodes BracketNode[]
+
+  @@map("stages")
+}
+
+model Group {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  tournamentId   String   @map("tournament_id")
+  stageId        String   @map("stage_id")
+  name           String
+  code           String // e.g. "A", "B"
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  stage        Stage        @relation(fields: [stageId], references: [id])
+  groupTeams   GroupTeam[]
+  matches      Match[]
+  standings    Standing[]
+
+  @@unique([tournamentId, code])
+  @@map("groups")
+}
+
+model GroupTeam {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  tournamentId   String   @map("tournament_id")
+  groupId        String   @map("group_id")
+  teamId         String   @map("team_id")
+  seedOrder      Int?     @map("seed_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  group        Group        @relation(fields: [groupId], references: [id])
+  team         Team         @relation(fields: [teamId], references: [id])
+
+  @@unique([tournamentId, teamId])
+  @@unique([groupId, teamId])
+  @@map("group_teams")
+}
+
+// ============================================================
+// MATCH TABLES
+// ============================================================
+
+model Match {
+  id             String      @id @default(uuid())
+  organizationId String      @map("organization_id")
+  tournamentId   String      @map("tournament_id")
+  stageId        String      @map("stage_id")
+  groupId        String?     @map("group_id")
+  roundNo        Int?        @map("round_no")
+  matchNo        Int?        @map("match_no")
+  label          String?
+  teamAId        String?     @map("team_a_id")
+  teamBId        String?     @map("team_b_id")
+  scheduledTime  DateTime?   @map("scheduled_time")
+  courtName      String?     @map("court_name")
+  status         MatchStatus @default(SCHEDULED)
+  winnerTeamId   String?     @map("winner_team_id")
+  metadata       Json        @default("{}")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  tournament   Tournament     @relation(fields: [tournamentId], references: [id])
+  stage        Stage          @relation(fields: [stageId], references: [id])
+  group        Group?         @relation(fields: [groupId], references: [id])
+  teamA        Team?          @relation("MatchTeamA", fields: [teamAId], references: [id])
+  teamB        Team?          @relation("MatchTeamB", fields: [teamBId], references: [id])
+  winner       Team?          @relation("MatchWinner", fields: [winnerTeamId], references: [id])
+  segments     MatchSegment[]
+  lineups      MatchLineup[]
+  scoreEvents  ScoreEvent[]
+  result       MatchResult?
+  bracketNode  BracketNode?
+
+  @@index([tournamentId])
+  @@index([groupId])
+  @@index([status])
+  @@map("matches")
+}
+
+model MatchSegment {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  tournamentId   String        @map("tournament_id")
+  matchId        String        @map("match_id")
+  segmentOrder   Int           @map("segment_order") // Actual play order (after draw)
+  segmentKey     String        @map("segment_key") // e.g. "mixed_doubles"
+  name           String // Display: "Đôi Nam Nữ"
+  targetScore    Int           @map("target_score") // Running total target
+  status         SegmentStatus @default(PENDING)
+  startedAt      DateTime?     @map("started_at")
+  completedAt    DateTime?     @map("completed_at")
+  metadata       Json          @default("{}")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  tournament   Tournament    @relation(fields: [tournamentId], references: [id])
+  match        Match         @relation(fields: [matchId], references: [id])
+  lineups      MatchLineup[]
+  scoreEvents  ScoreEvent[]
+
+  @@unique([matchId, segmentOrder])
+  @@unique([matchId, segmentKey])
+  @@map("match_segments")
+}
+
+// One record per (segment, team)
+model MatchLineup {
+  id               String       @id @default(uuid())
+  organizationId   String       @map("organization_id")
+  tournamentId     String       @map("tournament_id")
+  matchId          String       @map("match_id")
+  segmentId        String       @map("segment_id")
+  teamId           String       @map("team_id")
+  status           LineupStatus @default(DRAFT)
+  validationResult Json         @default("{}") @map("validation_result")
+  submittedById    String?      @map("submitted_by")
+  submittedAt      DateTime?    @map("submitted_at")
+  lockedAt         DateTime?    @map("locked_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  tournament   Tournament          @relation(fields: [tournamentId], references: [id])
+  match        Match               @relation(fields: [matchId], references: [id])
+  segment      MatchSegment        @relation(fields: [segmentId], references: [id])
+  team         Team                @relation(fields: [teamId], references: [id])
+  submittedBy  User?               @relation(fields: [submittedById], references: [id])
+  players      MatchLineupPlayer[]
+
+  @@unique([segmentId, teamId])
+  @@map("match_lineups")
+}
+
+model MatchLineupPlayer {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  tournamentId    String   @map("tournament_id")
+  matchLineupId   String   @map("match_lineup_id")
+  playerProfileId String   @map("player_profile_id")
+  slotNo          Int?     @map("slot_no")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  tournament    Tournament    @relation(fields: [tournamentId], references: [id])
+  matchLineup   MatchLineup   @relation(fields: [matchLineupId], references: [id])
+  playerProfile PlayerProfile @relation(fields: [playerProfileId], references: [id])
+
+  @@unique([matchLineupId, playerProfileId])
+  @@map("match_lineup_players")
+}
+
+// ============================================================
+// SCORING TABLES
+// ============================================================
+
+// Append-only event log — source of truth for score state
+model ScoreEvent {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  tournamentId   String    @map("tournament_id")
+  matchId        String    @map("match_id")
+  segmentId      String    @map("segment_id")
+  scoringTeamId  String    @map("scoring_team_id")
+  scoreAAfter    Int       @map("score_a_after")
+  scoreBAfter    Int       @map("score_b_after")
+  eventNo        Int       @map("event_no") // Sequential per match
+  isUndone       Boolean   @default(false) @map("is_undone")
+  undonById      String?   @map("undone_by")
+  undoneAt       DateTime? @map("undone_at")
+  undoReason     String?   @map("undo_reason")
+  createdById    String?   @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  match        Match        @relation(fields: [matchId], references: [id])
+  segment      MatchSegment @relation(fields: [segmentId], references: [id])
+  scoringTeam  Team         @relation(fields: [scoringTeamId], references: [id])
+  createdBy    User?        @relation("ScoreCreatedBy", fields: [createdById], references: [id])
+  undonBy      User?        @relation("ScoreUndoneBy", fields: [undonById], references: [id])
+
+  @@unique([matchId, eventNo])
+  @@index([matchId, eventNo])
+  @@index([segmentId])
+  @@map("score_events")
+}
+
+model MatchResult {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  tournamentId   String    @map("tournament_id")
+  matchId        String    @unique @map("match_id")
+  teamAId        String    @map("team_a_id")
+  teamBId        String    @map("team_b_id")
+  winnerTeamId   String    @map("winner_team_id")
+  teamAScore     Int       @map("team_a_score")
+  teamBScore     Int       @map("team_b_score")
+  confirmedById  String?   @map("confirmed_by")
+  confirmedAt    DateTime? @map("confirmed_at")
+  metadata       Json      @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  match        Match        @relation(fields: [matchId], references: [id])
+  teamA        Team         @relation("ResultTeamA", fields: [teamAId], references: [id])
+  teamB        Team         @relation("ResultTeamB", fields: [teamBId], references: [id])
+  winner       Team         @relation("ResultWinner", fields: [winnerTeamId], references: [id])
+  confirmedBy  User?        @relation(fields: [confirmedById], references: [id])
+
+  @@map("match_results")
+}
+
+// ============================================================
+// RANKING + BRACKET TABLES
+// ============================================================
+
+model Standing {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  tournamentId   String   @map("tournament_id")
+  groupId        String   @map("group_id")
+  teamId         String   @map("team_id")
+  matchesPlayed  Int      @default(0) @map("matches_played")
+  wins           Int      @default(0)
+  losses         Int      @default(0)
+  pointsFor      Int      @default(0) @map("points_for")
+  pointsAgainst  Int      @default(0) @map("points_against")
+  pointDiff      Int      @default(0) @map("point_diff")
+  rank           Int?
+  tieBreakDetail Json     @default("{}") @map("tie_break_detail")
+  calculatedAt   DateTime @default(now()) @map("calculated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  group        Group        @relation(fields: [groupId], references: [id])
+  team         Team         @relation(fields: [teamId], references: [id])
+
+  @@unique([groupId, teamId])
+  @@map("standings")
+}
+
+model BracketNode {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  tournamentId    String   @map("tournament_id")
+  stageId         String   @map("stage_id")
+  nodeKey         String   @map("node_key") // e.g. "SF1", "F", "3rd"
+  roundName       String   @map("round_name")
+  matchId         String?  @unique @map("match_id")
+  sourceA         String?  @map("source_a") // e.g. "GROUP_A_1" or "WIN_SF1"
+  sourceB         String?  @map("source_b")
+  teamAId         String?  @map("team_a_id")
+  teamBId         String?  @map("team_b_id")
+  winnerToNodeKey String?  @map("winner_to_node_key")
+  loserAwardKey   String?  @map("loser_award_key")
+  orderNo         Int?     @map("order_no")
+  metadata        Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  stage        Stage        @relation(fields: [stageId], references: [id])
+  match        Match?       @relation(fields: [matchId], references: [id])
+  teamA        Team?        @relation("BracketTeamA", fields: [teamAId], references: [id])
+  teamB        Team?        @relation("BracketTeamB", fields: [teamBId], references: [id])
+
+  @@unique([tournamentId, nodeKey])
+  @@map("bracket_nodes")
+}
+
+// ============================================================
+// AWARD TABLES
+// ============================================================
+
+model Award {
+  id                     String   @id @default(uuid())
+  organizationId         String   @map("organization_id")
+  tournamentId           String   @map("tournament_id")
+  title                  String
+  awardKey               String   @map("award_key") // e.g. "CHAMPION", "RUNNER_UP"
+  rank                   Int?
+  teamAward              Json     @default("{}") @map("team_award")
+  individualAward        Json     @default("{}") @map("individual_award")
+  cashAmount             Decimal? @map("cash_amount")
+  sponsorGiftDescription String?  @map("sponsor_gift_description")
+  recipientRule          String   @default("ALL_TEAM_MEMBERS") @map("recipient_rule")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  tournament   Tournament       @relation(fields: [tournamentId], references: [id])
+  recipients   AwardRecipient[]
+
+  @@unique([tournamentId, awardKey])
+  @@map("awards")
+}
+
+model AwardRecipient {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  tournamentId    String   @map("tournament_id")
+  awardId         String   @map("award_id")
+  teamId          String?  @map("team_id")
+  playerProfileId String?  @map("player_profile_id")
+  status          String   @default("pending")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  tournament    Tournament     @relation(fields: [tournamentId], references: [id])
+  award         Award          @relation(fields: [awardId], references: [id])
+  team          Team?          @relation(fields: [teamId], references: [id])
+  playerProfile PlayerProfile? @relation(fields: [playerProfileId], references: [id])
+
+  @@map("award_recipients")
+}
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String?  @map("organization_id")
+  tournamentId   String?  @map("tournament_id")
+  actorUserId    String?  @map("actor_user_id")
+  action         String // e.g. "SCORE_ADDED", "LINEUP_LOCKED"
+  entityType     String   @map("entity_type") // e.g. "Match", "Team"
+  entityId       String?  @map("entity_id")
+  beforeData     Json?    @map("before_data")
+  afterData      Json?    @map("after_data")
+  reason         String?
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  tournament   Tournament?   @relation(fields: [tournamentId], references: [id])
+  actor        User?         @relation(fields: [actorUserId], references: [id])
+
+  @@index([tournamentId, createdAt(sort: Desc)])
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}

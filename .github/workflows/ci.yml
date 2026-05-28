@@ -1,0 +1,90 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.15.0
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Setup Environment File
+        run: |
+          cp .env.example .env
+          sed -i 's/localhost:5432/localhost:5433/g' .env
+
+      - name: Start Docker Services
+        run: |
+          docker compose up -d
+
+      - name: Wait for PostgreSQL
+        run: |
+          until docker exec golab-postgres pg_isready -U golab -d golab_tournament; do
+            echo "Waiting for PostgreSQL to be ready..."
+            sleep 2
+          done
+
+      - name: Run Prisma Migrations & Seed
+        run: |
+          pnpm db:generate
+          pnpm db:migrate
+          pnpm db:seed
+
+      - name: Run Lint
+        run: pnpm lint
+
+      - name: Run TypeScript Compile Check
+        run: pnpm typecheck
+
+      - name: Run Unit Tests
+        run: pnpm test
+
+      - name: Build Project
+        run: pnpm build
+
+      - name: Start NestJS API Server (Background)
+        run: |
+          pnpm --filter @golab/api dev &
+          echo "Waiting for API server to boot..."
+          sleep 12
+
+      - name: Install Python and Schemathesis
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install schemathesis
+
+      - name: Run Schemathesis Tests
+        run: |
+          schemathesis run http://localhost:3001/api/docs-json --base-url=http://localhost:3001/api --checks=all
