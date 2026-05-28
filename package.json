@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "build:web": "turbo build --filter=@golab/web",
+    "build:api": "turbo build --filter=@golab/api",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
