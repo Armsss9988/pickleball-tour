@@ -21,7 +21,7 @@ export default function PlayersPage() {
     try {
       setLoading(true);
       const data = await apiFetch(`/tournaments/${tournament.id}/players`);
-      setPlayers(data);
+      setPlayers(data.items || []);
     } catch (e: any) {
       console.error(e);
       setError(e.message || 'Lỗi tải danh sách vận động viên.');

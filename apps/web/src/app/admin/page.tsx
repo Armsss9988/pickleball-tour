@@ -24,7 +24,8 @@ export default function AdminDashboardPage() {
       try {
         setLoadingStats(true);
         // Fetch registered players
-        const players = await apiFetch(`/tournaments/${tournament!.id}/players`);
+        const playersData = await apiFetch(`/tournaments/${tournament!.id}/players`);
+        const players = playersData.items || [];
         const teams = await apiFetch(`/tournaments/${tournament!.id}/teams`);
         
         let matches = [];
