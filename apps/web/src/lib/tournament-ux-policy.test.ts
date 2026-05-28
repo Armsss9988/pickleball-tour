@@ -98,11 +98,24 @@ describe('tournament UX policy', () => {
     expect(access.reason).toContain('đã có dữ liệu phụ thuộc');
   });
 
-  it('requires tournament completion before publishing', () => {
+  it('requires tournament completion and public enablement before publishing', () => {
+    const notReady = getPublishReadiness({
+      ...baseContext,
+      hasTournamentInfo: true,
+      hasValidRuleset: true,
+      teamCount: 8,
+      matchCount: 12,
+      resultConfirmedMatchCount: 12,
+      status: 'COMPLETED',
+    });
+    expect(notReady.ready).toBe(false);
+    expect(notReady.missing).toContain('dữ liệu công khai');
+
     const readiness = getPublishReadiness({
       ...baseContext,
       hasTournamentInfo: true,
       hasValidRuleset: true,
+      publicEnabled: true,
       teamCount: 8,
       matchCount: 12,
       resultConfirmedMatchCount: 12,
