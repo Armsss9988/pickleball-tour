@@ -71,6 +71,16 @@ function hasRulesetScoring(ruleset?: TournamentRulesetLike | null): boolean {
   return Boolean(ruleset?.scoringConfig);
 }
 
+function hasRulesetSegments(ruleset?: TournamentRulesetLike | null): boolean {
+  const segmentDefinitions = ruleset?.segmentDefinitions;
+  if (Array.isArray(segmentDefinitions) && segmentDefinitions.length > 0) {
+    return true;
+  }
+
+  const segments = ruleset?.segments;
+  return Array.isArray(segments) && segments.length > 0;
+}
+
 function hasTournamentInfo(tournament?: TournamentLike | null): boolean {
   return isNonEmptyString(tournament?.name)
     && isNonEmptyString(tournament?.slug)
@@ -154,7 +164,11 @@ export function buildTournamentUxContext(input: BuildTournamentUxContextInput): 
     status,
     publicEnabled: Boolean(tournament?.publicEnabled),
     hasTournamentInfo: hasTournamentInfo(tournament),
-    hasValidRuleset: Boolean(getComposition(ruleset) && hasRulesetScoring(ruleset)),
+    hasValidRuleset: Boolean(
+      getComposition(ruleset)
+      && hasRulesetScoring(ruleset)
+      && hasRulesetSegments(ruleset),
+    ),
     hasDependentSetupData:
       playerTotal > 0
       || teamCount > 0
