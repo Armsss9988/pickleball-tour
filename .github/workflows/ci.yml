@@ -87,4 +87,4 @@ jobs:
 
       - name: Run Schemathesis Tests
         run: |
-          schemathesis run http://localhost:3001/api/docs-json --base-url=http://localhost:3001/api --checks=all
+          schemathesis run http://localhost:3001/api/docs-json --url=http://localhost:3001/api --checks=all

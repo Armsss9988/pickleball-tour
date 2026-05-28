@@ -12,7 +12,7 @@
     "db:migrate": "pnpm --filter @golab/db migrate:dev",
     "db:seed": "pnpm --filter @golab/db seed",
     "db:studio": "pnpm --filter @golab/db studio",
-    "test:schemathesis": "schemathesis run http://localhost:3001/api/docs-json --base-url=http://localhost:3001/api --checks=all"
+    "test:schemathesis": "schemathesis run http://localhost:3001/api/docs-json --url=http://localhost:3001/api --checks=all"
   },
   "devDependencies": {
     "turbo": "^2.4.0",

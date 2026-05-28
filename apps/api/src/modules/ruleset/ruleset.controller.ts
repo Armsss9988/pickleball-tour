@@ -28,7 +28,10 @@ export class RulesetController {
 
   @Post('validate')
   @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
-  async validateRuleset(@Body() dto: CreateRulesetDto) {
+  async validateRuleset(
+    @Param('tournamentId') tournamentId: string,
+    @Body() dto: CreateRulesetDto
+  ) {
     return this.rulesetService.validateRuleset(dto);
   }
 }

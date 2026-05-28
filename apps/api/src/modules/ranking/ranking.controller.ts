@@ -24,6 +24,7 @@ export class RankingController {
   @Post('tournaments/:tournamentId/groups/:groupId/resolve-tie')
   @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
   async resolveTie(
+    @Param('tournamentId') tournamentId: string,
     @Param('groupId') groupId: string,
     @Request() req: any,
     @Body('teamIdsInRankOrder') teamIdsInRankOrder: string[]
