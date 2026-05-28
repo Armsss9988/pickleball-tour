@@ -98,30 +98,29 @@ describe('tournament UX policy', () => {
     expect(access.reason).toContain('đã có dữ liệu phụ thuộc');
   });
 
-  it('requires tournament completion and public enablement before publishing', () => {
-    const notReady = getPublishReadiness({
-      ...baseContext,
-      hasTournamentInfo: true,
-      hasValidRuleset: true,
-      teamCount: 8,
-      matchCount: 12,
-      resultConfirmedMatchCount: 12,
-      status: 'COMPLETED',
-    });
-    expect(notReady.ready).toBe(false);
-    expect(notReady.missing).toContain('dữ liệu công khai');
-
+  it('allows publish readiness before public mode is enabled', () => {
     const readiness = getPublishReadiness({
       ...baseContext,
       hasTournamentInfo: true,
       hasValidRuleset: true,
-      publicEnabled: true,
       teamCount: 8,
       matchCount: 12,
       resultConfirmedMatchCount: 12,
       status: 'COMPLETED',
     });
     expect(readiness.ready).toBe(true);
+    expect(readiness.missing).toEqual([]);
+
+    const access = getActionAccess('publishTournament', 'btc_admin', {
+      ...baseContext,
+      hasTournamentInfo: true,
+      hasValidRuleset: true,
+      teamCount: 8,
+      matchCount: 12,
+      resultConfirmedMatchCount: 12,
+      status: 'COMPLETED',
+    });
+    expect(access.allowed).toBe(true);
   });
 
   it('maps technical status to human labels', () => {

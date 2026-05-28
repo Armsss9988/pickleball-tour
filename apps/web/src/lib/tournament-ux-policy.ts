@@ -324,7 +324,6 @@ export function getPublishReadiness(context: TournamentUxContext): PublishReadin
   const missing: string[] = [];
   if (!context.hasTournamentInfo) missing.push('thông tin giải');
   if (!context.hasValidRuleset) missing.push('ruleset');
-  if (!context.publicEnabled) missing.push('dữ liệu công khai');
   if (context.teamCount < 8) missing.push('đội thi đấu');
   if (context.matchCount === 0) missing.push('lịch thi đấu');
   if (context.resultConfirmedMatchCount < context.matchCount) missing.push('kết quả trận đấu');
