@@ -274,7 +274,7 @@ export default function RefereeScorerPage() {
           <span className="text-4xl text-rose-500">⚠️</span>
           <h2 className="text-lg font-bold text-slate-100">Lỗi Tải Trận Đấu</h2>
           <p className="text-xs text-slate-400">Không tìm thấy thông tin trận đấu này. Vui lòng kiểm tra lại ID hoặc đường truyền mạng.</p>
-          <button onClick={() => router.push('/admin/scoring')} className="btn btn-secondary text-xs py-2 w-full">Quay lại danh sách</button>
+          <button onClick={() => router.push(match?.tournamentId ? `/admin/${match.tournamentId}/scoring` : '/admin')} className="btn btn-secondary text-xs py-2 w-full">Quay lại danh sách</button>
         </div>
       </div>
     );
@@ -528,7 +528,7 @@ export default function RefereeScorerPage() {
               <button
                 onClick={() => {
                   if(confirm('Bạn muốn đóng bàn trọng tài này?')) {
-                    router.push('/admin/scoring');
+                    router.push(match?.tournamentId ? `/admin/${match.tournamentId}/scoring` : '/admin');
                   }
                 }}
                 className="w-full py-3 bg-slate-850 hover:bg-slate-800 text-slate-300 rounded-xl font-bold text-xs border border-slate-800 transition-all text-center block"

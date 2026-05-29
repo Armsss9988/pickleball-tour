@@ -1,297 +1,378 @@
 'use client';
 
-import { useActiveTournament } from '@/lib/use-tournament';
-import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api-client';
 import { PageHeader } from '@/components/page-header';
-import { StatCard } from '@/components/stat-card';
-import { StepperProgress, type Step } from '@/components/stepper-progress';
 import { StatusBadge } from '@/components/status-badge';
 import { PageLoading } from '@/components/loading-skeleton';
 import { EmptyState } from '@/components/empty-state';
+import { useToast } from '@/components/toast';
 import {
-  Trophy, Users, Shield, Target, Dices, ClipboardList, Zap,
-  BarChart3, ArrowRight, Settings, RefreshCw,
+  Trophy, Plus, Calendar, Target, LogOut, X, Settings, ArrowRight, MapPin
 } from '@/components/icons';
 
-interface DashboardStats {
-  playersCount: number;
-  malesCount: number;
-  femalesCount: number;
-  teamsCount: number;
-  matchesCount: number;
-  completedMatches: number;
-  recentPlayers: Array<{ id: string; fullName: string; gender: string }>;
+interface Tournament {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  venueName: string | null;
+  status: string;
+  openingTime: string | null;
+  registrationDeadline: string | null;
+  publicEnabled: boolean;
 }
 
-export default function AdminDashboardPage() {
-  const { tournament, loading: tLoading, error: tError, reload } = useActiveTournament();
-  const [stats, setStats] = useState<DashboardStats>({
-    playersCount: 0, malesCount: 0, femalesCount: 0,
-    teamsCount: 0, matchesCount: 0, completedMatches: 0, recentPlayers: [],
-  });
-  const [loadingStats, setLoadingStats] = useState(true);
+export default function TournamentListPage() {
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+
+  // Form states
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [description, setDescription] = useState('');
+  const [venueName, setVenueName] = useState('');
+  const [openingTime, setOpeningTime] = useState('');
+  const [registrationDeadline, setRegistrationDeadline] = useState('');
+  const [publicEnabled, setPublicEnabled] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadTournaments = async () => {
+    try {
+      setLoading(true);
+      const data = await apiFetch('/tournaments');
+      setTournaments(data || []);
+    } catch (e: any) {
+      console.error(e);
+      toast(e.message || 'Lỗi tải danh sách giải đấu.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!tournament) return;
-    async function loadStats() {
-      try {
-        setLoadingStats(true);
-        const playersData = await apiFetch(`/tournaments/${tournament!.id}/players`);
-        const players = playersData.items || [];
-        const teams = await apiFetch(`/tournaments/${tournament!.id}/teams`);
-        let matches: Array<{ status: string }> = [];
-        try { matches = await apiFetch(`/tournaments/${tournament!.id}/matches`); } catch { /* */ }
+    loadTournaments();
+  }, []);
 
-        setStats({
-          playersCount: players.length,
-          malesCount: players.filter((p: { gender: string }) => p.gender === 'MALE').length,
-          femalesCount: players.filter((p: { gender: string }) => p.gender === 'FEMALE').length,
-          teamsCount: teams.length,
-          matchesCount: matches.length,
-          completedMatches: matches.filter((m) => m.status === 'RESULT_CONFIRMED' || m.status === 'COMPLETED').length,
-          recentPlayers: players.slice(0, 5),
-        });
-      } catch (err) {
-        console.error('Failed to load dashboard stats:', err);
-      } finally { setLoadingStats(false); }
+  // Slug generator from tournament name
+  const handleNameChange = (val: string) => {
+    setName(val);
+    const generatedSlug = val
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd')
+      .replace(/([^a-z0-9\s-]|_)+/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
+    setSlug(generatedSlug);
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !slug.trim()) {
+      toast('Vui lòng điền đầy đủ tên giải đấu và slug.', 'error');
+      return;
     }
-    loadStats();
-  }, [tournament]);
 
-  if (tLoading || loadingStats) return <PageLoading />;
+    try {
+      setSubmitting(true);
+      const payload = {
+        name,
+        slug,
+        description: description || undefined,
+        venueName: venueName || undefined,
+        openingTime: openingTime ? new Date(openingTime).toISOString() : undefined,
+        registrationDeadline: registrationDeadline ? new Date(registrationDeadline).toISOString() : undefined,
+        publicEnabled,
+      };
 
-  if (tError || !tournament) {
-    return (
-      <div className="premium-container">
-        <EmptyState
-          icon={Trophy}
-          title="Lỗi tải dữ liệu"
-          description={tError || 'Không thể thiết lập giải đấu.'}
-          actionLabel="Tải lại trang"
-          onAction={reload}
-        />
-      </div>
-    );
-  }
+      const created = await apiFetch('/tournaments', {
+        method: 'POST',
+        body: payload,
+      });
 
-  /* ── Stepper steps derived from status ── */
-  const statusPhase = getStatusPhase(tournament.status);
-  const steps: Step[] = [
-    { key: 'ruleset',  label: 'Cấu hình',     status: statusPhase > 0 ? 'completed' : statusPhase === 0 ? 'active' : 'locked' },
-    { key: 'players',  label: 'Import VĐV',    status: statusPhase > 1 ? 'completed' : statusPhase === 1 ? 'active' : 'locked' },
-    { key: 'draw',     label: 'Bốc thăm',      status: statusPhase > 2 ? 'completed' : statusPhase === 2 ? 'active' : 'locked' },
-    { key: 'schedule', label: 'Xếp lịch',      status: statusPhase > 3 ? 'completed' : statusPhase === 3 ? 'active' : 'locked' },
-    { key: 'compete',  label: 'Thi đấu',       status: statusPhase > 4 ? 'completed' : statusPhase === 4 ? 'active' : 'locked' },
-    { key: 'knockout', label: 'Playoffs',       status: statusPhase > 5 ? 'completed' : statusPhase === 5 ? 'active' : 'locked' },
-    { key: 'done',     label: 'Hoàn thành',     status: statusPhase >= 6 ? 'completed' : 'locked' },
-  ];
+      toast('Tạo giải đấu mới thành công!', 'success');
+      setModalOpen(false);
+      // Reset form
+      setName('');
+      setSlug('');
+      setDescription('');
+      setVenueName('');
+      setOpeningTime('');
+      setRegistrationDeadline('');
+      setPublicEnabled(false);
+      
+      // Redirect to the newly created tournament dashboard
+      router.push(`/admin/${created.id}`);
+    } catch (err: any) {
+      toast(err.message || 'Lỗi tạo giải đấu.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-  /* ── Quick Actions ── */
-  const quickActions = [
-    { icon: Dices,         label: 'Bốc thăm đội hình',    desc: 'Bốc thăm cân bằng 8 đội',     href: '/admin/draw' },
-    { icon: ClipboardList, label: 'Đăng ký chặng',         desc: 'HLV đăng ký lineup chặng',     href: '/admin/lineup' },
-    { icon: Zap,           label: 'Trọng tài chấm điểm',   desc: 'Chấm điểm từng chặng đấu',    href: '/admin/scoring' },
-    { icon: BarChart3,     label: 'Bảng xếp hạng',         desc: 'Auto standings, tie-breakers', href: '/admin/standings' },
-  ];
+  if (loading) return <PageLoading />;
 
   return (
-    <div className="premium-container space-y-6">
+    <div className="premium-container max-w-7xl mx-auto px-4 py-8 space-y-8 animate-scale-in">
+      {/* Top Navbar */}
+      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-xl shadow-lg shadow-amber-550/10">
+            🏓
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-white font-[family-name:var(--font-space-grotesk)] tracking-tight">
+              GOLAB TOURNAMENT
+            </h1>
+            <p className="text-[10px] text-slate-550 uppercase tracking-widest font-semibold">
+              Hệ thống Quản lý Giải đấu Pickleball
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-3 bg-slate-900/60 border border-slate-850 px-4 py-2 rounded-xl">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-xs font-bold text-slate-950">
+              A
+            </div>
+            <div className="text-left">
+              <div className="text-xs font-bold text-slate-200">GOLAB Admin</div>
+              <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Super Admin</div>
+            </div>
+          </div>
+          <Link
+            href="/login"
+            className="p-2.5 text-slate-500 hover:text-rose-400 bg-slate-900 border border-slate-850 hover:border-rose-500/20 hover:bg-rose-500/5 transition-all rounded-xl shadow-sm"
+            title="Đăng xuất"
+          >
+            <LogOut className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+
       {/* Header */}
       <PageHeader
+        title="Danh sách giải đấu"
+        description="Quản lý và điều hành các giải đấu Pickleball đồng đội của tổ chức GOLAB."
         icon={Trophy}
-        title={tournament.name}
-        description={tournament.venueName || 'Chưa thiết lập địa điểm'}
         actions={
-          <div className="flex items-center gap-3">
-            <StatusBadge status={tournament.status} size="md" />
-            <Link href="/admin/tournament" className="btn btn-secondary btn-sm">
-              <Settings className="w-4 h-4" /> Thiết lập
-            </Link>
-          </div>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="btn btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Tạo giải đấu mới
+          </button>
         }
       />
 
-      {/* Stepper Progress */}
-      <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-slate-300 mb-4">Tiến trình tổ chức giải đấu</h3>
-        <StepperProgress steps={steps} />
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        <StatCard icon={Users}   label="Vận động viên" value={stats.playersCount} color="sky"
-          trend={stats.playersCount >= 40 ? { value: 'Đủ 40', positive: true } : { value: `Thiếu ${40 - stats.playersCount}`, positive: false }} />
-        <StatCard icon={Shield}  label="Đội hình"      value={stats.teamsCount}   color="violet"
-          trend={stats.teamsCount === 8 ? { value: 'Đã bốc thăm', positive: true } : undefined} />
-        <StatCard icon={Target}  label="Trận đấu"      value={stats.matchesCount} color="amber" />
-        <StatCard icon={Trophy}  label="Hoàn thành"     value={stats.completedMatches} color="emerald"
-          trend={stats.matchesCount > 0 ? { value: `${Math.round(stats.completedMatches / stats.matchesCount * 100)}%`, positive: stats.completedMatches > 0 } : undefined} />
-      </div>
-
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Quick Actions */}
-        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-slate-300 mb-4">Thao tác nhanh</h3>
-          <div className="flex flex-col gap-2">
-            {quickActions.map(a => {
-              const Icon = a.icon;
-              return (
-                <Link key={a.label} href={a.href}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-800/50 border border-slate-700/30 hover:border-amber-500/30 hover:bg-slate-800/80 transition-all group">
-                  <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/20 transition-colors">
-                    <Icon className="w-[18px] h-[18px] text-amber-400" />
+      {/* Grid List */}
+      {tournaments.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger">
+          {tournaments.map((t) => (
+            <div
+              key={t.id}
+              className="card flex flex-col justify-between hover:border-amber-500/30 hover:bg-slate-900/40 hover:-translate-y-0.5 transition-all duration-300 shadow-xl border border-slate-850 p-5 group relative overflow-hidden"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      ID: {t.slug}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-slate-200">{a.label}</div>
-                    <div className="text-xs text-slate-500">{a.desc}</div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-amber-400 transition-colors" />
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Player Preview */}
-        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-300">Vận động viên ({stats.playersCount})</h3>
-            <Link href="/admin/players" className="text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors">
-              Quản lý →
-            </Link>
-          </div>
-
-          {/* Gender bars */}
-          <div className="flex flex-col gap-2.5 mb-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-slate-400 w-7">Nam</span>
-              <div className="flex-1 h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-sky-500 to-violet-500 rounded-full transition-all duration-500"
-                  style={{ width: stats.playersCount > 0 ? `${(stats.malesCount / stats.playersCount) * 100}%` : '0%' }} />
-              </div>
-              <span className="text-xs font-bold text-slate-300 w-6 text-right">{stats.malesCount}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-slate-400 w-7">Nữ</span>
-              <div className="flex-1 h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-pink-500 to-rose-500 rounded-full transition-all duration-500"
-                  style={{ width: stats.playersCount > 0 ? `${(stats.femalesCount / stats.playersCount) * 100}%` : '0%' }} />
-              </div>
-              <span className="text-xs font-bold text-slate-300 w-6 text-right">{stats.femalesCount}</span>
-            </div>
-          </div>
-
-          <hr className="border-slate-700/50 my-3" />
-
-          {/* Player list */}
-          <div className="flex flex-col gap-2">
-            {stats.recentPlayers.length > 0 ? (
-              stats.recentPlayers.map(p => (
-                <div key={p.id} className="flex items-center gap-3 py-1">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 ${
-                    p.gender === 'MALE' ? 'bg-gradient-to-br from-sky-500 to-violet-500' : 'bg-gradient-to-br from-pink-500 to-rose-500'
-                  }`}>
-                    {p.fullName.split(' ').pop()?.[0] || '?'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-200 truncate">{p.fullName}</div>
-                  </div>
-                  <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                    {p.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'}
-                  </span>
+                  <StatusBadge status={t.status} size="sm" />
                 </div>
-              ))
-            ) : (
-              <p className="text-xs text-slate-500 text-center py-4 italic">Chưa có vận động viên.</p>
-            )}
-            {stats.playersCount > 5 && (
-              <Link href="/admin/players" className="text-xs text-slate-500 text-center py-1 hover:text-amber-400 transition-colors">
-                + {stats.playersCount - 5} vận động viên khác
-              </Link>
-            )}
-          </div>
-        </div>
 
-        {/* Ruleset Preview */}
-        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-300">Cấu hình bộ luật giải đấu</h3>
-            <Link href="/admin/ruleset" className="text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors">
-              Chỉnh sửa →
-            </Link>
-          </div>
+                <div className="space-y-2">
+                  <h3 className="text-base font-bold text-slate-100 group-hover:text-amber-400 transition-colors line-clamp-1">
+                    {t.name}
+                  </h3>
+                  <p className="text-xs text-slate-500 line-clamp-2">
+                    {t.description || 'Chưa có mô tả chi tiết cho giải đấu này.'}
+                  </p>
+                </div>
 
-          <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-800/50 rounded-lg mb-4">
-            <Settings className="w-4 h-4 text-amber-400" />
-            <span className="text-sm font-semibold text-slate-200">
-              {tournament.ruleset?.name || 'Ruleset Standard (Chờ đồng bộ)'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-            {[
-              { label: 'Điểm thắng', value: `${tournament.ruleset?.scoringConfig?.winScore || 24} điểm` },
-              { label: 'Luật Deuce', value: 'Không (first to win)' },
-              { label: 'Thành viên/Đội', value: `${tournament.ruleset?.teamComposition?.teamSize || 5} người` },
-              { label: 'Bắt buộc ra sân', value: 'Tất cả 5 người' },
-            ].map(r => (
-              <div key={r.label} className="px-3 py-2.5 bg-slate-900/50 rounded-lg">
-                <div className="text-[11px] text-slate-500 font-medium mb-1">{r.label}</div>
-                <div className="text-sm font-semibold text-slate-200">{r.value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Segments */}
-          {tournament.ruleset?.segmentDefinitions && tournament.ruleset.segmentDefinitions.length > 0 ? (
-            <>
-              <div className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold mb-2">
-                {tournament.ruleset.segmentDefinitions.length} Chặng tiếp sức
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {tournament.ruleset.segmentDefinitions.map((s: { id: string; name: string; genderRule: string; playerCount: number; targetScore: number }, idx: number) => (
-                  <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 bg-slate-900/50 rounded-lg border border-slate-800/50 hover:bg-slate-900/80 transition-colors">
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-[11px] font-bold text-slate-900 flex-shrink-0">
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-slate-200 truncate">{s.name}</div>
-                      <div className="text-[11px] text-slate-500">
-                        {s.genderRule === 'mixed' ? 'Mixed' : s.genderRule === 'male_only' ? 'Nam' : 'Nữ'} · {s.playerCount} VĐV
-                      </div>
-                    </div>
-                    <div className="text-sm font-bold text-amber-400 flex-shrink-0">→ {s.targetScore}đ</div>
+                <div className="space-y-2.5 pt-1 text-slate-400">
+                  <div className="flex items-center gap-2 text-xs">
+                    <MapPin className="w-4 h-4 text-slate-550 flex-shrink-0" />
+                    <span className="truncate">{t.venueName || 'Chưa thiết lập địa điểm'}</span>
                   </div>
-                ))}
+                  <div className="flex items-center gap-2 text-xs">
+                    <Calendar className="w-4 h-4 text-slate-550 flex-shrink-0" />
+                    <span>
+                      Khai mạc: {t.openingTime ? new Date(t.openingTime).toLocaleDateString('vi-VN') : 'Chưa định ngày'}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-6 px-4 rounded-xl bg-slate-900/30 border border-dashed border-slate-800 text-center">
-              <span className="text-slate-500 text-xs font-semibold">Chưa đồng bộ chặng thi đấu cho Ruleset này.</span>
-              <Link href="/admin/ruleset" className="text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors mt-1">
-                Chỉnh sửa cấu hình →
-              </Link>
+
+              <div className="border-t border-slate-800 pt-4 mt-6 flex items-center justify-between">
+                <span className="text-[10px] text-slate-550 font-semibold uppercase">
+                  {t.publicEnabled ? '🟢 Đang hiển thị Public' : '🔴 Nội bộ Admin'}
+                </span>
+                <Link
+                  href={`/admin/${t.id}`}
+                  className="btn btn-secondary btn-sm flex items-center gap-1.5 font-bold hover:bg-amber-500 hover:text-slate-900 hover:border-amber-500 transition-all"
+                >
+                  Vào quản lý <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
-          )}
+          ))}
         </div>
-      </div>
+      ) : (
+        <EmptyState
+          icon={Trophy}
+          title="Chưa có giải đấu nào"
+          description="Hiện tại hệ thống chưa khởi tạo giải đấu nào. Nhấp vào nút bên dưới để tạo giải Pickleball đầu tiên."
+          actionLabel="Tạo giải đấu ngay"
+          onAction={() => setModalOpen(true)}
+        />
+      )}
+
+      {/* Creation Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !submitting && setModalOpen(false)}
+          />
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl relative z-10 overflow-hidden animate-scale-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                Tạo giải đấu Pickleball mới
+              </h2>
+              <button
+                disabled={submitting}
+                onClick={() => setModalOpen(false)}
+                className="text-slate-550 hover:text-white transition-colors disabled:opacity-30"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleCreate} className="p-6 space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Tên giải đấu *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: Giải Pickleball Cúp GOLAB Lần 3"
+                  className="input w-full"
+                  value={name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Đường dẫn định danh (Slug) *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: cup-golab-lan-3"
+                  className="input w-full font-mono text-slate-355"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  disabled={submitting}
+                />
+                <span className="text-[10px] text-slate-550 block">Dùng làm định danh URL, tự sinh theo tên.</span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Địa điểm tổ chức</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Sân Hùng Hà, TP. Hồ Chí Minh"
+                  className="input w-full"
+                  value={venueName}
+                  onChange={(e) => setVenueName(e.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Thời gian khai mạc</label>
+                  <input
+                    type="datetime-local"
+                    className="input w-full text-slate-355"
+                    value={openingTime}
+                    onChange={(e) => setOpeningTime(e.target.value)}
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Hạn chót đăng ký</label>
+                  <input
+                    type="datetime-local"
+                    className="input w-full text-slate-355"
+                    value={registrationDeadline}
+                    onChange={(e) => setRegistrationDeadline(e.target.value)}
+                    disabled={submitting}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Mô tả giải đấu</label>
+                <textarea
+                  placeholder="Mô tả thông tin chi tiết giải đấu..."
+                  rows={3}
+                  className="input w-full py-2 resize-none"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="publicEnabled"
+                  className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                  checked={publicEnabled}
+                  onChange={(e) => setPublicEnabled(e.target.checked)}
+                  disabled={submitting}
+                />
+                <label htmlFor="publicEnabled" className="text-xs font-semibold text-slate-300 cursor-pointer">
+                  Mở hiển thị công khai (Public Landing Page)
+                </label>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="btn btn-secondary"
+                  disabled={submitting}
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Đang tạo...' : 'Xác nhận tạo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
-/* ── Helpers ── */
-function getStatusPhase(status: string): number {
-  switch (status) {
-    case 'DRAFT': return 0;
-    case 'PLAYER_IMPORT': case 'PLAYERS_READY': return 1;
-    case 'TEAM_DRAW_COMPLETED': return 2;
-    case 'GROUP_ASSIGNED': case 'SCHEDULE_GENERATED': return 3;
-    case 'RUNNING': return 4;
-    case 'GROUP_COMPLETED': case 'KNOCKOUT_GENERATED': case 'KNOCKOUT_RUNNING': return 5;
-    case 'COMPLETED': case 'PUBLISHED': return 6;
-    default: return 0;
-  }
 }

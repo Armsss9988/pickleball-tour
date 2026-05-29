@@ -143,7 +143,7 @@ export class PublicService {
       pointsFor: number;
       pointsAgainst: number;
       pointDiff: number;
-      rank: number;
+      rank: number | null;
       tieBreakDetail: unknown;
     }>,
   ) {

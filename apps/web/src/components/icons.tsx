@@ -54,6 +54,7 @@ export {
   ChevronUp,
   Clock,
   History,
+  MapPin,
 } from 'lucide-react';
 
 export type { LucideIcon } from 'lucide-react';

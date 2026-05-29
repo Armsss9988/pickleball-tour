@@ -391,7 +391,7 @@ export default function LineupPage() {
                 </div>
               )}
 
-              {role === 'captain' && ownedTeamKey && ownedTeamMembers ? (
+              {role === 'captain' && matchDetails && ownedTeamKey && ownedTeamMembers ? (
                 <div className="space-y-4">
                   <h4 className="flex items-center justify-between border-b border-slate-800 pb-2 text-sm font-bold text-amber-400">
                     <span>{ownedTeamName}</span>

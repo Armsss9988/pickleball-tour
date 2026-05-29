@@ -131,7 +131,7 @@ export default function MatchesPage() {
                       )}
                       {(m.status === 'RUNNING' || m.status === 'SEGMENT_BREAK') && (
                         <Link
-                          href={`/admin/scoring`}
+                          href={`/admin/${tournament?.id}/scoring`}
                           className="text-sky-400 hover:text-sky-300 font-bold bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20 text-xs flex items-center gap-1"
                         >
                           <Target className="w-3.5 h-3.5" />
@@ -140,7 +140,7 @@ export default function MatchesPage() {
                       )}
                       {m.status === 'COMPLETED' && (
                         <Link
-                          href={`/admin/scoring`}
+                          href={`/admin/${tournament?.id}/scoring`}
                           className="text-amber-400 hover:text-amber-300 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-xs flex items-center gap-1"
                         >
                           <Zap className="w-3.5 h-3.5" />
@@ -213,7 +213,7 @@ export default function MatchesPage() {
                       )}
                       {(m.status === 'RUNNING' || m.status === 'SEGMENT_BREAK') && (
                         <Link
-                          href={`/admin/scoring`}
+                          href={`/admin/${tournament?.id}/scoring`}
                           className="text-sky-400 hover:text-sky-300 font-bold bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20 text-xs flex items-center gap-1"
                         >
                           <Target className="w-3.5 h-3.5" />

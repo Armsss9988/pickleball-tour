@@ -243,7 +243,7 @@ export class TournamentService {
         where: { tournamentId: id, status: 'RESULT_CONFIRMED' },
       }),
       this.prisma.stage.count({
-        where: { tournamentId: id, type: 'KNOCKOUT' },
+        where: { tournamentId: id, type: 'PLAYOFF' },
       }),
     ]);
 

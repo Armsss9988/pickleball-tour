@@ -6,7 +6,7 @@ export interface FetchOptions extends RequestInit {
   body?: any;
 }
 
-export async function apiFetch(endpoint: string, options: FetchOptions = {}) {
+export async function apiFetch<T = any>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('golab_access_token') : null;
 
   const headers = {

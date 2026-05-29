@@ -239,19 +239,20 @@ export default function AdminDashboardPage() {
     if (!tournament) {
       return;
     }
+    const activeTournament = tournament;
 
     async function loadStats() {
       try {
         setLoadingStats(true);
 
-        const playersData = await apiFetch(`/tournaments/${tournament.id}/players`);
+        const playersData = await apiFetch(`/tournaments/${activeTournament.id}/players`);
         const players = Array.isArray(playersData?.items) ? playersData.items : [];
-        const teamsData = await apiFetch(`/tournaments/${tournament.id}/teams`);
+        const teamsData = await apiFetch(`/tournaments/${activeTournament.id}/teams`);
         const teams = Array.isArray(teamsData) ? teamsData : [];
 
         let matches: MatchLike[] = [];
         try {
-          const matchData = await apiFetch(`/tournaments/${tournament.id}/matches`);
+          const matchData = await apiFetch(`/tournaments/${activeTournament.id}/matches`);
           matches = Array.isArray(matchData) ? matchData : [];
         } catch {
           matches = [];
