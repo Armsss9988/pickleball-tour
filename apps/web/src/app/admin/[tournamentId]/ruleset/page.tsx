@@ -90,6 +90,9 @@ export default function RulesetSettingsPage() {
   const [femaleMaxSegments, setFemaleMaxSegments] = useState(2);
   const [saving, setSaving] = useState(false);
 
+  const [rulesetState, setRulesetState] = useState<any>(null);
+  const [rulesetLoading, setRulesetLoading] = useState(true);
+
   const loadDependencyStats = useCallback(async () => {
     if (!tournament) {
       return;
@@ -116,6 +119,53 @@ export default function RulesetSettingsPage() {
     }
   }, [tournament]);
 
+  const loadRuleset = useCallback(async () => {
+    if (!tournament) {
+      return;
+    }
+
+    try {
+      setRulesetLoading(true);
+      const data = await apiFetch<any>(`/tournaments/${tournament.id}/ruleset`);
+      setRulesetState(data);
+
+      if (data) {
+        setName(data.name || '');
+
+        const segs = data.segmentDefinitions || data.segments || [];
+        if (segs[0]) {
+          setSegment1Name(segs[0].name || 'Đôi Nam Nữ');
+          setSegment1Score(segs[0].targetScore || 8);
+        }
+        if (segs[1]) {
+          setSegment2Name(segs[1].name || 'Đôi Nam');
+          setSegment2Score(segs[1].targetScore || 16);
+        }
+        if (segs[2]) {
+          setSegment3Name(segs[2].name || 'Đôi Nữ');
+          setSegment3Score(segs[2].targetScore || 24);
+        }
+
+        const comp = data.teamCompositionRule || data.teamComposition;
+        if (comp) {
+          setMaleCount(comp.maleCount ?? 3);
+          setFemaleCount(comp.femaleCount ?? 2);
+          setAllMustPlay(comp.allMustPlay ?? true);
+        }
+
+        const limits = data.playerLimitRules || data.playerLimits || [];
+        const maleLim = limits.find((l: any) => l.gender === 'MALE');
+        const femaleLim = limits.find((l: any) => l.gender === 'FEMALE');
+        if (maleLim) setMaleMaxSegments(maleLim.maxSegments ?? 1);
+        if (femaleLim) setFemaleMaxSegments(femaleLim.maxSegments ?? 2);
+      }
+    } catch (error) {
+      console.error('Failed to load ruleset:', error);
+    } finally {
+      setRulesetLoading(false);
+    }
+  }, [tournament]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadDependencyStats();
@@ -125,48 +175,21 @@ export default function RulesetSettingsPage() {
   }, [loadDependencyStats]);
 
   useEffect(() => {
-    if (tournament?.ruleset) {
-      const r = tournament.ruleset;
-      setName(r.name || '');
+    void loadRuleset();
+  }, [loadRuleset]);
 
-      const segs = r.segmentDefinitions || r.segments || [];
-      if (segs[0]) {
-        setSegment1Name(segs[0].name || 'Đôi Nam Nữ');
-        setSegment1Score(segs[0].targetScore || 8);
-      }
-      if (segs[1]) {
-        setSegment2Name(segs[1].name || 'Đôi Nam');
-        setSegment2Score(segs[1].targetScore || 16);
-      }
-      if (segs[2]) {
-        setSegment3Name(segs[2].name || 'Đôi Nữ');
-        setSegment3Score(segs[2].targetScore || 24);
-      }
-
-      const comp = r.teamCompositionRule || r.teamComposition;
-      if (comp) {
-        setMaleCount(comp.maleCount ?? 3);
-        setFemaleCount(comp.femaleCount ?? 2);
-        setAllMustPlay(comp.allMustPlay ?? true);
-      }
-
-      const limits = r.playerLimitRules || r.playerLimits || [];
-      const maleLim = limits.find((l: any) => l.gender === 'MALE');
-      const femaleLim = limits.find((l: any) => l.gender === 'FEMALE');
-      if (maleLim) setMaleMaxSegments(maleLim.maxSegments ?? 1);
-      if (femaleLim) setFemaleMaxSegments(femaleLim.maxSegments ?? 2);
-    }
-  }, [tournament]);
-
-  if (tLoading || statsLoading || !tournament) {
+  if (tLoading || statsLoading || rulesetLoading || !tournament) {
     return <PageLoading />;
   }
 
-  const ruleset = (tournament.ruleset || {}) as RulesetLike;
+  const ruleset = (rulesetState || {}) as RulesetLike;
   const composition = getRulesetComposition(ruleset);
   const segments = getRulesetSegments(ruleset);
   const uxContext = buildTournamentUxContext({
-    tournament,
+    tournament: {
+      ...tournament,
+      ruleset: rulesetState || undefined,
+    },
     stats: dependencyStats,
   });
   const editAccess = getActionAccess('editRuleset', currentUser.role, uxContext);
@@ -276,6 +299,7 @@ export default function RulesetSettingsPage() {
       toast('Cập nhật cấu hình luật thi đấu thành công!', 'success');
       setIsEditing(false);
       reload();
+      void loadRuleset();
     } catch (err: any) {
       console.error(err);
       toast(err.message || 'Lỗi cập nhật cấu hình luật thi đấu.', 'error');

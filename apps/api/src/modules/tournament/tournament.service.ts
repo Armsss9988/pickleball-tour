@@ -126,6 +126,7 @@ export class TournamentService {
         publicEnabled: false,
         status: 'DRAFT',
         createdById: userId,
+        rulesetId: '00000000-0000-0000-0000-000000000010',
       },
     });
 
