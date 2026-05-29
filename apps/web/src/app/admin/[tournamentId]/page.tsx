@@ -382,13 +382,6 @@ export default function AdminDashboardPage() {
         href: `/admin/${tournament.id}/scoring`,
         icon: BarChart3,
       },
-      {
-        key: 'publishTournament',
-        label: 'Công khai giải',
-        description: 'Chỉ mở khi giải đã hoàn tất và dữ liệu công khai đã sẵn sàng.',
-        href: `/admin/${tournament.id}`,
-        icon: ArrowRight,
-      },
     ];
   }, [tournament]);
 
