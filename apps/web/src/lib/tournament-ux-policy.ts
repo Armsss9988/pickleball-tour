@@ -21,9 +21,9 @@ export type AreaKey =
   | 'ruleset'
   | 'players'
   | 'draw'
+  | 'schedule'
   | 'teams'
   | 'groups'
-  | 'schedule'
   | 'matches'
   | 'lineup'
   | 'team-schedule'
@@ -95,15 +95,24 @@ export interface PublishReadiness {
   missing: string[];
 }
 
+export interface DependencyWarning {
+  area: AreaKey;
+  severity: 'error' | 'warning';
+  label: string;
+  reason: string;
+  actionLabel: string;
+  actionHref: string;
+}
+
 const adminAreas: AreaKey[] = [
   'dashboard',
   'tournament',
   'ruleset',
   'players',
   'draw',
+  'schedule',
   'teams',
   'groups',
-  'schedule',
   'matches',
   'lineup',
   'scoring',
@@ -320,6 +329,84 @@ export function getActionAccess(action: ActionKey, role: AppRole, context: Tourn
   }
 }
 
+export function getDependencyWarnings(
+  context: TournamentUxContext,
+): DependencyWarning[] {
+  const warnings: DependencyWarning[] = [];
+
+  // Ruleset mất hiệu lực nhưng đã có dữ liệu phụ thuộc
+  if (!context.hasValidRuleset && context.playerTotal > 0) {
+    warnings.push({
+      area: 'ruleset',
+      severity: 'error',
+      label: 'Luật thi đấu chưa hợp lệ',
+      reason: `Đã nhập ${context.playerTotal} VĐV nhưng luật thi đấu chưa đầy đủ. Các bước bốc thăm và sinh lịch sẽ bị khóa cho đến khi ruleset được cấu hình lại.`,
+      actionLabel: 'Cấu hình lại luật thi đấu',
+      actionHref: `/admin/${context.tournamentId}/ruleset`,
+    });
+  }
+
+  if (!context.hasValidRuleset && context.teamCount > 0) {
+    warnings.push({
+      area: 'ruleset',
+      severity: 'error',
+      label: 'Đội thi đấu có thể không hợp lệ',
+      reason: `Có ${context.teamCount} đội đã bốc thăm nhưng luật thi đấu không còn hợp lệ. Hãy cấu hình lại ruleset để hệ thống có thể xác minh.`,
+      actionLabel: 'Kiểm tra luật thi đấu',
+      actionHref: `/admin/${context.tournamentId}/ruleset`,
+    });
+  }
+
+  // Ruleset hợp lệ nhưng số lượng VĐV không khớp
+  if (
+    context.hasValidRuleset
+    && context.playerTotal > 0
+    && context.requiredPlayers !== null
+    && context.playerTotal !== context.requiredPlayers
+  ) {
+    const diff = (context.requiredPlayers ?? 0) - context.playerTotal;
+    if (diff > 0) {
+      warnings.push({
+        area: 'players',
+        severity: 'warning',
+        label: 'Chưa đủ vận động viên',
+        reason: `Cần thêm ${diff} VĐV nữa (hiện có ${context.playerTotal}/${context.requiredPlayers}) để đủ điều kiện bốc thăm.`,
+        actionLabel: 'Quản lý VĐV',
+        actionHref: `/admin/${context.tournamentId}/players`,
+      });
+    } else {
+      warnings.push({
+        area: 'players',
+        severity: 'warning',
+        label: 'Số VĐV vượt quá yêu cầu',
+        reason: `Hiện có ${context.playerTotal} VĐV nhưng luật thi đấu chỉ cần ${context.requiredPlayers}. Cần điều chỉnh để hệ thống vận hành đúng.`,
+        actionLabel: 'Quản lý VĐV',
+        actionHref: `/admin/${context.tournamentId}/players`,
+      });
+    }
+  }
+
+  // Giới tính không khớp với yêu cầu ruleset
+  if (
+    context.hasValidRuleset
+    && context.playerTotal > 0
+    && context.requiredMales !== null
+    && context.requiredFemales !== null
+    && (context.maleCount !== context.requiredMales || context.femaleCount !== context.requiredFemales)
+  ) {
+    warnings.push({
+      area: 'players',
+      severity: 'warning',
+      label: 'Tỷ lệ giới tính chưa khớp',
+      reason: `Cần ${context.requiredMales} nam & ${context.requiredFemales} nữ. Hiện có ${context.maleCount} nam & ${context.femaleCount} nữ.`,
+      actionLabel: 'Kiểm tra danh sách VĐV',
+      actionHref: `/admin/${context.tournamentId}/players`,
+    });
+  }
+
+  return warnings;
+}
+
 export function getPublishReadiness(context: TournamentUxContext): PublishReadiness {
   const missing: string[] = [];
   if (!context.hasTournamentInfo) missing.push('thông tin giải');
@@ -480,6 +567,16 @@ export function getAreaAccess(
           allowed: false,
           reason: 'Yêu cầu trạng thái Bốc thăm đội hoàn tất (TEAM_DRAW_COMPLETED).',
           required: 'Cần bốc thăm chia đội trước.',
+        };
+      }
+      return { allowed: true };
+
+    case 'schedule':
+      if (!context.hasValidRuleset) {
+        return {
+          allowed: false,
+          reason: 'Cần cấu hình luật thi đấu trước khi thiết lập lịch và sân.',
+          required: 'Hãy hoàn tất cấu hình ruleset trước.',
         };
       }
       return { allowed: true };

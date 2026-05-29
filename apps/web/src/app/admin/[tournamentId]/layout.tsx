@@ -13,6 +13,7 @@ function areaFromPath(pathname: string): AreaKey {
   if (pathname.endsWith('/tournament')) return 'tournament';
   if (pathname.endsWith('/ruleset')) return 'ruleset';
   if (pathname.endsWith('/players')) return 'players';
+  if (pathname.endsWith('/schedule')) return 'schedule';
   if (pathname.endsWith('/draw')) return 'draw';
   if (pathname.endsWith('/teams')) return 'teams';
   if (pathname.endsWith('/groups')) return 'groups';
