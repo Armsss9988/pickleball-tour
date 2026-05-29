@@ -387,26 +387,7 @@ export default function AdminDashboardPage() {
       },
     ];
   }, [tournament]);
-
-  if (tLoading || loadingStats) {
-    return <PageLoading />;
-  }
-
-  if (tError || !tournament) {
-    return (
-      <div className="premium-container">
-        <EmptyState
-          icon={Trophy}
-          title="Lỗi tải dữ liệu"
-          description={tError || 'Không thể thiết lập giải đấu.'}
-          actionLabel="Tải lại trang"
-          onAction={reload}
-        />
-      </div>
-    );
-  }
-
-  const ruleset = tournament.ruleset as RulesetLike | undefined;
+  const ruleset = tournament?.ruleset as RulesetLike | undefined;
   const composition = getRulesetComposition(ruleset);
   const segments = getRulesetSegments(ruleset);
   const isAdminRole = role === 'btc_admin' || role === 'super_admin';
@@ -500,7 +481,7 @@ export default function AdminDashboardPage() {
   }, [tournament, uxContext, stats.teamsCount, targetTeams]);
 
   const publishCardText = publishReadiness.ready
-    ? tournament.publicEnabled
+    ? tournament?.publicEnabled
       ? 'Giải đang hiển thị công khai'
       : 'Có thể công khai ngay'
     : `${publishReadiness.missing.length} mục còn thiếu`;
@@ -562,6 +543,24 @@ export default function AdminDashboardPage() {
     } finally {
       setIsPublishing(false);
     }
+  }
+
+  if (tLoading || loadingStats) {
+    return <PageLoading />;
+  }
+
+  if (tError || !tournament) {
+    return (
+      <div className="premium-container">
+        <EmptyState
+          icon={Trophy}
+          title="Lỗi tải dữ liệu"
+          description={tError || 'Không thể thiết lập giải đấu.'}
+          actionLabel="Tải lại trang"
+          onAction={reload}
+        />
+      </div>
+    );
   }
 
   return (
