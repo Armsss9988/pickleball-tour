@@ -21,8 +21,10 @@ import {
   Trophy,
   Users,
   Zap,
+  ExternalLink,
   type LucideIcon,
 } from '@/components/icons';
+import { StepperProgress, type Step } from '@/components/stepper-progress';
 import { apiFetch } from '@/lib/api-client';
 import { getCurrentUser, type CurrentUserState } from '@/lib/current-user';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
@@ -134,9 +136,9 @@ function normalizeGender(gender: string | null | undefined) {
 function getRoleLabel(role: AppRole): string {
   switch (role) {
     case 'super_admin':
-      return 'Super Admin';
+      return 'Quản trị viên (Super Admin)';
     case 'btc_admin':
-      return 'BTC/Admin';
+      return 'Ban tổ chức (BTC Admin)';
     case 'scorer':
       return 'Trọng tài';
     case 'captain':
@@ -152,14 +154,14 @@ function getPublicStateLabel(isPublic: boolean): string {
 
 function getPlayerTrendText(requiredPlayers: number | null, currentPlayers: number) {
   if (requiredPlayers === null) {
-    return { value: 'Chưa đủ ruleset', positive: false };
+    return { value: 'Chờ luật thi đấu', type: 'warning' as const };
   }
 
   if (currentPlayers >= requiredPlayers) {
-    return { value: `Đủ ${requiredPlayers}`, positive: true };
+    return { value: `Đủ ${requiredPlayers}`, type: 'success' as const };
   }
 
-  return { value: `Thiếu ${requiredPlayers - currentPlayers}`, positive: false };
+  return { value: `Thiếu ${requiredPlayers - currentPlayers}`, type: 'warning' as const };
 }
 
 function getRulesetComposition(ruleset: RulesetLike | null | undefined) {
@@ -329,7 +331,7 @@ export default function AdminDashboardPage() {
       },
       {
         key: 'editRuleset',
-        label: 'Cấu hình ruleset',
+        label: 'Luật thi đấu',
         description: 'Khai báo đội hình, chặng đấu và cách tính điểm trước khi vận hành.',
         href: `/admin/${tournament.id}/ruleset`,
         icon: Settings,
@@ -337,7 +339,7 @@ export default function AdminDashboardPage() {
       {
         key: 'addPlayers',
         label: 'Nhập vận động viên',
-        description: 'Bổ sung danh sách thi đấu và theo dõi đủ nam nữ theo ruleset.',
+        description: 'Bổ sung danh sách thi đấu và theo dõi đủ nam nữ theo luật.',
         href: `/admin/${tournament.id}/players`,
         icon: Users,
       },
@@ -404,26 +406,105 @@ export default function AdminDashboardPage() {
     );
   }
 
+  const ruleset = tournament.ruleset as RulesetLike | undefined;
+  const composition = getRulesetComposition(ruleset);
+  const segments = getRulesetSegments(ruleset);
+  const isAdminRole = role === 'btc_admin' || role === 'super_admin';
+
+  const targetTeams = useMemo(() => {
+    return (uxContext.requiredPlayers && composition?.teamSize)
+      ? (uxContext.requiredPlayers / composition.teamSize)
+      : 8;
+  }, [uxContext.requiredPlayers, composition?.teamSize]);
+
   const playerTrend = getPlayerTrendText(uxContext.requiredPlayers, stats.playersCount);
-  const teamTrend = stats.teamsCount >= 8
-    ? { value: 'Đủ 8 đội', positive: true }
-    : { value: `Hiện có ${stats.teamsCount}/8`, positive: false };
+
+  const teamTrend = uxContext.hasValidRuleset
+    ? stats.teamsCount >= targetTeams
+      ? { value: `Đủ ${targetTeams} đội`, type: 'success' as const }
+      : { value: `Hiện có ${stats.teamsCount}/${targetTeams}`, type: 'warning' as const }
+    : { value: 'Chờ luật thi đấu', type: 'warning' as const };
+
+  const matchTrend = stats.matchesCount > 0
+    ? { value: `${stats.lineupReadyCount} sẵn sàng`, type: stats.lineupReadyCount === stats.matchesCount ? 'success' as const : 'info' as const }
+    : { value: 'Chờ sinh lịch', type: 'warning' as const };
+
   const matchProgressTrend = stats.matchesCount > 0
     ? {
-        value: `${Math.round((stats.completedMatches / stats.matchesCount) * 100)}%`,
-        positive: stats.completedMatches > 0,
+        value: `${Math.round((stats.completedMatches / stats.matchesCount) * 100)}% hoàn thành`,
+        type: stats.completedMatches === stats.matchesCount ? 'success' as const : 'info' as const,
       }
-    : undefined;
+    : {
+        value: 'Chờ thi đấu',
+        type: 'warning' as const,
+      };
+
+  const steps = useMemo<Step[]>(() => {
+    if (!tournament) return [];
+
+    // Step 1: Thông tin giải
+    const step1Status = uxContext.hasTournamentInfo ? 'completed' : 'active';
+
+    // Step 2: Luật thi đấu
+    const step2Status = uxContext.hasValidRuleset
+      ? 'completed'
+      : step1Status === 'completed' ? 'active' : 'locked';
+
+    // Step 3: Nhập VĐV
+    const hasPlayers = uxContext.hasValidRuleset &&
+      uxContext.requiredPlayers !== null &&
+      uxContext.playerTotal === uxContext.requiredPlayers &&
+      uxContext.maleCount === uxContext.requiredMales &&
+      uxContext.femaleCount === uxContext.requiredFemales;
+    const step3Status = hasPlayers
+      ? 'completed'
+      : step2Status === 'completed' ? 'active' : 'locked';
+
+    // Step 4: Bốc thăm
+    const hasTeams = stats.teamsCount >= targetTeams ||
+      !['DRAFT', 'PLAYER_IMPORT', 'PLAYERS_READY'].includes(uxContext.status);
+    const step4Status = hasTeams
+      ? 'completed'
+      : step3Status === 'completed' ? 'active' : 'locked';
+
+    // Step 5: Phân bảng
+    const step5Status = uxContext.groupsAssigned
+      ? 'completed'
+      : step4Status === 'completed' ? 'active' : 'locked';
+
+    // Step 6: Sinh lịch
+    const step6Status = uxContext.matchCount > 0
+      ? 'completed'
+      : step5Status === 'completed' ? 'active' : 'locked';
+
+    // Step 7: Thi đấu
+    const step7Status = (uxContext.completedMatchCount === uxContext.matchCount && uxContext.matchCount > 0)
+      ? 'completed'
+      : step6Status === 'completed' ? 'active' : 'locked';
+
+    // Step 8: Hoàn tất
+    const step8Status = ['COMPLETED', 'PUBLISHED'].includes(uxContext.status)
+      ? 'completed'
+      : step7Status === 'completed' ? 'active' : 'locked';
+
+    return [
+      { key: 'info', label: 'Thông tin giải', status: step1Status },
+      { key: 'ruleset', label: 'Luật thi đấu', status: step2Status },
+      { key: 'players', label: 'Nhập VĐV', status: step3Status },
+      { key: 'draw', label: 'Bốc thăm đội', status: step4Status },
+      { key: 'groups', label: 'Phân bảng', status: step5Status },
+      { key: 'matches', label: 'Sinh lịch thi đấu', status: step6Status },
+      { key: 'running', label: 'Thi đấu', status: step7Status },
+      { key: 'completed', label: 'Hoàn tất', status: step8Status },
+    ];
+  }, [tournament, uxContext, stats.teamsCount, targetTeams]);
+
   const publishCardText = publishReadiness.ready
     ? tournament.publicEnabled
       ? 'Giải đang hiển thị công khai'
       : 'Có thể công khai ngay'
     : `${publishReadiness.missing.length} mục còn thiếu`;
 
-  const ruleset = tournament.ruleset as RulesetLike | undefined;
-  const composition = getRulesetComposition(ruleset);
-  const segments = getRulesetSegments(ruleset);
-  const isAdminRole = role === 'btc_admin' || role === 'super_admin';
   const captainAction = tournament
     ? {
         access: getActionAccess('submitLineup', 'captain', { ...uxContext, currentUserOwnsTeam: true }),
@@ -488,24 +569,59 @@ export default function AdminDashboardPage() {
       <PageHeader
         icon={Trophy}
         title={tournament.name}
-        description={tournament.venueName || 'Chưa thiết lập địa điểm'}
+        description={tournament.venueName ? tournament.venueName.replace(/\s*,\s*/g, ', ').trim() : 'Chưa thiết lập địa điểm'}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={tournament.status} size="md" />
-            <span className="rounded-full border border-slate-700/60 bg-slate-900/60 px-3 py-1 text-xs font-semibold text-slate-300">
-              {getPublicStateLabel(Boolean(tournament.publicEnabled))}
-            </span>
+            {tournament.publicEnabled ? (
+              publishReadiness.ready ? (
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
+                  Đang công khai
+                </span>
+              ) : (
+                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400">
+                  Đang công khai (Chưa hoàn thiện)
+                </span>
+              )
+            ) : (
+              <span className="rounded-full border border-slate-700/60 bg-slate-900/60 px-3 py-1 text-xs font-semibold text-slate-400">
+                Chưa công khai
+              </span>
+            )}
+            {tournament.publicEnabled && (
+              <a
+                href={`/t/${tournament.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary btn-sm flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Xem trang công khai</span>
+              </a>
+            )}
             {isAdminRole && (
               <Link href={`/admin/${tournament.id}/tournament`} className="btn btn-secondary btn-sm">
                 <Settings className="w-4 h-4" /> Thiết lập
               </Link>
             )}
-            <button type="button" onClick={reload} className="btn btn-secondary btn-sm">
-              <RefreshCw className="w-4 h-4" /> Tải lại
+            <button
+              type="button"
+              onClick={reload}
+              className="btn btn-secondary btn-sm p-2"
+              title="Tải lại dữ liệu"
+              aria-label="Tải lại dữ liệu"
+            >
+              <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         }
       />
+
+      {isAdminRole && (
+        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4 shadow-inner">
+          <StepperProgress steps={steps} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_0.95fr]">
         <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/8 via-slate-900/80 to-slate-900/95 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.35)]">
@@ -628,6 +744,7 @@ export default function AdminDashboardPage() {
             value={stats.playersCount}
             color="sky"
             trend={playerTrend}
+            href={`/admin/${tournament.id}/players`}
           />
         ) : (
           <StatCard
@@ -636,8 +753,9 @@ export default function AdminDashboardPage() {
             value={role === 'scorer' ? stats.scoringReadyCount : stats.matchesCount}
             color="sky"
             trend={role === 'scorer'
-              ? { value: `${stats.completedMatches} đã xong`, positive: stats.completedMatches > 0 }
-              : { value: `${uxContext.lineupReadyCount} đã sẵn sàng`, positive: uxContext.lineupReadyCount > 0 }}
+              ? { value: `${stats.completedMatches} đã xong`, type: stats.completedMatches > 0 ? 'success' as const : 'info' as const }
+              : { value: `${uxContext.lineupReadyCount} đã sẵn sàng`, type: uxContext.lineupReadyCount > 0 ? 'success' as const : 'info' as const }}
+            href={role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/lineup`}
           />
         )}
         {isAdminRole ? (
@@ -647,6 +765,7 @@ export default function AdminDashboardPage() {
             value={stats.teamsCount}
             color="violet"
             trend={teamTrend}
+            href={`/admin/${tournament.id}/teams`}
           />
         ) : (
           <StatCard
@@ -654,6 +773,8 @@ export default function AdminDashboardPage() {
             label={role === 'scorer' ? 'Trận đã hoàn thành' : 'Lineup sẵn sàng'}
             value={role === 'scorer' ? stats.completedMatches : uxContext.lineupReadyCount}
             color="violet"
+            trend={{ value: 'Chi tiết', type: 'info' as const }}
+            href={role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/lineup`}
           />
         )}
         <StatCard
@@ -661,7 +782,8 @@ export default function AdminDashboardPage() {
           label="Trận đấu"
           value={stats.matchesCount}
           color="amber"
-          trend={stats.matchesCount > 0 ? { value: `${stats.lineupReadyCount} đã sẵn sàng`, positive: stats.lineupReadyCount > 0 } : undefined}
+          trend={matchTrend}
+          href={`/admin/${tournament.id}/matches`}
         />
         <StatCard
           icon={Trophy}
@@ -669,6 +791,7 @@ export default function AdminDashboardPage() {
           value={stats.resultConfirmedMatches}
           color="emerald"
           trend={matchProgressTrend}
+          href={`/admin/${tournament.id}/standings`}
         />
       </div>
 
@@ -867,17 +990,17 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Ruleset hiện tại
+                      Luật thi đấu hiện tại
                     </div>
                     <h3 className="mt-1 text-lg font-bold text-slate-100">
-                      {ruleset?.name || 'Chưa đặt tên ruleset'}
+                      {ruleset?.name || 'Chưa đặt tên luật thi đấu'}
                     </h3>
                   </div>
                   <Link
                     href={`/admin/${tournament.id}/ruleset`}
                     className="text-xs font-semibold text-amber-400 transition-colors hover:text-amber-300"
                   >
-                    Mở ruleset →
+                    Mở luật thi đấu →
                   </Link>
                 </div>
 
@@ -903,7 +1026,7 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                   <div className="rounded-xl bg-slate-950/40 px-4 py-3">
-                    <div className="text-[11px] font-medium text-slate-500">Tình trạng ruleset</div>
+                    <div className="text-[11px] font-medium text-slate-500">Tình trạng luật thi đấu</div>
                     <div className="mt-1 text-sm font-semibold text-slate-200">
                       {uxContext.hasValidRuleset ? 'Đã đủ dữ liệu để vận hành' : 'Cần bổ sung trước khi bốc thăm'}
                     </div>
@@ -936,7 +1059,7 @@ export default function AdminDashboardPage() {
                   </div>
                 ) : (
                   <p className="mt-4 rounded-lg border border-dashed border-slate-800/80 px-4 py-5 text-center text-xs italic text-slate-500">
-                    Ruleset chưa có chặng thi đấu. Hệ thống sẽ tiếp tục khóa bốc thăm và sinh lịch cho đến khi đủ cấu hình.
+                    Luật thi đấu chưa có chặng thi đấu. Hệ thống sẽ tiếp tục khóa bốc thăm và sinh lịch cho đến khi đủ cấu hình.
                   </p>
                 )}
               </div>

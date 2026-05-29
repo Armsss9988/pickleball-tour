@@ -1,0 +1,109 @@
+<h2>Chọn hướng UI/UX cho người không rành kỹ thuật</h2>
+<p class="subtitle">Mục tiêu là BTC, trọng tài và HLV/captain biết ngay: mình đang ở bước nào, được làm gì, bị khóa vì sao, và bấm gì tiếp theo.</p>
+
+<div class="cards">
+  <div class="card" data-choice="guided" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. Guided Checklist</div>
+        <div class="mockup-body">
+          <div style="display:grid;gap:10px">
+            <div style="padding:12px;border:2px solid #22c55e;border-radius:8px;background:#052e1a;color:#d1fae5">
+              <strong>1. Cấu hình luật</strong><br>
+              <span>Đã xong</span>
+            </div>
+            <div style="padding:12px;border:2px solid #f59e0b;border-radius:8px;background:#451a03;color:#fde68a">
+              <strong>2. Nhập vận động viên</strong><br>
+              <span>Việc cần làm: thêm đủ 40 người</span>
+              <div style="margin-top:8px"><button class="mock-button">Làm bước này</button></div>
+            </div>
+            <div style="padding:12px;border:1px solid #334155;border-radius:8px;color:#94a3b8">
+              <strong>3. Bốc thăm</strong><br>
+              <span>Đang khóa: cần đủ vận động viên trước</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Checklist từng bước</h3>
+      <p>Mỗi vai trò thấy một danh sách việc phải làm theo thứ tự, có nút hành động chính và lý do khóa rõ ràng.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="role_console" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. Role Console</div>
+        <div class="mockup-body">
+          <div class="mock-nav">BTC | Trọng tài | HLV/Captain</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+            <div style="padding:14px;border-radius:8px;background:#0f172a;border:1px solid #334155">
+              <strong>Trọng tài</strong><br>
+              <span>2 trận sẵn sàng chấm điểm</span>
+              <div style="margin-top:10px"><button class="mock-button">Mở bàn trọng tài</button></div>
+            </div>
+            <div style="padding:14px;border-radius:8px;background:#0f172a;border:1px solid #334155">
+              <strong>HLV/Captain</strong><br>
+              <span>1 trận cần nhập lineup</span>
+              <div style="margin-top:10px"><button class="mock-button">Nhập lineup</button></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding:10px;border-radius:8px;background:#451a03;color:#fde68a">
+            BTC cần xác nhận lịch trước khi mở chấm điểm.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Console theo vai trò</h3>
+      <p>Mỗi người vào đúng bảng điều khiển của mình. Ít nhiễu hơn, dễ dùng hơn, nhưng cần thêm routing/permission rõ hơn.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. Hybrid Command Center</div>
+        <div class="mockup-body">
+          <div style="padding:12px;border-radius:8px;background:#111827;border:1px solid #334155">
+            <strong>Việc cần làm tiếp theo</strong><br>
+            <span>Nhập đủ vận động viên để mở bốc thăm</span>
+            <div style="margin-top:10px"><button class="mock-button">Mở trang vận động viên</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">
+            <div style="padding:10px;border-radius:8px;background:#052e1a;color:#d1fae5">BTC<br><strong>2 việc</strong></div>
+            <div style="padding:10px;border-radius:8px;background:#172554;color:#bfdbfe">Trọng tài<br><strong>0 trận</strong></div>
+            <div style="padding:10px;border-radius:8px;background:#312e81;color:#ddd6fe">HLV<br><strong>1 lineup</strong></div>
+          </div>
+          <div style="margin-top:12px;padding:10px;border:1px dashed #64748b;border-radius:8px;color:#cbd5e1">
+            Tab khóa vẫn hiện, nhưng luôn có lý do và đường đi để mở khóa.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Hybrid: dashboard hướng dẫn + console vai trò</h3>
+      <p>Dashboard admin vẫn là trung tâm, nhưng mỗi nhóm có “việc của tôi”. Đây là hướng cân bằng nhất cho giải đấu thật.</p>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons">
+  <div class="pros">
+    <h4>Khuyến nghị</h4>
+    <ul>
+      <li>Chọn C nếu muốn tường minh cho cả 3 nhóm mà không phải tách app ngay.</li>
+      <li>Dùng A làm cấu trúc cho workflow khóa/mở khóa.</li>
+      <li>Mượn B cho các màn hình trọng tài và captain.</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>Cần tránh</h4>
+    <ul>
+      <li>Chỉ đổi màu icon khóa mà không nói cần làm gì tiếp.</li>
+      <li>Dùng status kỹ thuật như PLAYERS_READY làm ngôn ngữ chính.</li>
+      <li>Cho mọi vai trò thấy toàn bộ chức năng admin khi họ chỉ cần một việc.</li>
+    </ul>
+  </div>
+</div>
