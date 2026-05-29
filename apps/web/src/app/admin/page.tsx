@@ -337,19 +337,7 @@ export default function TournamentListPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="publicEnabled"
-                  className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
-                  checked={publicEnabled}
-                  onChange={(e) => setPublicEnabled(e.target.checked)}
-                  disabled={submitting}
-                />
-                <label htmlFor="publicEnabled" className="text-xs font-semibold text-slate-300 cursor-pointer">
-                  Mở hiển thị công khai (Public Landing Page)
-                </label>
-              </div>
+
 
               {/* Action buttons */}
               <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4 mt-6">

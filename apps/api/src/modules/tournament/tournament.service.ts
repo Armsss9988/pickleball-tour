@@ -106,6 +106,12 @@ export class TournamentService {
       );
     }
 
+    if (dto.publicEnabled === true) {
+      throw new BadRequestException(
+        'Không thể công khai giải đấu khi đang ở trạng thái nháp DRAFT.',
+      );
+    }
+
     const tournament = await this.prisma.tournament.create({
       data: {
         organizationId: orgId,
@@ -117,7 +123,7 @@ export class TournamentService {
         registrationDeadline: dto.registrationDeadline
           ? new Date(dto.registrationDeadline)
           : null,
-        publicEnabled: dto.publicEnabled ?? false,
+        publicEnabled: false,
         status: 'DRAFT',
         createdById: userId,
       },
@@ -141,6 +147,20 @@ export class TournamentService {
    */
   async update(id: string, dto: UpdateTournamentDto, userId: string) {
     const t = await this.findOne(id);
+
+    if (dto.publicEnabled === true) {
+      if (t.status !== 'COMPLETED' && t.status !== 'PUBLISHED') {
+        throw new BadRequestException(
+          'Chưa thể công khai giải vì giải chưa hoàn tất tất cả các bước chuẩn bị.',
+        );
+      }
+      const readiness = await this.getPublishReadiness(id, t);
+      if (readiness.length > 0) {
+        throw new BadRequestException(
+          `Chưa thể công khai giải vì còn thiếu: ${readiness.join(', ')}.`,
+        );
+      }
+    }
 
     // If ruleset is being updated, verify lock rules
     if (dto.slug && dto.slug !== t.slug) {
