@@ -1,14 +1,22 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { TournamentMapper } from './tournament.mapper';
-import { CreateTournamentDto, UpdateTournamentDto, TournamentStatus } from '@golab/contracts';
+import {
+  CreateTournamentDto,
+  UpdateTournamentDto,
+  TournamentStatus,
+} from '@golab/contracts';
 
 @Injectable()
 export class TournamentService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -75,7 +83,9 @@ export class TournamentService {
     });
 
     if (!tournament) {
-      throw new NotFoundException(`Không tìm thấy giải đấu với slug "${slug}".`);
+      throw new NotFoundException(
+        `Không tìm thấy giải đấu với slug "${slug}".`,
+      );
     }
 
     return tournament;
@@ -91,7 +101,9 @@ export class TournamentService {
     });
 
     if (existing) {
-      throw new BadRequestException(`Slug "${dto.slug}" đã được sử dụng trong tổ chức này.`);
+      throw new BadRequestException(
+        `Slug "${dto.slug}" đã được sử dụng trong tổ chức này.`,
+      );
     }
 
     const tournament = await this.prisma.tournament.create({
@@ -102,7 +114,9 @@ export class TournamentService {
         description: dto.description || null,
         venueName: dto.venueName || null,
         openingTime: dto.openingTime ? new Date(dto.openingTime) : null,
-        registrationDeadline: dto.registrationDeadline ? new Date(dto.registrationDeadline) : null,
+        registrationDeadline: dto.registrationDeadline
+          ? new Date(dto.registrationDeadline)
+          : null,
         publicEnabled: dto.publicEnabled ?? false,
         status: 'DRAFT',
         createdById: userId,
@@ -131,7 +145,11 @@ export class TournamentService {
     // If ruleset is being updated, verify lock rules
     if (dto.slug && dto.slug !== t.slug) {
       const existing = await this.prisma.tournament.findFirst({
-        where: { organizationId: t.organizationId, slug: dto.slug, NOT: { id } },
+        where: {
+          organizationId: t.organizationId,
+          slug: dto.slug,
+          NOT: { id },
+        },
       });
       if (existing) {
         throw new BadRequestException(`Slug "${dto.slug}" đã được sử dụng.`);
@@ -143,11 +161,15 @@ export class TournamentService {
       data: {
         name: dto.name,
         slug: dto.slug,
-        description: dto.description !== undefined ? dto.description : undefined,
+        description:
+          dto.description !== undefined ? dto.description : undefined,
         venueName: dto.venueName !== undefined ? dto.venueName : undefined,
         openingTime: dto.openingTime ? new Date(dto.openingTime) : undefined,
-        registrationDeadline: dto.registrationDeadline ? new Date(dto.registrationDeadline) : undefined,
-        publicEnabled: dto.publicEnabled !== undefined ? dto.publicEnabled : undefined,
+        registrationDeadline: dto.registrationDeadline
+          ? new Date(dto.registrationDeadline)
+          : undefined,
+        publicEnabled:
+          dto.publicEnabled !== undefined ? dto.publicEnabled : undefined,
       },
     });
 
@@ -170,6 +192,14 @@ export class TournamentService {
    */
   async publish(id: string, userId: string) {
     const t = await this.findOne(id);
+    const readiness = await this.getPublishReadiness(id, t);
+
+    if (readiness.length > 0) {
+      throw new BadRequestException(
+        `Chưa thể công khai giải vì còn thiếu: ${readiness.join(', ')}.`,
+      );
+    }
+
     const updated = await this.prisma.tournament.update({
       where: { id },
       data: { publicEnabled: true },
@@ -189,10 +219,88 @@ export class TournamentService {
     return updated;
   }
 
+  private async getPublishReadiness(
+    id: string,
+    tournament?: Awaited<ReturnType<TournamentService['findOne']>>,
+  ) {
+    const activeTournament = tournament ?? (await this.findOne(id));
+    const [
+      teamCount,
+      matchCount,
+      resultConfirmedMatchCount,
+      knockoutStageCount,
+    ] = await this.prisma.$transaction([
+      this.prisma.team.count({ where: { tournamentId: id } }),
+      this.prisma.match.count({ where: { tournamentId: id } }),
+      this.prisma.match.count({
+        where: { tournamentId: id, status: 'RESULT_CONFIRMED' },
+      }),
+      this.prisma.stage.count({
+        where: { tournamentId: id, type: 'KNOCKOUT' },
+      }),
+    ]);
+
+    const missing: string[] = [];
+
+    if (
+      !activeTournament.name?.trim() ||
+      !activeTournament.slug?.trim() ||
+      !activeTournament.venueName?.trim() ||
+      !activeTournament.openingTime
+    ) {
+      missing.push('thông tin giải');
+    }
+
+    const ruleset = activeTournament.ruleset;
+    const hasValidRuleset = Boolean(
+      ruleset &&
+      ruleset.teamCompositionRule &&
+      ruleset.scoringConfig &&
+      ruleset.segmentDefinitions.length > 0,
+    );
+
+    if (!hasValidRuleset) {
+      missing.push('ruleset');
+    }
+
+    if (teamCount < 8) {
+      missing.push('đội thi đấu');
+    }
+
+    if (matchCount === 0) {
+      missing.push('lịch thi đấu');
+    }
+
+    if (matchCount > 0 && resultConfirmedMatchCount < matchCount) {
+      missing.push('kết quả trận đấu');
+    }
+
+    if (
+      knockoutStageCount > 0 &&
+      activeTournament.status !== 'COMPLETED' &&
+      activeTournament.status !== 'PUBLISHED'
+    ) {
+      missing.push('vòng knockout hoàn tất');
+    }
+
+    if (
+      activeTournament.status !== 'COMPLETED' &&
+      activeTournament.status !== 'PUBLISHED'
+    ) {
+      missing.push('trạng thái hoàn tất');
+    }
+
+    return missing;
+  }
+
   /**
    * Transitions the status of a tournament using the pure Domain rules.
    */
-  async transitionStatus(id: string, targetStatus: TournamentStatus, userId: string) {
+  async transitionStatus(
+    id: string,
+    targetStatus: TournamentStatus,
+    userId: string,
+  ) {
     const t = await this.findOne(id);
     const domainT = TournamentMapper.toDomain(t);
 

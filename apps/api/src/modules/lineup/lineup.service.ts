@@ -1,16 +1,35 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { LineupValidator } from '@golab/domain';
 import { TeamDrawService } from '@golab/domain';
 import { RulesetMapper } from '../ruleset/ruleset.mapper';
-import { LineupStatus, MatchStatus, Gender } from '@golab/contracts';
+import { LineupStatus } from '@golab/contracts';
+
+function toValidationPayload(value: unknown) {
+  const source =
+    typeof value === 'object' && value !== null
+      ? (value as { valid?: unknown; errors?: unknown })
+      : {};
+
+  return {
+    valid: source.valid === true,
+    errors: Array.isArray(source.errors)
+      ? source.errors.map((error) => String(error))
+      : [],
+  };
+}
 
 @Injectable()
 export class LineupService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -43,7 +62,11 @@ export class LineupService {
   /**
    * Draws a random play order for segments using a seed.
    */
-  async drawSegmentOrder(matchId: string, seed: string | undefined, userId: string) {
+  async drawSegmentOrder(
+    matchId: string,
+    seed: string | undefined,
+    userId: string,
+  ) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
       include: {
@@ -68,7 +91,9 @@ export class LineupService {
     }
 
     if (match.status !== 'SCHEDULED' && match.status !== 'LINEUP_PENDING') {
-      throw new BadRequestException(`Không thể xáo trộn thứ tự chặng đấu khi trận đấu ở trạng thái ${match.status}.`);
+      throw new BadRequestException(
+        `Không thể xáo trộn thứ tự chặng đấu khi trận đấu ở trạng thái ${match.status}.`,
+      );
     }
 
     const activeSeed = seed || `SEG-ORDER-${matchId}-${Date.now()}`;
@@ -76,11 +101,13 @@ export class LineupService {
 
     // Filter segments that are marked as drawable
     const drawableDefs = ruleset.segmentDefinitions.filter((s) => s.isDrawable);
-    const nonDrawableDefs = ruleset.segmentDefinitions.filter((s) => !s.isDrawable);
+    const nonDrawableDefs = ruleset.segmentDefinitions.filter(
+      (s) => !s.isDrawable,
+    );
 
     const shuffledKeys = TeamDrawService.shuffle(
       drawableDefs.map((d) => d.segmentKey),
-      rand
+      rand,
     );
 
     // Merge them back keeping non-drawable at their places or at the end
@@ -88,7 +115,11 @@ export class LineupService {
     for (const nonDrawable of nonDrawableDefs) {
       // Insert non-drawable at their original orderIndex if within bounds
       if (nonDrawable.orderIndex < finalOrderKeys.length) {
-        finalOrderKeys.splice(nonDrawable.orderIndex, 0, nonDrawable.segmentKey);
+        finalOrderKeys.splice(
+          nonDrawable.orderIndex,
+          0,
+          nonDrawable.segmentKey,
+        );
       } else {
         finalOrderKeys.push(nonDrawable.segmentKey);
       }
@@ -105,7 +136,7 @@ export class LineupService {
       // Also set match status to LINEUP_PENDING
       await tx.match.update({
         where: { id: matchId },
-        data: { status: 'LINEUP_PENDING' as MatchStatus },
+        data: { status: 'LINEUP_PENDING' },
       });
 
       await this.auditService.log({
@@ -143,10 +174,14 @@ export class LineupService {
     }
 
     const matchSegKeys = match.segments.map((s) => s.segmentKey);
-    const allMatchKeysPresent = keys.length === matchSegKeys.length && keys.every((k) => matchSegKeys.includes(k));
+    const allMatchKeysPresent =
+      keys.length === matchSegKeys.length &&
+      keys.every((k) => matchSegKeys.includes(k));
 
     if (!allMatchKeysPresent) {
-      throw new BadRequestException(`Danh sách chặng cung cấp không khớp với chặng cấu hình của trận đấu.`);
+      throw new BadRequestException(
+        `Danh sách chặng cung cấp không khớp với chặng cấu hình của trận đấu.`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -159,7 +194,7 @@ export class LineupService {
 
       await tx.match.update({
         where: { id: matchId },
-        data: { status: 'LINEUP_PENDING' as MatchStatus },
+        data: { status: 'LINEUP_PENDING' },
       });
 
       await this.auditService.log({
@@ -184,8 +219,12 @@ export class LineupService {
    */
   async submitLineup(
     matchId: string,
-    teamLineups: { teamId: string; segments: { segmentId: string; playerIds: string[] }[] }[],
-    userId: string
+    teamLineups: {
+      teamId: string;
+      segments: { segmentId: string; playerIds: string[] }[];
+    }[],
+    userId: string,
+    roles: string[] = [],
   ) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
@@ -217,12 +256,25 @@ export class LineupService {
     }
 
     const rulesetVO = RulesetMapper.toDomain(ruleset);
+    const isCaptain =
+      roles.includes('CAPTAIN') &&
+      !roles.includes('SUPER_ADMIN') &&
+      !roles.includes('platform_owner') &&
+      !roles.includes('organization_admin') &&
+      !roles.includes('tournament_admin');
+
+    if (isCaptain && teamLineups.length !== 1) {
+      throw new ForbiddenException(
+        'Đội trưởng chỉ được gửi lineup cho một đội của mình trong mỗi lần thao tác.',
+      );
+    }
 
     return this.prisma.$transaction(async (tx) => {
       for (const tLineup of teamLineups) {
         const team = await tx.team.findUnique({
           where: { id: tLineup.teamId },
           include: {
+            captain: true,
             members: {
               include: { playerProfile: true },
             },
@@ -230,14 +282,39 @@ export class LineupService {
         });
 
         if (!team) {
-          throw new NotFoundException(`Không tìm thấy Đội với ID ${tLineup.teamId}.`);
+          throw new NotFoundException(
+            `Không tìm thấy Đội với ID ${tLineup.teamId}.`,
+          );
+        }
+
+        if (team.tournamentId !== match.tournamentId) {
+          throw new BadRequestException(
+            `Đội ${team.name} không thuộc giải đấu của trận này.`,
+          );
+        }
+
+        if (
+          tLineup.teamId !== match.teamAId &&
+          tLineup.teamId !== match.teamBId
+        ) {
+          throw new BadRequestException(
+            `Đội ${team.name} không tham gia trận đấu này.`,
+          );
+        }
+
+        if (isCaptain && team.captain?.userId !== userId) {
+          throw new ForbiddenException(
+            'Bạn chỉ được gửi lineup cho đội mà mình đang phụ trách.',
+          );
         }
 
         // Validate lineup against ruleset using the domain LineupValidator
         const validatorSegments = tLineup.segments.map((s) => {
           const matchSeg = match.segments.find((ms) => ms.id === s.segmentId);
           if (!matchSeg) {
-            throw new BadRequestException(`Chặng đấu ID ${s.segmentId} không thuộc trận đấu này.`);
+            throw new BadRequestException(
+              `Chặng đấu ID ${s.segmentId} không thuộc trận đấu này.`,
+            );
           }
           return {
             segmentKey: matchSeg.segmentKey,
@@ -248,17 +325,20 @@ export class LineupService {
         const validatorMembers = team.members.map((m) => ({
           id: m.playerProfile.id,
           fullName: m.playerProfile.fullName,
-          gender: m.playerProfile.gender as Gender,
+          gender: m.playerProfile.gender,
         }));
 
         const validationResult = LineupValidator.validate(
           validatorSegments,
           validatorMembers,
           team.name,
-          rulesetVO
+          rulesetVO,
         );
 
-        const status = validationResult.valid ? ('VALID' as LineupStatus) : ('INVALID' as LineupStatus);
+        const status = validationResult.valid
+          ? ('VALID' as LineupStatus)
+          : ('INVALID' as LineupStatus);
+        const validationPayload = toValidationPayload(validationResult);
 
         // Process segment by segment in database
         for (const s of tLineup.segments) {
@@ -272,7 +352,7 @@ export class LineupService {
             },
             update: {
               status,
-              validationResult: validationResult as any,
+              validationResult: validationPayload,
               submittedById: userId,
               submittedAt: new Date(),
             },
@@ -283,7 +363,7 @@ export class LineupService {
               segmentId: s.segmentId,
               teamId: tLineup.teamId,
               status,
-              validationResult: validationResult as any,
+              validationResult: validationPayload,
               submittedById: userId,
             },
           });
@@ -314,7 +394,10 @@ export class LineupService {
           action: 'LINEUP_SUBMITTED',
           entityType: 'Team',
           entityId: tLineup.teamId,
-          afterData: { valid: validationResult.valid, errors: validationResult.errors },
+          afterData: {
+            valid: validationResult.valid,
+            errors: validationResult.errors,
+          },
         });
       }
 
@@ -324,17 +407,21 @@ export class LineupService {
       });
 
       const expectedCount = match.segments.length * 2;
-      const allValid = matchLineups.length === expectedCount && matchLineups.every((l) => l.status === 'VALID' || l.status === 'LOCKED');
+      const allValid =
+        matchLineups.length === expectedCount &&
+        matchLineups.every(
+          (l) => l.status === 'VALID' || l.status === 'LOCKED',
+        );
 
       if (allValid) {
         await tx.match.update({
           where: { id: matchId },
-          data: { status: 'LINEUP_READY' as MatchStatus },
+          data: { status: 'LINEUP_READY' },
         });
       } else {
         await tx.match.update({
           where: { id: matchId },
-          data: { status: 'LINEUP_PENDING' as MatchStatus },
+          data: { status: 'LINEUP_PENDING' },
         });
       }
 
@@ -360,11 +447,13 @@ export class LineupService {
     });
 
     const expectedCount = match.segments.length * 2;
-    const canLock = lineups.length === expectedCount && lineups.every((l) => l.status === 'VALID');
+    const canLock =
+      lineups.length === expectedCount &&
+      lineups.every((l) => l.status === 'VALID');
 
     if (!canLock) {
       throw new BadRequestException(
-        `Không thể khóa đội hình. Vui lòng đảm bảo rằng cả hai đội đã nhập đầy đủ và hợp lệ đội hình cho cả 3 chặng.`
+        `Không thể khóa đội hình. Vui lòng đảm bảo rằng cả hai đội đã nhập đầy đủ và hợp lệ đội hình cho cả 3 chặng.`,
       );
     }
 
@@ -372,7 +461,7 @@ export class LineupService {
       await tx.matchLineup.updateMany({
         where: { matchId },
         data: {
-          status: 'LOCKED' as LineupStatus,
+          status: 'LOCKED',
           lockedAt: new Date(),
         },
       });
@@ -380,7 +469,7 @@ export class LineupService {
       // Update match to READY state
       await tx.match.update({
         where: { id: matchId },
-        data: { status: 'READY' as MatchStatus },
+        data: { status: 'READY' },
       });
 
       await this.auditService.log({
