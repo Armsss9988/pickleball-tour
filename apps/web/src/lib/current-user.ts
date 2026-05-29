@@ -34,11 +34,16 @@ function isStoredUser(value: unknown): value is StoredUser {
     && isStringArray(value.roles);
 }
 
+let cachedRaw: string | null = null;
+let cachedState: CurrentUserState = guestState;
+
 function clearStoredUser() {
   if (typeof window === 'undefined') return;
 
   try {
     window.localStorage.removeItem(USER_STORAGE_KEY);
+    cachedRaw = null;
+    cachedState = guestState;
   } catch {
     // Ignore storage errors and fall back to guest.
   }
@@ -57,8 +62,15 @@ export function getCurrentUser(): CurrentUserState {
     return guestState;
   }
 
+  if (raw === cachedRaw) {
+    return cachedState;
+  }
+
+  cachedRaw = raw;
+
   if (!raw) {
-    return guestState;
+    cachedState = guestState;
+    return cachedState;
   }
 
   try {
@@ -66,16 +78,19 @@ export function getCurrentUser(): CurrentUserState {
 
     if (!isStoredUser(parsed)) {
       clearStoredUser();
-      return guestState;
+      cachedState = guestState;
+      return cachedState;
     }
 
-    return {
+    cachedState = {
       user: parsed,
       role: getPrimaryRole(parsed.roles),
       authenticated: true,
     };
+    return cachedState;
   } catch {
     clearStoredUser();
-    return guestState;
+    cachedState = guestState;
+    return cachedState;
   }
 }
