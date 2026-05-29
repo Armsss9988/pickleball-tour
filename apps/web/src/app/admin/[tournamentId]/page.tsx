@@ -93,18 +93,6 @@ interface ActionCardConfig {
   icon: LucideIcon;
 }
 
-interface RoleLaneConfig {
-  title: string;
-  subtitle: string;
-  role: AppRole;
-  actionKey: ActionKey;
-  href: string;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-  ownsTeam?: boolean;
-}
-
 const emptyStats: DashboardStats = {
   playersCount: 0,
   malesCount: 0,
@@ -137,6 +125,10 @@ function subscribeToUserStore(onStoreChange: () => void) {
 
 function countMatches(matches: MatchLike[], statuses: string[]) {
   return matches.filter((match) => statuses.includes(match.status)).length;
+}
+
+function normalizeGender(gender: string | null | undefined) {
+  return (gender ?? '').trim().toUpperCase();
 }
 
 function getRoleLabel(role: AppRole): string {
@@ -186,6 +178,51 @@ function getRulesetSegments(ruleset: RulesetLike | null | undefined): RulesetSeg
   return [];
 }
 
+function PublishActionCard({
+  allowed,
+  isPublishing,
+  onPublish,
+  message,
+}: {
+  allowed: boolean;
+  isPublishing: boolean;
+  onPublish: () => void;
+  message?: string | null;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-700/50 bg-slate-800/50 px-4 py-3">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+          <ArrowRight className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-slate-200">Công khai giải</div>
+          <p className="mt-1 text-xs leading-relaxed text-slate-400">
+            Khi đủ điều kiện, thao tác này sẽ bật giải ra khu vực công khai cho khách xem.
+          </p>
+          {message && (
+            <p className="mt-2 text-xs leading-relaxed text-slate-300">{message}</p>
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onPublish}
+        disabled={!allowed || isPublishing}
+        className={[
+          'mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
+          allowed && !isPublishing
+            ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
+            : 'cursor-not-allowed bg-slate-800 text-slate-500',
+        ].join(' ')}
+      >
+        <ArrowRight className="h-3.5 w-3.5" />
+        {isPublishing ? 'Đang công khai...' : 'Công khai ngay'}
+      </button>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const { tournament, loading: tLoading, error: tError, reload } = useActiveTournament();
   const currentUser = useSyncExternalStore(
@@ -195,6 +232,8 @@ export default function AdminDashboardPage() {
   );
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tournament) {
@@ -220,8 +259,8 @@ export default function AdminDashboardPage() {
 
         setStats({
           playersCount: players.length,
-          malesCount: players.filter((player: { gender: string }) => player.gender === 'MALE').length,
-          femalesCount: players.filter((player: { gender: string }) => player.gender === 'FEMALE').length,
+          malesCount: players.filter((player: { gender: string }) => normalizeGender(player.gender) === 'MALE').length,
+          femalesCount: players.filter((player: { gender: string }) => normalizeGender(player.gender) === 'FEMALE').length,
           teamsCount: teams.length,
           matchesCount: matches.length,
           completedMatches: countMatches(matches, ['COMPLETED', 'RESULT_CONFIRMED']),
@@ -272,6 +311,7 @@ export default function AdminDashboardPage() {
     [nextAction.key, role, uxContext],
   );
   const publishReadiness = useMemo(() => getPublishReadiness(uxContext), [uxContext]);
+  const publishAccess = useMemo(() => getActionAccess('publishTournament', role, uxContext), [role, uxContext]);
 
   const actionCards = useMemo<ActionCardConfig[]>(() => {
     if (!tournament) {
@@ -352,50 +392,6 @@ export default function AdminDashboardPage() {
     ];
   }, [tournament]);
 
-  const roleLanes = useMemo<RoleLaneConfig[]>(() => {
-    if (!tournament) {
-      return [];
-    }
-
-    return [
-      {
-        title: 'BTC/Admin',
-        subtitle: 'Thiết lập và mở khóa dữ liệu vận hành',
-        role: 'btc_admin',
-        actionKey: nextAction.key,
-        href: nextAction.href,
-        label: nextAction.label,
-        description: nextAction.description,
-        icon: Trophy,
-      },
-      {
-        title: 'HLV/Captain',
-        subtitle: 'Khai báo đội hình cho đội của mình',
-        role: 'captain',
-        actionKey: 'submitLineup',
-        href: `/admin/${tournament.id}/lineup`,
-        label: uxContext.matchCount > 0 ? 'Nhập lineup đội' : 'Chờ lịch thi đấu',
-        description: uxContext.matchCount > 0
-          ? `${uxContext.lineupReadyCount} trận đã sẵn sàng chuyển sang bước lineup hoặc thi đấu.`
-          : 'BTC cần sinh lịch thi đấu trước khi HLV/Captain có việc để làm.',
-        icon: ClipboardList,
-        ownsTeam: true,
-      },
-      {
-        title: 'Trọng tài',
-        subtitle: 'Chấm điểm và xác nhận kết quả trận',
-        role: 'scorer',
-        actionKey: 'scoreMatch',
-        href: `/admin/${tournament.id}/scoring`,
-        label: uxContext.scoringReadyCount > 0 ? 'Mở bàn trọng tài' : 'Chưa có trận sẵn sàng',
-        description: uxContext.scoringReadyCount > 0
-          ? `${uxContext.scoringReadyCount} trận có thể vào chấm điểm hoặc tiếp tục xử lý.`
-          : 'Cần có lịch thi đấu và lineup đã khóa trước khi trọng tài bắt đầu.',
-        icon: Zap,
-      },
-    ];
-  }, [nextAction.description, nextAction.href, nextAction.key, nextAction.label, tournament, uxContext]);
-
   if (tLoading || loadingStats) {
     return <PageLoading />;
   }
@@ -433,6 +429,65 @@ export default function AdminDashboardPage() {
   const ruleset = tournament.ruleset as RulesetLike | undefined;
   const composition = getRulesetComposition(ruleset);
   const segments = getRulesetSegments(ruleset);
+  const isAdminRole = role === 'btc_admin' || role === 'super_admin';
+  const captainAction = tournament
+    ? {
+        access: getActionAccess('submitLineup', 'captain', { ...uxContext, currentUserOwnsTeam: true }),
+        href: `/admin/${tournament.id}/lineup`,
+        label: uxContext.matchCount > 0 ? 'Vào khu lineup đội' : 'Chưa có trận để nhập lineup',
+        description: uxContext.matchCount > 0
+          ? 'Kiểm tra các trận đội của bạn cần khai báo hoặc đã khóa lineup.'
+          : 'BTC cần sinh lịch thi đấu trước khi HLV/Captain có thể thao tác.',
+      }
+    : null;
+  const scorerActions = tournament
+    ? [
+        {
+          access: getActionAccess('scoreMatch', 'scorer', uxContext),
+          href: `/admin/${tournament.id}/scoring`,
+          label: uxContext.scoringReadyCount > 0 ? 'Mở bàn trọng tài' : 'Chưa có trận sẵn sàng chấm điểm',
+          description: uxContext.scoringReadyCount > 0
+            ? `${uxContext.scoringReadyCount} trận có thể vào chấm điểm hoặc tiếp tục xử lý.`
+            : 'Cần có lịch thi đấu và lineup đã khóa trước khi trọng tài bắt đầu.',
+          icon: Zap,
+        },
+        {
+          access: getActionAccess('confirmResults', 'scorer', uxContext),
+          href: `/admin/${tournament.id}/scoring`,
+          label: uxContext.completedMatchCount > 0 ? 'Xác nhận kết quả trận' : 'Chưa có trận để xác nhận',
+          description: uxContext.completedMatchCount > 0
+            ? `${uxContext.completedMatchCount} trận đã hoàn thành và chờ chốt kết quả.`
+            : 'Kết quả chỉ xuất hiện sau khi trận đấu được hoàn tất.',
+          icon: BarChart3,
+        },
+      ]
+    : [];
+
+  async function handlePublish() {
+    if (!tournament || !publishAccess.allowed || isPublishing) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Công khai giải sẽ mở trang public cho khách xem lịch, kết quả và các thông tin liên quan. Bạn có chắc muốn tiếp tục?',
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsPublishing(true);
+      setPublishMessage(null);
+      await apiFetch(`/tournaments/${tournament.id}/publish`, { method: 'POST' });
+      await reload();
+      setPublishMessage('Giải đã được công khai. Dữ liệu mới đã được tải lại.');
+    } catch (error) {
+      setPublishMessage(error instanceof Error ? error.message : 'Không thể công khai giải lúc này.');
+    } finally {
+      setIsPublishing(false);
+    }
+  }
 
   return (
     <div className="premium-container space-y-6">
@@ -446,9 +501,11 @@ export default function AdminDashboardPage() {
             <span className="rounded-full border border-slate-700/60 bg-slate-900/60 px-3 py-1 text-xs font-semibold text-slate-300">
               {getPublicStateLabel(Boolean(tournament.publicEnabled))}
             </span>
-            <Link href={`/admin/${tournament.id}/tournament`} className="btn btn-secondary btn-sm">
-              <Settings className="w-4 h-4" /> Thiết lập
-            </Link>
+            {isAdminRole && (
+              <Link href={`/admin/${tournament.id}/tournament`} className="btn btn-secondary btn-sm">
+                <Settings className="w-4 h-4" /> Thiết lập
+              </Link>
+            )}
             <button type="button" onClick={reload} className="btn btn-secondary btn-sm">
               <RefreshCw className="w-4 h-4" /> Tải lại
             </button>
@@ -500,68 +557,114 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-700/50 bg-slate-900/65 p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Checklist công khai
+        {isAdminRole ? (
+          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/65 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Checklist công khai
+                </div>
+                <h3 className="mt-1 text-lg font-bold text-slate-100">
+                  {publishReadiness.ready ? 'Đủ điều kiện công khai' : 'Chưa thể công khai'}
+                </h3>
               </div>
-              <h3 className="mt-1 text-lg font-bold text-slate-100">
-                {publishReadiness.ready ? 'Đủ điều kiện công khai' : 'Chưa thể công khai'}
-              </h3>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                publishReadiness.ready
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : 'bg-amber-500/10 text-amber-400'
+              }`}>
+                {publishCardText}
+              </span>
             </div>
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              publishReadiness.ready
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : 'bg-amber-500/10 text-amber-400'
-            }`}>
-              {publishCardText}
-            </span>
-          </div>
 
-          {publishReadiness.ready ? (
+            {publishReadiness.ready ? (
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                Dữ liệu cốt lõi đã đủ. Bạn có thể công khai giải khi đã sẵn sàng cho người xem bên ngoài.
+              </p>
+            ) : (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {publishReadiness.missing.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-slate-700/60 bg-slate-950/70 px-3 py-1 text-xs font-medium text-slate-300"
+                  >
+                    Còn thiếu: {item}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4">
+              {publishAccess.allowed ? (
+                <PublishActionCard
+                  allowed={publishAccess.allowed}
+                  isPublishing={isPublishing}
+                  onPublish={handlePublish}
+                  message={publishMessage}
+                />
+              ) : (
+                <ActionGate
+                  access={publishAccess}
+                  href={`/admin/${tournament.id}`}
+                  label="Công khai giải"
+                  description="Chỉ bật khi các dữ liệu bắt buộc đã hoàn tất."
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/65 p-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Tình trạng giải
+            </div>
+            <h3 className="mt-1 text-lg font-bold text-slate-100">
+              {role === 'scorer' ? 'Bàn trọng tài' : 'Khu đội của bạn'}
+            </h3>
             <p className="mt-3 text-sm leading-relaxed text-slate-300">
-              Dữ liệu cốt lõi đã đủ. Bạn có thể công khai giải khi đã sẵn sàng cho người xem bên ngoài.
+              {role === 'scorer'
+                ? 'Bạn chỉ thấy các thông tin cần cho việc chấm điểm và xác nhận kết quả.'
+                : 'Bạn chỉ thấy các thông tin cần cho việc theo dõi lịch và khai báo lineup của đội mình.'}
             </p>
-          ) : (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {publishReadiness.missing.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-slate-700/60 bg-slate-950/70 px-3 py-1 text-xs font-medium text-slate-300"
-                >
-                  Còn thiếu: {item}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-4">
-            <ActionGate
-              access={getActionAccess('publishTournament', role, uxContext)}
-              href={`/admin/${tournament.id}`}
-              label="Công khai giải"
-              description="Chỉ bật khi các dữ liệu bắt buộc đã hoàn tất."
-            />
           </div>
-        </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 stagger">
-        <StatCard
-          icon={Users}
-          label="Vận động viên"
-          value={stats.playersCount}
-          color="sky"
-          trend={playerTrend}
-        />
-        <StatCard
-          icon={Shield}
-          label="Đội thi đấu"
-          value={stats.teamsCount}
-          color="violet"
-          trend={teamTrend}
-        />
+        {isAdminRole ? (
+          <StatCard
+            icon={Users}
+            label="Vận động viên"
+            value={stats.playersCount}
+            color="sky"
+            trend={playerTrend}
+          />
+        ) : (
+          <StatCard
+            icon={ClipboardList}
+            label={role === 'scorer' ? 'Trận chờ xử lý' : 'Trận của đội'}
+            value={role === 'scorer' ? stats.scoringReadyCount : stats.matchesCount}
+            color="sky"
+            trend={role === 'scorer'
+              ? { value: `${stats.completedMatches} đã xong`, positive: stats.completedMatches > 0 }
+              : { value: `${uxContext.lineupReadyCount} đã sẵn sàng`, positive: uxContext.lineupReadyCount > 0 }}
+          />
+        )}
+        {isAdminRole ? (
+          <StatCard
+            icon={Shield}
+            label="Đội thi đấu"
+            value={stats.teamsCount}
+            color="violet"
+            trend={teamTrend}
+          />
+        ) : (
+          <StatCard
+            icon={Target}
+            label={role === 'scorer' ? 'Trận đã hoàn thành' : 'Lineup sẵn sàng'}
+            value={role === 'scorer' ? stats.completedMatches : uxContext.lineupReadyCount}
+            color="violet"
+          />
+        )}
         <StatCard
           icon={Target}
           label="Trận đấu"
@@ -578,239 +681,354 @@ export default function AdminDashboardPage() {
         />
       </div>
 
-      <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Theo từng vai
-            </div>
-            <h3 className="mt-1 text-lg font-bold text-slate-100">
-              Mỗi người vào app sẽ thấy đúng việc của mình
-            </h3>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
-          {roleLanes.map((lane) => {
-            const laneContext = lane.ownsTeam
-              ? { ...uxContext, currentUserOwnsTeam: true }
-              : uxContext;
-            const laneAccess = getActionAccess(lane.actionKey, lane.role, laneContext);
-            const LaneIcon = lane.icon;
-
-            return (
-              <div key={lane.title} className="rounded-xl border border-slate-800/80 bg-slate-950/45 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/80 text-amber-400">
-                    <LaneIcon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-slate-200">{lane.title}</div>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-500">{lane.subtitle}</p>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <ActionGate
-                    access={laneAccess}
-                    href={lane.href}
-                    label={lane.label}
-                    description={lane.description}
-                    className="bg-slate-900/55"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Thao tác nhanh
-              </div>
-              <h3 className="mt-1 text-lg font-bold text-slate-100">
-                Không còn link tắt bypass bước khóa
-              </h3>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {actionCards.map((action) => {
-              const access = getActionAccess(action.key, role, uxContext);
-              const Icon = action.icon;
-
-              return (
-                <ActionGate
-                  key={action.key}
-                  access={access}
-                  href={action.href}
-                  label={action.label}
-                  description={action.description}
-                  className="min-h-[116px]"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </ActionGate>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="space-y-5">
+      {isAdminRole ? (
+        <>
           <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Vận động viên
+                  Theo từng vai
                 </div>
                 <h3 className="mt-1 text-lg font-bold text-slate-100">
-                  {stats.playersCount} người đã nhập
+                  Mỗi người vào app sẽ thấy đúng việc của mình
                 </h3>
               </div>
-              <Link
-                href={`/admin/${tournament.id}/players`}
-                className="text-xs font-semibold text-amber-400 transition-colors hover:text-amber-300"
-              >
-                Quản lý →
-              </Link>
             </div>
 
-            <div className="mt-4 rounded-xl border border-slate-800/70 bg-slate-950/40 p-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-9 text-xs font-semibold text-slate-400">Nam</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-sky-500 to-violet-500 transition-all duration-500"
-                      style={{ width: stats.playersCount > 0 ? `${(stats.malesCount / stats.playersCount) * 100}%` : '0%' }}
-                    />
+            <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
+              <div className="rounded-xl border border-slate-800/80 bg-slate-950/45 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/80 text-amber-400">
+                    <Trophy className="h-5 w-5" />
                   </div>
-                  <span className="w-6 text-right text-xs font-bold text-slate-300">{stats.malesCount}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-200">BTC/Admin</div>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">Thiết lập và mở khóa dữ liệu vận hành.</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-9 text-xs font-semibold text-slate-400">Nữ</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-500"
-                      style={{ width: stats.playersCount > 0 ? `${(stats.femalesCount / stats.playersCount) * 100}%` : '0%' }}
-                    />
+                <div className="mt-4">
+                  <ActionGate
+                    access={nextActionAccess}
+                    href={nextAction.href}
+                    label={nextAction.label}
+                    description={nextAction.description}
+                    className="bg-slate-900/55"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-800/80 bg-slate-950/45 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/80 text-amber-400">
+                    <ClipboardList className="h-5 w-5" />
                   </div>
-                  <span className="w-6 text-right text-xs font-bold text-slate-300">{stats.femalesCount}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-200">HLV/Captain</div>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">Khai báo đội hình cho đội của mình.</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <ActionGate
+                    access={captainAction?.access ?? { allowed: false }}
+                    href={captainAction?.href ?? `/admin/${tournament.id}/lineup`}
+                    label={captainAction?.label ?? 'Khu lineup đội'}
+                    description={captainAction?.description ?? 'Theo dõi các trận của đội.'}
+                    className="bg-slate-900/55"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-800/80 bg-slate-950/45 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/80 text-amber-400">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-200">Trọng tài</div>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">Chấm điểm và xác nhận kết quả trận.</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <ActionGate
+                    access={scorerActions[0]?.access ?? { allowed: false }}
+                    href={scorerActions[0]?.href ?? `/admin/${tournament.id}/scoring`}
+                    label={scorerActions[0]?.label ?? 'Mở bàn trọng tài'}
+                    description={scorerActions[0]?.description ?? 'Theo dõi các trận đã sẵn sàng chấm điểm.'}
+                    className="bg-slate-900/55"
+                  />
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="mt-4 space-y-2">
-              {stats.recentPlayers.length > 0 ? (
-                stats.recentPlayers.map((player) => (
-                  <div key={player.id} className="flex items-center gap-3 rounded-lg bg-slate-950/35 px-3 py-2">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white ${
-                      player.gender === 'MALE'
-                        ? 'bg-gradient-to-br from-sky-500 to-violet-500'
-                        : 'bg-gradient-to-br from-pink-500 to-rose-500'
-                    }`}>
-                      {player.fullName.split(' ').pop()?.[0] || '?'}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-slate-200">{player.fullName}</div>
-                    </div>
-                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                      {player.gender === 'MALE' ? 'Nam' : 'Nữ'}
-                    </span>
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Thao tác nhanh
                   </div>
-                ))
-              ) : (
-                <p className="rounded-lg border border-dashed border-slate-800/80 px-4 py-5 text-center text-xs italic text-slate-500">
-                  Chưa có vận động viên. Hãy nhập danh sách trước khi bốc thăm.
-                </p>
+                  <h3 className="mt-1 text-lg font-bold text-slate-100">
+                    Không còn link tắt bypass bước khóa
+                  </h3>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                {actionCards.map((action) => {
+                  const access = getActionAccess(action.key, role, uxContext);
+                  const Icon = action.icon;
+
+                  return (
+                    <ActionGate
+                      key={action.key}
+                      access={access}
+                      href={action.href}
+                      label={action.label}
+                      description={action.description}
+                      className="min-h-[116px]"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    </ActionGate>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Vận động viên
+                    </div>
+                    <h3 className="mt-1 text-lg font-bold text-slate-100">
+                      {stats.playersCount} người đã nhập
+                    </h3>
+                  </div>
+                  <Link
+                    href={`/admin/${tournament.id}/players`}
+                    className="text-xs font-semibold text-amber-400 transition-colors hover:text-amber-300"
+                  >
+                    Quản lý →
+                  </Link>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-slate-800/70 bg-slate-950/40 p-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="w-9 text-xs font-semibold text-slate-400">Nam</span>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-sky-500 to-violet-500 transition-all duration-500"
+                          style={{ width: stats.playersCount > 0 ? `${(stats.malesCount / stats.playersCount) * 100}%` : '0%' }}
+                        />
+                      </div>
+                      <span className="w-6 text-right text-xs font-bold text-slate-300">{stats.malesCount}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="w-9 text-xs font-semibold text-slate-400">Nữ</span>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-500"
+                          style={{ width: stats.playersCount > 0 ? `${(stats.femalesCount / stats.playersCount) * 100}%` : '0%' }}
+                        />
+                      </div>
+                      <span className="w-6 text-right text-xs font-bold text-slate-300">{stats.femalesCount}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {stats.recentPlayers.length > 0 ? (
+                    stats.recentPlayers.map((player) => {
+                      const gender = normalizeGender(player.gender);
+
+                      return (
+                        <div key={player.id} className="flex items-center gap-3 rounded-lg bg-slate-950/35 px-3 py-2">
+                          <div className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white ${
+                            gender === 'MALE'
+                              ? 'bg-gradient-to-br from-sky-500 to-violet-500'
+                              : 'bg-gradient-to-br from-pink-500 to-rose-500'
+                          }`}>
+                            {player.fullName.split(' ').pop()?.[0] || '?'}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium text-slate-200">{player.fullName}</div>
+                          </div>
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                            {gender === 'MALE' ? 'Nam' : gender === 'FEMALE' ? 'Nữ' : 'Chưa rõ'}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="rounded-lg border border-dashed border-slate-800/80 px-4 py-5 text-center text-xs italic text-slate-500">
+                      Chưa có vận động viên. Hãy nhập danh sách trước khi bốc thăm.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Ruleset hiện tại
+                    </div>
+                    <h3 className="mt-1 text-lg font-bold text-slate-100">
+                      {ruleset?.name || 'Chưa đặt tên ruleset'}
+                    </h3>
+                  </div>
+                  <Link
+                    href={`/admin/${tournament.id}/ruleset`}
+                    className="text-xs font-semibold text-amber-400 transition-colors hover:text-amber-300"
+                  >
+                    Mở ruleset →
+                  </Link>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl bg-slate-950/40 px-4 py-3">
+                    <div className="text-[11px] font-medium text-slate-500">Đội hình mỗi đội</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-200">
+                      {composition
+                        ? `${composition.teamSize || 0} người (${composition.maleCount || 0} nam, ${composition.femaleCount || 0} nữ)`
+                        : 'Chưa khai báo'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-slate-950/40 px-4 py-3">
+                    <div className="text-[11px] font-medium text-slate-500">Chặng thi đấu</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-200">
+                      {segments.length > 0 ? `${segments.length} chặng đã cấu hình` : 'Chưa có chặng nào'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-slate-950/40 px-4 py-3">
+                    <div className="text-[11px] font-medium text-slate-500">Điểm mục tiêu</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-200">
+                      {ruleset?.scoringConfig?.winScore ? `${ruleset.scoringConfig.winScore} điểm` : 'Chưa khai báo'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-slate-950/40 px-4 py-3">
+                    <div className="text-[11px] font-medium text-slate-500">Tình trạng ruleset</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-200">
+                      {uxContext.hasValidRuleset ? 'Đã đủ dữ liệu để vận hành' : 'Cần bổ sung trước khi bốc thăm'}
+                    </div>
+                  </div>
+                </div>
+
+                {segments.length > 0 ? (
+                  <div className="mt-4 grid grid-cols-1 gap-3">
+                    {segments.slice(0, 3).map((segment, index: number) => (
+                      <div
+                        key={segment.id ?? segment.name ?? index}
+                        className="flex items-center gap-3 rounded-xl border border-slate-800/70 bg-slate-950/35 px-3 py-2.5"
+                      >
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-[11px] font-bold text-slate-950">
+                          {index + 1}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-slate-200">
+                            {segment.name || `Chặng ${index + 1}`}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {segment.genderRule || 'Không giới hạn'} · {segment.playerCount || 0} VĐV
+                          </div>
+                        </div>
+                        <div className="text-xs font-bold text-amber-400">
+                          {segment.targetScore ? `${segment.targetScore}đ` : 'Chưa có điểm'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-lg border border-dashed border-slate-800/80 px-4 py-5 text-center text-xs italic text-slate-500">
+                    Ruleset chưa có chặng thi đấu. Hệ thống sẽ tiếp tục khóa bốc thăm và sinh lịch cho đến khi đủ cấu hình.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_0.9fr]">
+          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Việc của bạn
+                </div>
+                <h3 className="mt-1 text-lg font-bold text-slate-100">
+                  {role === 'scorer' ? 'Chấm điểm và chốt kết quả' : 'Lineup đội của bạn'}
+                </h3>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              {role === 'scorer' ? scorerActions.map((action) => {
+                const Icon = action.icon;
+
+                return (
+                  <ActionGate
+                    key={action.label}
+                    access={action.access}
+                    href={action.href}
+                    label={action.label}
+                    description={action.description}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                  </ActionGate>
+                );
+              }) : (
+                <ActionGate
+                  access={captainAction?.access ?? { allowed: false }}
+                  href={captainAction?.href ?? `/admin/${tournament.id}/lineup`}
+                  label={captainAction?.label ?? 'Vào khu lineup đội'}
+                  description={captainAction?.description ?? 'Theo dõi các trận của đội.'}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                    <ClipboardList className="h-5 w-5" />
+                  </div>
+                </ActionGate>
               )}
             </div>
           </div>
 
           <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Ruleset hiện tại
-                </div>
-                <h3 className="mt-1 text-lg font-bold text-slate-100">
-                  {ruleset?.name || 'Chưa đặt tên ruleset'}
-                </h3>
-              </div>
-              <Link
-                href={`/admin/${tournament.id}/ruleset`}
-                className="text-xs font-semibold text-amber-400 transition-colors hover:text-amber-300"
-              >
-                Mở ruleset →
-              </Link>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Tóm tắt nhanh
             </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-slate-950/40 px-4 py-3">
-                <div className="text-[11px] font-medium text-slate-500">Đội hình mỗi đội</div>
-                <div className="mt-1 text-sm font-semibold text-slate-200">
-                  {composition
-                    ? `${composition.teamSize || 0} người (${composition.maleCount || 0} nam, ${composition.femaleCount || 0} nữ)`
-                    : 'Chưa khai báo'}
-                </div>
-              </div>
-              <div className="rounded-xl bg-slate-950/40 px-4 py-3">
-                <div className="text-[11px] font-medium text-slate-500">Chặng thi đấu</div>
-                <div className="mt-1 text-sm font-semibold text-slate-200">
-                  {segments.length > 0 ? `${segments.length} chặng đã cấu hình` : 'Chưa có chặng nào'}
-                </div>
-              </div>
-              <div className="rounded-xl bg-slate-950/40 px-4 py-3">
-                <div className="text-[11px] font-medium text-slate-500">Điểm mục tiêu</div>
-                <div className="mt-1 text-sm font-semibold text-slate-200">
-                  {ruleset?.scoringConfig?.winScore ? `${ruleset.scoringConfig.winScore} điểm` : 'Chưa khai báo'}
-                </div>
-              </div>
-              <div className="rounded-xl bg-slate-950/40 px-4 py-3">
-                <div className="text-[11px] font-medium text-slate-500">Tình trạng ruleset</div>
-                <div className="mt-1 text-sm font-semibold text-slate-200">
-                  {uxContext.hasValidRuleset ? 'Đã đủ dữ liệu để vận hành' : 'Cần bổ sung trước khi bốc thăm'}
-                </div>
-              </div>
+            <h3 className="mt-1 text-lg font-bold text-slate-100">
+              {role === 'scorer' ? 'Ưu tiên các trận đã sẵn sàng' : 'Chờ BTC mở các bước phụ thuộc'}
+            </h3>
+            <div className="mt-4 space-y-3 text-sm leading-relaxed text-slate-300">
+              {role === 'scorer' ? (
+                <>
+                  <p>{stats.scoringReadyCount > 0
+                    ? `${stats.scoringReadyCount} trận đã sẵn sàng để vào bàn trọng tài.`
+                    : 'Hiện chưa có trận nào đủ điều kiện chấm điểm.'}</p>
+                  <p>{stats.completedMatches > 0
+                    ? `${stats.completedMatches} trận đã hoàn thành, kiểm tra để xác nhận kết quả khi phù hợp.`
+                    : 'Kết quả xác nhận sẽ xuất hiện sau khi trận đấu hoàn tất.'}</p>
+                </>
+              ) : (
+                <>
+                  <p>{uxContext.matchCount > 0
+                    ? `${uxContext.matchCount} trận đã có trong lịch. Bạn có thể vào khu lineup để xem trận của đội mình.`
+                    : 'BTC chưa sinh lịch thi đấu, nên đội của bạn chưa có trận để khai báo lineup.'}</p>
+                  <p>{uxContext.lineupReadyCount > 0
+                    ? `${uxContext.lineupReadyCount} trận trong hệ thống đã đi tới bước lineup hoặc thi đấu.`
+                    : 'Khi lịch được tạo, khu lineup sẽ tự mở cho đội có quyền thao tác.'}</p>
+                </>
+              )}
             </div>
-
-            {segments.length > 0 ? (
-              <div className="mt-4 grid grid-cols-1 gap-3">
-                {segments.slice(0, 3).map((segment, index: number) => (
-                  <div
-                    key={segment.id ?? segment.name ?? index}
-                    className="flex items-center gap-3 rounded-xl border border-slate-800/70 bg-slate-950/35 px-3 py-2.5"
-                  >
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-[11px] font-bold text-slate-950">
-                      {index + 1}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-slate-200">
-                        {segment.name || `Chặng ${index + 1}`}
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {segment.genderRule || 'Không giới hạn'} · {segment.playerCount || 0} VĐV
-                      </div>
-                    </div>
-                    <div className="text-xs font-bold text-amber-400">
-                      {segment.targetScore ? `${segment.targetScore}đ` : 'Chưa có điểm'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 rounded-lg border border-dashed border-slate-800/80 px-4 py-5 text-center text-xs italic text-slate-500">
-                Ruleset chưa có chặng thi đấu. Hệ thống sẽ tiếp tục khóa bốc thăm và sinh lịch cho đến khi đủ cấu hình.
-              </p>
-            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
