@@ -30,6 +30,7 @@ import { getCurrentUser, type CurrentUserState } from '@/lib/current-user';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
 import {
   getActionAccess,
+  getAreaAccess,
   getHumanStatusLabel,
   getNextRecommendedAction,
   getPrimaryRole,
@@ -743,7 +744,7 @@ export default function AdminDashboardPage() {
             value={stats.playersCount}
             color="sky"
             trend={playerTrend}
-            href={`/admin/${tournament.id}/players`}
+            href={getAreaAccess('players', role, uxContext).allowed ? `/admin/${tournament.id}/players` : undefined}
           />
         ) : (
           <StatCard
@@ -754,7 +755,9 @@ export default function AdminDashboardPage() {
             trend={role === 'scorer'
               ? { value: `${stats.completedMatches} đã xong`, type: stats.completedMatches > 0 ? 'success' as const : 'info' as const }
               : { value: `${uxContext.lineupReadyCount} đã sẵn sàng`, type: uxContext.lineupReadyCount > 0 ? 'success' as const : 'info' as const }}
-            href={role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/lineup`}
+            href={getAreaAccess(role === 'scorer' ? 'scoring' : 'lineup', role, uxContext).allowed
+              ? (role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/lineup`)
+              : undefined}
           />
         )}
         {isAdminRole ? (
@@ -764,7 +767,7 @@ export default function AdminDashboardPage() {
             value={stats.teamsCount}
             color="violet"
             trend={teamTrend}
-            href={`/admin/${tournament.id}/teams`}
+            href={getAreaAccess('teams', role, uxContext).allowed ? `/admin/${tournament.id}/teams` : undefined}
           />
         ) : (
           <StatCard
@@ -773,7 +776,9 @@ export default function AdminDashboardPage() {
             value={role === 'scorer' ? stats.completedMatches : uxContext.lineupReadyCount}
             color="violet"
             trend={{ value: 'Chi tiết', type: 'info' as const }}
-            href={role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/lineup`}
+            href={getAreaAccess(role === 'scorer' ? 'scoring' : 'lineup', role, uxContext).allowed
+              ? (role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/lineup`)
+              : undefined}
           />
         )}
         <StatCard
@@ -782,7 +787,7 @@ export default function AdminDashboardPage() {
           value={stats.matchesCount}
           color="amber"
           trend={matchTrend}
-          href={`/admin/${tournament.id}/matches`}
+          href={getAreaAccess('matches', role, uxContext).allowed ? `/admin/${tournament.id}/matches` : undefined}
         />
         <StatCard
           icon={Trophy}
@@ -790,7 +795,7 @@ export default function AdminDashboardPage() {
           value={stats.resultConfirmedMatches}
           color="emerald"
           trend={matchProgressTrend}
-          href={`/admin/${tournament.id}/standings`}
+          href={getAreaAccess('standings', role, uxContext).allowed ? `/admin/${tournament.id}/standings` : undefined}
         />
       </div>
 

@@ -421,3 +421,104 @@ export function getNextRecommendedAction(role: AppRole, context: TournamentUxCon
     href: `/admin/${context.tournamentId}`,
   };
 }
+
+const statusOrder: Record<string, number> = {
+  DRAFT: 0,
+  PLAYER_IMPORT: 1,
+  PLAYERS_READY: 2,
+  TEAM_DRAW_COMPLETED: 3,
+  GROUP_ASSIGNED: 4,
+  SCHEDULE_GENERATED: 5,
+  RUNNING: 6,
+  GROUP_COMPLETED: 7,
+  KNOCKOUT_GENERATED: 8,
+  KNOCKOUT_RUNNING: 9,
+  COMPLETED: 10,
+  PUBLISHED: 11,
+};
+
+function isStatusAtLeast(current: string, required: string): boolean {
+  const currentIdx = statusOrder[current] ?? 0;
+  const requiredIdx = statusOrder[required] ?? 0;
+  return currentIdx >= requiredIdx;
+}
+
+export function getAreaAccess(
+  area: AreaKey,
+  role: AppRole,
+  context: TournamentUxContext
+): AccessResult {
+  if (role === 'guest') {
+    if (area === 'public') return { allowed: true };
+    return { allowed: false, reason: 'Khách chỉ được xem thông tin công khai.' };
+  }
+
+  // Admin and other roles have area-specific constraints based on status workflow
+  switch (area) {
+    case 'public':
+    case 'dashboard':
+    case 'tournament':
+    case 'ruleset':
+    case 'players':
+    case 'audit':
+      return { allowed: true };
+
+    case 'draw':
+      if (!isStatusAtLeast(context.status, 'PLAYERS_READY')) {
+        return {
+          allowed: false,
+          reason: 'Bốc thăm chia đội yêu cầu trạng thái Đủ VĐV (PLAYERS_READY).',
+          required: 'Cần nhập đủ VĐV theo ruleset trước.',
+        };
+      }
+      return { allowed: true };
+
+    case 'teams':
+    case 'groups':
+      if (!isStatusAtLeast(context.status, 'TEAM_DRAW_COMPLETED')) {
+        return {
+          allowed: false,
+          reason: 'Yêu cầu trạng thái Bốc thăm đội hoàn tất (TEAM_DRAW_COMPLETED).',
+          required: 'Cần bốc thăm chia đội trước.',
+        };
+      }
+      return { allowed: true };
+
+    case 'matches':
+    case 'lineup':
+    case 'scoring':
+    case 'standings':
+      if (!isStatusAtLeast(context.status, 'SCHEDULE_GENERATED')) {
+        return {
+          allowed: false,
+          reason: 'Yêu cầu trạng thái Đã có lịch thi đấu (SCHEDULE_GENERATED).',
+          required: 'Cần sinh lịch thi đấu trước.',
+        };
+      }
+      return { allowed: true };
+
+    case 'bracket':
+      if (!isStatusAtLeast(context.status, 'RUNNING') && !isStatusAtLeast(context.status, 'GROUP_COMPLETED')) {
+        return {
+          allowed: false,
+          reason: 'Nhánh đấu playoff sẽ mở sau khi hoàn tất vòng bảng.',
+          required: 'Giải đấu cần ở trạng thái Đang thi đấu (RUNNING) trở lên.',
+        };
+      }
+      return { allowed: true };
+
+    case 'awards':
+      if (!isStatusAtLeast(context.status, 'COMPLETED')) {
+        return {
+          allowed: false,
+          reason: 'Báo cáo giải thưởng chỉ khả dụng khi giải đấu đã hoàn thành.',
+          required: 'Giải đấu cần đạt trạng thái Hoàn tất (COMPLETED) trở lên.',
+        };
+      }
+      return { allowed: true };
+
+    default:
+      return { allowed: true };
+  }
+}
+
