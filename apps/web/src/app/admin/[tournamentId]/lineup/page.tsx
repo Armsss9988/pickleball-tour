@@ -62,6 +62,14 @@ interface MatchDetails extends MatchListItem {
 
 type LineupFormState = Record<TeamKey, Record<string, string[]>>;
 
+interface TournamentTeam {
+  id: string;
+  name: string;
+  captain?: {
+    userId?: string | null;
+  } | null;
+}
+
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string') {
@@ -82,8 +90,10 @@ function filterLineupMatches(data: MatchListItem[]): MatchListItem[] {
 export default function LineupPage() {
   const { tournament, loading: tLoading } = useActiveTournament();
   const { toast } = useToast();
-  const { role } = getCurrentUser();
+  const currentUser = getCurrentUser();
+  const { role, user } = currentUser;
   const [matches, setMatches] = useState<MatchListItem[]>([]);
+  const [teams, setTeams] = useState<TournamentTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<MatchListItem | null>(null);
   const [matchDetails, setMatchDetails] = useState<MatchDetails | null>(null);
@@ -98,8 +108,12 @@ export default function LineupPage() {
       void (async () => {
         try {
           setLoading(true);
-          const data = (await apiFetch(`/tournaments/${tournament.id}/matches`)) as MatchListItem[];
-          setMatches(filterLineupMatches(data));
+          const [matchesData, teamsData] = await Promise.all([
+            apiFetch(`/tournaments/${tournament.id}/matches`) as Promise<MatchListItem[]>,
+            apiFetch(`/tournaments/${tournament.id}/teams`) as Promise<TournamentTeam[]>,
+          ]);
+          setMatches(filterLineupMatches(matchesData));
+          setTeams(teamsData);
         } catch (error: unknown) {
           console.error(error);
           toast(getErrorMessage(error, 'Lỗi tải lịch thi đấu.'), 'error');
@@ -112,6 +126,14 @@ export default function LineupPage() {
     return () => window.clearTimeout(timerId);
   }, [toast, tournament]);
 
+  const ownedTeamIds = teams
+    .filter((team) => team.captain?.userId && team.captain.userId === user?.id)
+    .map((team) => team.id);
+  const tournamentOwnsTeam = ownedTeamIds.length > 0;
+  const ownedTeamKey: TeamKey | null = matchDetails
+    ? (ownedTeamIds.includes(matchDetails.teamAId) ? 'teamA' : ownedTeamIds.includes(matchDetails.teamBId) ? 'teamB' : null)
+    : null;
+
   const uxContext = buildTournamentUxContext({
     tournament,
     stats: {
@@ -121,13 +143,20 @@ export default function LineupPage() {
       completedMatches: 0,
       resultConfirmedMatches: 0,
     },
-    currentUserOwnsTeam: role === 'captain',
+    currentUserOwnsTeam: tournamentOwnsTeam,
   });
 
   const submitAccess = getActionAccess('submitLineup', role, uxContext);
   const canLockLineups = role === 'btc_admin' || role === 'super_admin';
   const isLineupLocked = matchDetails?.status === 'READY';
-  const disableLineupEditing = actionLoading || !submitAccess.allowed || isLineupLocked;
+  const captainBlockedForSelectedMatch = role === 'captain' && Boolean(matchDetails) && ownedTeamKey === null;
+  const disableLineupEditing = actionLoading || !submitAccess.allowed || isLineupLocked || captainBlockedForSelectedMatch;
+
+  function canEditTeam(teamKey: TeamKey): boolean {
+    if (disableLineupEditing) return false;
+    if (role !== 'captain') return true;
+    return ownedTeamKey === teamKey;
+  }
 
   const handleSelectMatch = async (match: MatchListItem) => {
     setSelectedMatch(match);
@@ -169,7 +198,7 @@ export default function LineupPage() {
   };
 
   const handleSubmitLineup = async (teamKey: TeamKey) => {
-    if (!matchDetails || !submitAccess.allowed) return;
+    if (!matchDetails || !submitAccess.allowed || !canEditTeam(teamKey)) return;
 
     const teamId = teamKey === 'teamA' ? matchDetails.teamAId : matchDetails.teamBId;
     const segmentsPayload = Object.keys(lineupsData[teamKey]).map((segmentId) => ({
@@ -179,12 +208,14 @@ export default function LineupPage() {
 
     setActionLoading(true);
     try {
-      await apiFetch(`/matches/${matchDetails.id}/lineup`, {
-        method: 'POST',
-        body: [{
-          teamId,
-          segments: segmentsPayload,
-        }],
+      await apiFetch(`/matches/${matchDetails.id}/lineups`, {
+        method: 'PUT',
+        body: {
+          teamLineups: [{
+            teamId,
+            segments: segmentsPayload,
+          }],
+        },
       });
 
       toast(`Đã lưu đội hình thi đấu cho ${teamKey === 'teamA' ? 'Đội A' : 'Đội B'} thành công!`, 'success');
@@ -203,7 +234,7 @@ export default function LineupPage() {
     setActionLoading(true);
 
     try {
-      await apiFetch(`/matches/${matchDetails.id}/lineup/lock`, {
+      await apiFetch(`/matches/${matchDetails.id}/lineups/lock`, {
         method: 'POST',
       });
 
@@ -212,8 +243,12 @@ export default function LineupPage() {
       setMatchDetails(null);
       setLockModalOpen(false);
       if (tournament) {
-        const data = (await apiFetch(`/tournaments/${tournament.id}/matches`)) as MatchListItem[];
-        setMatches(filterLineupMatches(data));
+        const [matchesData, teamsData] = await Promise.all([
+          apiFetch(`/tournaments/${tournament.id}/matches`) as Promise<MatchListItem[]>,
+          apiFetch(`/tournaments/${tournament.id}/teams`) as Promise<TournamentTeam[]>,
+        ]);
+        setMatches(filterLineupMatches(matchesData));
+        setTeams(teamsData);
       }
     } catch (error: unknown) {
       toast(getErrorMessage(error, 'Lỗi khóa đội hình.'), 'error');
@@ -325,7 +360,13 @@ export default function LineupPage() {
 
               {role === 'captain' && (
                 <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-                  Bạn đang ở chế độ đội trưởng. Hãy chỉ khai báo đội hình cho đội của mình. Việc khóa lineup do BTC thực hiện.
+                  Bạn đang ở chế độ đội trưởng. Bạn chỉ có thể sửa lineup cho đội mình phụ trách. Việc khóa lineup do BTC thực hiện.
+                </div>
+              )}
+
+              {captainBlockedForSelectedMatch && (
+                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-xs text-rose-100">
+                  Bạn không phải đội trưởng của một trong hai đội ở trận này, nên chỉ có thể xem lineup mà không thể chỉnh sửa.
                 </div>
               )}
 
@@ -347,7 +388,7 @@ export default function LineupPage() {
                             value={lineupsData.teamA[segment.id]?.[slotIdx] || ''}
                             onChange={(event) => handlePlayerChange('teamA', segment.id, slotIdx, event.target.value)}
                             className="premium-input text-xs"
-                            disabled={disableLineupEditing}
+                            disabled={!canEditTeam('teamA')}
                           >
                             <option value="">-- Chọn VĐV --</option>
                             {matchDetails.teamA?.members?.map((member) => (
@@ -364,7 +405,7 @@ export default function LineupPage() {
                   <button
                     onClick={() => handleSubmitLineup('teamA')}
                     className="btn btn-secondary flex w-full items-center justify-center gap-2 border-slate-700 py-2.5 text-xs hover:bg-slate-800"
-                    disabled={disableLineupEditing}
+                    disabled={!canEditTeam('teamA')}
                   >
                     <Save className="h-4 w-4" />
                     Lưu Lineup Đội A
@@ -388,7 +429,7 @@ export default function LineupPage() {
                             value={lineupsData.teamB[segment.id]?.[slotIdx] || ''}
                             onChange={(event) => handlePlayerChange('teamB', segment.id, slotIdx, event.target.value)}
                             className="premium-input text-xs"
-                            disabled={disableLineupEditing}
+                            disabled={!canEditTeam('teamB')}
                           >
                             <option value="">-- Chọn VĐV --</option>
                             {matchDetails.teamB?.members?.map((member) => (
@@ -405,7 +446,7 @@ export default function LineupPage() {
                   <button
                     onClick={() => handleSubmitLineup('teamB')}
                     className="btn btn-secondary flex w-full items-center justify-center gap-2 border-slate-700 py-2.5 text-xs hover:bg-slate-800"
-                    disabled={disableLineupEditing}
+                    disabled={!canEditTeam('teamB')}
                   >
                     <Save className="h-4 w-4" />
                     Lưu Lineup Đội B
