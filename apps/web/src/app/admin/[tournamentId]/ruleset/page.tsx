@@ -4,7 +4,7 @@ import { useActiveTournament } from '@/lib/use-tournament';
 import { PageHeader } from '@/components/page-header';
 import { PageLoading } from '@/components/loading-skeleton';
 import { apiFetch } from '@/lib/api-client';
-import { ClipboardList, Users, Target, Save, Edit3, X } from '@/components/icons';
+import { ClipboardList, Users, Target, Save, Edit3, X, Lock } from '@/components/icons';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { getCurrentUser } from '@/lib/current-user';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
@@ -318,12 +318,25 @@ export default function RulesetSettingsPage() {
         />
 
         {!editAccess.allowed && (
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
-            <div>{editAccess.reason}</div>
-            {editAccess.required && (
-              <div className="mt-2 text-xs text-amber-100/80">{editAccess.required}</div>
-            )}
-          </div>
+          editAccess.locked ? (
+            <div className="rounded-xl border border-rose-500/25 bg-rose-500/8 px-4 py-3 text-sm text-rose-350 flex items-start gap-2.5">
+              <Lock className="w-4 h-4 text-rose-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <span className="font-semibold text-rose-200">Luật thi đấu đã bị KHÓA!</span>
+                {' '}{editAccess.reason}
+                {editAccess.required && (
+                  <div className="mt-1 text-xs text-slate-400">{editAccess.required}</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
+              <div>{editAccess.reason}</div>
+              {editAccess.required && (
+                <div className="mt-2 text-xs text-amber-100/80">{editAccess.required}</div>
+              )}
+            </div>
+          )
         )}
 
         <div className="card p-6 space-y-6">

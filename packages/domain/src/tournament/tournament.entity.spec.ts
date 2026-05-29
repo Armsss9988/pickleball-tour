@@ -5,15 +5,16 @@ describe('Tournament Entity', () => {
   it('should transition status successfully if allowed', () => {
     const t = new Tournament('t-1', 'DRAFT');
     expect(t.status).toBe('DRAFT');
-    expect(t.isRulesetLocked()).toBe(false);
 
-    t.transitionTo('PLAYER_IMPORT');
-    expect(t.status).toBe('PLAYER_IMPORT');
-    expect(t.isRulesetLocked()).toBe(true);
+    t.transitionTo('PUBLISHED');
+    expect(t.status).toBe('PUBLISHED');
+
+    t.transitionTo('DRAFT');
+    expect(t.status).toBe('DRAFT');
   });
 
   it('should fail transition if invalid', () => {
     const t = new Tournament('t-1', 'DRAFT');
-    expect(() => t.transitionTo('RUNNING')).toThrow();
+    expect(() => t.transitionTo('DRAFT')).toThrow();
   });
 });

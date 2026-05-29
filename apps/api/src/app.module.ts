@@ -20,6 +20,7 @@ import { OrganizationModule } from './modules/organization/organization.module';
 import { RegistrationModule } from './modules/registration/registration.module';
 import { AwardModule } from './modules/award/award.module';
 import { PublicModule } from './modules/public/public.module';
+import { CourtModule } from './modules/court/court.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { PublicModule } from './modules/public/public.module';
     RegistrationModule,
     AwardModule,
     PublicModule,
+    CourtModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -7,13 +7,31 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { PageLoading } from '@/components/loading-skeleton';
 import { useToast } from '@/components/toast';
-import { Calendar, Save, Info, MapPin, Clock, ArrowRight } from '@/components/icons';
+import { Calendar, Save, Info, MapPin, Clock, ArrowRight, Plus, Trash2, AlertTriangle, Loader2 } from '@/components/icons';
 
 interface ScheduleFormState {
   venueName: string;
   openingTime: string;
-  courtCount: string;
-  notes: string;
+}
+
+interface Court {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+}
+
+interface Conflict {
+  courtId: string | null;
+  courtName: string;
+  scheduledTime: string;
+  matchIds: string[];
+  matches: {
+    id: string;
+    label: string;
+    teamAName: string;
+    teamBName: string;
+  }[];
 }
 
 function toDatetimeLocal(value: string | Date | null | undefined): string {
@@ -21,7 +39,6 @@ function toDatetimeLocal(value: string | Date | null | undefined): string {
   try {
     const d = new Date(value);
     if (isNaN(d.getTime())) return '';
-    // Format: YYYY-MM-DDTHH:MM
     return d.toISOString().slice(0, 16);
   } catch {
     return '';
@@ -35,20 +52,56 @@ export default function ScheduleConfigPage() {
   const [form, setForm] = useState<ScheduleFormState>({
     venueName: '',
     openingTime: '',
-    courtCount: '',
-    notes: '',
   });
+
+  // Court states
+  const [courts, setCourts] = useState<Court[]>([]);
+  const [loadingCourts, setLoadingCourts] = useState(false);
+  const [newCourtName, setNewCourtName] = useState('');
+  const [newCourtDescription, setNewCourtDescription] = useState('');
+  const [addingCourt, setAddingCourt] = useState(false);
+  const [deletingCourtId, setDeletingCourtId] = useState<string | null>(null);
+
+  // Conflict states
+  const [conflicts, setConflicts] = useState<Conflict[]>([]);
+  const [loadingConflicts, setLoadingConflicts] = useState(false);
 
   useEffect(() => {
     if (tournament) {
       setForm({
         venueName: tournament.venueName ?? '',
         openingTime: toDatetimeLocal(tournament.openingTime),
-        courtCount: (tournament as { courtCount?: number | null }).courtCount?.toString() ?? '',
-        notes: (tournament as { notes?: string | null }).notes ?? '',
       });
+      fetchCourts();
+      fetchConflicts();
     }
   }, [tournament]);
+
+  async function fetchCourts() {
+    if (!tournament) return;
+    setLoadingCourts(true);
+    try {
+      const data = await apiFetch(`/tournaments/${tournament.id}/courts`);
+      setCourts(data);
+    } catch (err) {
+      console.error('Failed to load courts:', err);
+    } finally {
+      setLoadingCourts(false);
+    }
+  }
+
+  async function fetchConflicts() {
+    if (!tournament) return;
+    setLoadingConflicts(true);
+    try {
+      const data = await apiFetch(`/tournaments/${tournament.id}/courts/conflicts`);
+      setConflicts(data);
+    } catch (err) {
+      console.error('Failed to load conflicts:', err);
+    } finally {
+      setLoadingConflicts(false);
+    }
+  }
 
   function handleChange(field: keyof ScheduleFormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -64,15 +117,60 @@ export default function ScheduleConfigPage() {
         method: 'PATCH',
         body: {
           venueName: form.venueName || undefined,
-          openingTime: form.openingTime ? new Date(form.openingTime).toISOString() : undefined,
+          openingTime: form.openingTime ? new Date(form.openingTime).toISOString() : null,
         },
       });
-      toast('Đã lưu cấu hình lịch & sân thành công!', 'success');
+      toast('Đã lưu cấu hình lịch đấu thành công!', 'success');
       reload();
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Không thể lưu, thử lại sau.', 'error');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCreateCourt(e: React.FormEvent) {
+    e.preventDefault();
+    if (!tournament || !newCourtName.trim()) return;
+
+    setAddingCourt(true);
+    try {
+      await apiFetch(`/tournaments/${tournament.id}/courts`, {
+        method: 'POST',
+        body: {
+          name: newCourtName,
+          description: newCourtDescription || undefined,
+        },
+      });
+      setNewCourtName('');
+      setNewCourtDescription('');
+      toast('Đã thêm sân đấu thành công!', 'success');
+      fetchCourts();
+      fetchConflicts();
+      reload(); // reload tournament for readiness indicator
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Không thể thêm sân.', 'error');
+    } finally {
+      setAddingCourt(false);
+    }
+  }
+
+  async function handleDeleteCourt(courtId: string) {
+    if (!tournament || !window.confirm('Bạn có chắc chắn muốn xóa sân đấu này?')) return;
+
+    setDeletingCourtId(courtId);
+    try {
+      await apiFetch(`/tournaments/${tournament.id}/courts/${courtId}`, {
+        method: 'DELETE',
+      });
+      toast('Đã xóa sân đấu thành công!', 'success');
+      fetchCourts();
+      fetchConflicts();
+      reload();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Không thể xóa sân đấu này.', 'error');
+    } finally {
+      setDeletingCourtId(null);
     }
   }
 
@@ -83,127 +181,239 @@ export default function ScheduleConfigPage() {
       <PageHeader
         icon={Calendar}
         title="Cấu hình lịch & Sân"
-        description="Thiết lập địa điểm, thời gian khai mạc và số sân thi đấu. Bước này có thể làm ngay sau khi có luật thi đấu."
+        description="Thiết lập địa điểm, thời gian khai mạc và số sân thi đấu phục vụ vận hành giải."
       />
 
-      {/* Info banner */}
+      {/* Dependency readiness info banner */}
       <div className="flex items-start gap-3 rounded-xl border border-sky-500/25 bg-sky-500/8 px-4 py-3 text-sm text-sky-300">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-sky-400" />
         <div>
-          <span className="font-semibold text-sky-200">Trang này có thể thiết lập từ sớm.</span>
-          {' '}Cấu hình lịch không phụ thuộc vào bốc thăm hay sinh lịch. Bạn có thể cập nhật địa điểm và thời gian bất cứ lúc nào trước khi giải bắt đầu.
+          <span className="font-semibold text-sky-200">Trạng thái cấu hình lịch & sân:</span>
+          {' '}Cần cập nhật tên địa điểm, thời gian khai mạc và thêm ít nhất 1 sân đấu để đạt trạng thái hợp lệ (VALID).
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-5">
-        {/* Venue & Time */}
-        <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5 space-y-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Địa điểm & Thời gian
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label htmlFor="sch-venue" className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-                <MapPin className="h-3.5 w-3.5" />
-                Tên địa điểm / Sân thi đấu
-              </label>
-              <input
-                id="sch-venue"
-                type="text"
-                value={form.venueName}
-                onChange={(e) => handleChange('venueName', e.target.value)}
-                placeholder="Ví dụ: Sân Pickleball GOLAB Q.10"
-                className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 transition-all"
-              />
+      {/* Main Layout Grid */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Left Column: Venue & Time */}
+        <div className="lg:col-span-2 space-y-6">
+          <form onSubmit={handleSave} className="space-y-5 rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Địa điểm & Thời gian
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="sch-opening" className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-                <Clock className="h-3.5 w-3.5" />
-                Thời gian khai mạc
-              </label>
-              <input
-                id="sch-opening"
-                type="datetime-local"
-                value={form.openingTime}
-                onChange={(e) => handleChange('openingTime', e.target.value)}
-                className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-200 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 transition-all [color-scheme:dark]"
-              />
-            </div>
-          </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="sch-venue" className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                  <MapPin className="h-3.5 w-3.5 text-amber-500" />
+                  Địa điểm giải đấu
+                </label>
+                <input
+                  id="sch-venue"
+                  type="text"
+                  value={form.venueName}
+                  onChange={(e) => handleChange('venueName', e.target.value)}
+                  placeholder="Ví dụ: Sân Pickleball GOLAB Q.10"
+                  className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 transition-all"
+                />
+              </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="sch-courts" className="text-xs font-semibold text-slate-400">
-              Số sân thi đấu (dự kiến)
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                id="sch-courts"
-                type="number"
-                min={1}
-                max={20}
-                value={form.courtCount}
-                onChange={(e) => handleChange('courtCount', e.target.value)}
-                placeholder="Ví dụ: 4"
-                className="w-40 rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 transition-all"
-              />
-              <span className="text-xs text-slate-500">sân (thông tin tham khảo, chưa ảnh hưởng sinh lịch)</span>
+              <div className="space-y-1.5">
+                <label htmlFor="sch-opening" className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                  <Clock className="h-3.5 w-3.5 text-amber-500" />
+                  Thời gian bắt đầu giải đấu
+                </label>
+                <input
+                  id="sch-opening"
+                  type="datetime-local"
+                  value={form.openingTime}
+                  onChange={(e) => handleChange('openingTime', e.target.value)}
+                  className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2.5 text-sm text-slate-200 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 transition-all [color-scheme:dark]"
+                />
+              </div>
             </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-500/15 px-4 py-2.5 text-sm font-semibold text-amber-400 hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50 transition-all border border-amber-500/10"
+              >
+                <Save className="h-4 w-4" />
+                {saving ? 'Đang lưu...' : 'Lưu cài đặt'}
+              </button>
+            </div>
+          </form>
+
+          {/* Schedule Conflicts Section */}
+          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Phát hiện trùng lịch & Sân đấu
+              </div>
+              <button
+                onClick={fetchConflicts}
+                disabled={loadingConflicts}
+                className="text-xs text-slate-400 hover:text-amber-400 transition-colors"
+              >
+                {loadingConflicts ? 'Đang kiểm tra...' : 'Tải lại'}
+              </button>
+            </div>
+
+            {conflicts.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-4 text-sm text-emerald-400">
+                <Info className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                <span>Không phát hiện xung đột lịch thi đấu nào.</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/25 bg-rose-500/8 px-4 py-3 text-sm text-rose-300">
+                  <AlertTriangle className="h-4 w-4 text-rose-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-semibold text-rose-200">Xung đột lịch thi đấu!</span>
+                    {' '}Phát hiện {conflicts.length} khung giờ có nhiều hơn 1 trận cùng xếp trên một sân.
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {conflicts.map((conflict, idx) => (
+                    <div key={idx} className="rounded-xl bg-slate-950/40 border border-slate-800/60 p-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-slate-400">
+                        <span className="font-semibold text-slate-200">{conflict.courtName}</span>
+                        <span>
+                          {new Date(conflict.scheduledTime).toLocaleString('vi-VN', {
+                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                      <div className="space-y-1 pl-2 border-l border-rose-500/50">
+                        {conflict.matches.map((m) => (
+                          <div key={m.id} className="text-xs text-rose-300 flex items-center justify-between">
+                            <span>{m.label} ({m.teamAName} vs {m.teamBName})</span>
+                            <Link
+                              href={`/admin/${tournament?.id}/groups`}
+                              className="text-[10px] text-slate-500 hover:text-amber-400 underline"
+                            >
+                              Đổi lịch
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Current status summary */}
-        <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-4">
-            Tóm tắt trạng thái
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl bg-slate-950/40 px-4 py-3">
-              <div className="text-[11px] text-slate-500">Địa điểm</div>
-              <div className="mt-1 text-sm font-semibold text-slate-200">
-                {tournament?.venueName || <span className="text-slate-500 italic">Chưa thiết lập</span>}
-              </div>
+        {/* Right Column: Court Management */}
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5 space-y-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Quản lý sân đấu
             </div>
-            <div className="rounded-xl bg-slate-950/40 px-4 py-3">
-              <div className="text-[11px] text-slate-500">Thời gian khai mạc</div>
-              <div className="mt-1 text-sm font-semibold text-slate-200">
-                {tournament?.openingTime
-                  ? new Date(tournament.openingTime).toLocaleString('vi-VN', {
-                      day: '2-digit', month: '2-digit', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
-                    })
-                  : <span className="text-slate-500 italic">Chưa thiết lập</span>}
+
+            {/* Add Court Form */}
+            <form onSubmit={handleCreateCourt} className="space-y-3">
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  required
+                  placeholder="Tên sân (ví dụ: Sân số 1)"
+                  value={newCourtName}
+                  onChange={(e) => setNewCourtName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2 text-sm text-slate-200 outline-none focus:border-amber-500/50 transition-all"
+                />
               </div>
-            </div>
-            <div className="rounded-xl bg-slate-950/40 px-4 py-3">
-              <div className="text-[11px] text-slate-500">Trạng thái giải</div>
-              <div className="mt-1 text-sm font-semibold text-slate-200">
-                {tournament?.status ?? '—'}
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  placeholder="Mô tả sân (tùy chọn)"
+                  value={newCourtDescription}
+                  onChange={(e) => setNewCourtDescription(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2 text-sm text-slate-200 outline-none focus:border-amber-500/50 transition-all"
+                />
               </div>
+              <button
+                type="submit"
+                disabled={addingCourt || !newCourtName.trim()}
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 text-xs font-bold py-2.5 transition-all"
+              >
+                {addingCourt ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" />
+                )}
+                Thêm Sân Đấu
+              </button>
+            </form>
+
+            <hr className="border-slate-800" />
+
+            {/* Court list */}
+            <div className="space-y-2">
+              <div className="text-xs font-semibold text-slate-400">
+                Sân đấu hiện có ({courts.length})
+              </div>
+
+              {loadingCourts ? (
+                <div className="py-8 flex justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+                </div>
+              ) : courts.length === 0 ? (
+                <div className="text-center py-6 text-xs text-slate-500 italic">
+                  Chưa có sân đấu nào được thêm.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  {courts.map((court) => (
+                    <div
+                      key={court.id}
+                      className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-850 hover:border-slate-800 transition-colors"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="text-xs font-bold text-slate-200 truncate">{court.name}</div>
+                        {court.description && (
+                          <div className="text-[10px] text-slate-550 truncate mt-0.5">{court.description}</div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCourt(court.id)}
+                        disabled={deletingCourtId === court.id}
+                        className="text-slate-500 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-500/10 transition-all flex-shrink-0"
+                        title="Xóa sân"
+                      >
+                        {deletingCourtId === court.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Action row */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link
-            href={tournament ? `/admin/${tournament.id}/tournament` : '#'}
-            className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors"
-          >
-            Xem thêm thông tin giải đấu <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-amber-500/15 px-4 py-2.5 text-sm font-semibold text-amber-400 hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
-          </button>
-        </div>
-      </form>
+      {/* Action footer */}
+      <div className="flex justify-between items-center bg-slate-900/30 border border-slate-850 rounded-2xl p-4">
+        <Link
+          href={`/admin/${tournament?.id}/tournament`}
+          className="text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1 transition-colors"
+        >
+          <ArrowRight className="h-3.5 w-3.5 rotate-180" /> Quay lại thông tin giải
+        </Link>
+        <Link
+          href={`/admin/${tournament?.id}/draw`}
+          className="flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors"
+        >
+          Tiến hành bốc thăm chia đội <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
     </div>
   );
 }

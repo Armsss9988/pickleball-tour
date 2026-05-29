@@ -1,4 +1,5 @@
 import type { TournamentUxContext } from './tournament-ux-policy';
+import { getEffectivePhase, isRulesetLocked as checkRulesetLocked, canUnpublish as checkCanUnpublish } from '@golab/domain';
 
 const DEFAULT_TEAM_TARGET = 8;
 
@@ -16,6 +17,11 @@ interface TournamentRulesetLike {
   segments?: unknown[] | null;
 }
 
+interface TournamentSectionStatusLike {
+  sectionKey: string;
+  status: 'EMPTY' | 'VALID' | 'INVALID' | 'NEEDS_REVIEW';
+}
+
 interface TournamentLike {
   id?: string | null;
   slug?: string | null;
@@ -25,6 +31,7 @@ interface TournamentLike {
   status?: string | null;
   publicEnabled?: boolean | null;
   ruleset?: TournamentRulesetLike | null;
+  sectionStatuses?: TournamentSectionStatusLike[] | Record<string, 'EMPTY' | 'VALID' | 'INVALID' | 'NEEDS_REVIEW'> | null;
 }
 
 export interface TournamentUxStats {
@@ -37,6 +44,7 @@ export interface TournamentUxStats {
   resultConfirmedMatches?: number;
   lineupReadyCount?: number;
   scoringReadyCount?: number;
+  hasScoredMatches?: boolean;
 }
 
 export interface BuildTournamentUxContextInput {
@@ -115,29 +123,10 @@ function getRequiredCounts(
 }
 
 function hasKnockoutStage(status: string, matchCount: number): boolean {
-  if (status === 'KNOCKOUT_GENERATED' || status === 'KNOCKOUT_RUNNING') {
-    return true;
-  }
-
   return matchCount > 0 && (status === 'COMPLETED' || status === 'PUBLISHED');
 }
 
 function areGroupsAssigned(status: string, teamCount: number, matchCount: number): boolean {
-  const statusWithGroups = new Set([
-    'GROUP_ASSIGNED',
-    'SCHEDULE_GENERATED',
-    'RUNNING',
-    'GROUP_COMPLETED',
-    'KNOCKOUT_GENERATED',
-    'KNOCKOUT_RUNNING',
-    'COMPLETED',
-    'PUBLISHED',
-  ]);
-
-  if (statusWithGroups.has(status)) {
-    return true;
-  }
-
   return teamCount > 0 && matchCount > 0;
 }
 
@@ -155,13 +144,53 @@ export function buildTournamentUxContext(input: BuildTournamentUxContextInput): 
   const completedMatchCount = toNonNegativeInteger(stats.completedMatches);
   const resultConfirmedMatchCount = toNonNegativeInteger(stats.resultConfirmedMatches);
   const ruleset = tournament?.ruleset ?? null;
-  const status = tournament?.status ?? 'DRAFT';
+  const status = tournament?.status === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT';
   const required = getRequiredCounts(ruleset, teamCount);
+
+  // Map sectionStatuses from array or object
+  const sectionStatuses: Record<string, 'EMPTY' | 'VALID' | 'INVALID' | 'NEEDS_REVIEW'> = {
+    info: 'EMPTY',
+    ruleset: 'EMPTY',
+    players: 'EMPTY',
+    teams: 'EMPTY',
+    schedule: 'EMPTY',
+  };
+
+  if (Array.isArray(tournament?.sectionStatuses)) {
+    for (const item of tournament.sectionStatuses) {
+      if (item && item.sectionKey) {
+        sectionStatuses[item.sectionKey] = item.status;
+      }
+    }
+  } else if (tournament?.sectionStatuses && typeof tournament.sectionStatuses === 'object') {
+    Object.entries(tournament.sectionStatuses).forEach(([key, val]) => {
+      if (typeof val === 'string') {
+        sectionStatuses[key] = val as any;
+      }
+    });
+  }
+
+  const isOperationallyReady =
+    sectionStatuses.ruleset === 'VALID' &&
+    sectionStatuses.players === 'VALID' &&
+    sectionStatuses.teams === 'VALID' &&
+    sectionStatuses.schedule === 'VALID';
+
+  const openingTimeDate = tournament?.openingTime
+    ? new Date(tournament.openingTime)
+    : null;
+
+  const hasScoredMatches = Boolean(stats.hasScoredMatches) || completedMatchCount > 0;
+  const phase = getEffectivePhase(status, openingTimeDate, isOperationallyReady);
+  const isRulesetLockedVal = checkRulesetLocked(phase, hasScoredMatches);
+  const canUnpublishVal = checkCanUnpublish(phase);
 
   return {
     tournamentId: tournament?.id ?? '',
     tournamentSlug: tournament?.slug ?? null,
     status,
+    phase,
+    openingTime: tournament?.openingTime ? new Date(tournament.openingTime) : null,
     publicEnabled: Boolean(tournament?.publicEnabled),
     hasTournamentInfo: hasTournamentInfo(tournament),
     hasValidRuleset: Boolean(
@@ -169,14 +198,11 @@ export function buildTournamentUxContext(input: BuildTournamentUxContextInput): 
       && hasRulesetScoring(ruleset)
       && hasRulesetSegments(ruleset),
     ),
-    hasDependentSetupData:
-      playerTotal > 0
-      || teamCount > 0
-      || matchCount > 0
-      || lineupReadyCount > 0
-      || scoringReadyCount > 0
-      || completedMatchCount > 0
-      || resultConfirmedMatchCount > 0,
+    isRulesetLocked: isRulesetLockedVal,
+    canUnpublish: canUnpublishVal,
+    isOperationallyReady,
+    hasScoredMatches,
+    sectionStatuses,
     playerTotal,
     maleCount,
     femaleCount,

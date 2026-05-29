@@ -22,6 +22,7 @@ export class ScheduleController {
     @Request() req: any,
     @Body('scheduledTime') scheduledTime?: string,
     @Body('courtName') courtName?: string,
+    @Body('courtId') courtId?: string,
     @Body('matchNo') matchNo?: number
   ) {
     return this.scheduleService.updateMatchSchedule(
@@ -29,7 +30,8 @@ export class ScheduleController {
       scheduledTime || null,
       courtName || null,
       matchNo !== undefined ? matchNo : null,
-      req.user.id
+      req.user.id,
+      courtId || null
     );
   }
 }

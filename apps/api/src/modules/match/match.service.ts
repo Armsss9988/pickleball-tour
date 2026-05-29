@@ -3,12 +3,14 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { MatchMapper } from './match.mapper';
 import { MatchStatus } from '@golab/contracts';
+import { TournamentSectionValidatorService } from '../tournament/tournament-section-validator.service';
 
 @Injectable()
 export class MatchService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
+    private readonly validatorService: TournamentSectionValidatorService,
   ) {}
 
   /**
@@ -41,13 +43,14 @@ export class MatchService {
           orderBy: { segmentOrder: 'asc' },
         },
         result: true,
+        court: true,
       },
       orderBy: { matchNo: 'asc' },
     });
   }
 
   /**
-   * Fetches full details for a match, including segments, lineups, results and active score events.
+   * Fetches full details for a match.
    */
   async findOne(matchId: string) {
     const match = await this.prisma.match.findUnique({
@@ -82,6 +85,7 @@ export class MatchService {
           orderBy: { eventNo: 'asc' },
         },
         result: true,
+        court: true,
       },
     });
 
@@ -94,7 +98,6 @@ export class MatchService {
 
   /**
    * Starts a match by transitioning its status to RUNNING.
-   * Precondition: All 6 lineups (3 segments * 2 teams) must be locked.
    */
   async startMatch(matchId: string, userId: string) {
     const match = await this.findOne(matchId);
@@ -102,12 +105,10 @@ export class MatchService {
     const domainMatch = MatchMapper.toDomain(match);
     domainMatch.transitionTo('RUNNING');
 
-    // Load lineups for this match
     const lineups = await this.prisma.matchLineup.findMany({
       where: { matchId },
     });
 
-    // We must have exactly 6 lineups (3 segments * 2 teams)
     const expectedLineupCount = match.segments.length * 2;
     const allLocked = lineups.length === expectedLineupCount && lineups.every((l) => l.status === 'LOCKED');
 
@@ -123,7 +124,6 @@ export class MatchService {
         data: MatchMapper.toPersistence(domainMatch),
       });
 
-      // Update the first segment to RUNNING as well
       const firstSeg = match.segments[0];
       if (firstSeg) {
         await tx.matchSegment.update({
@@ -145,5 +145,42 @@ export class MatchService {
 
       return updated;
     });
+  }
+
+  /**
+   * Deletes a match manually.
+   */
+  async deleteMatch(matchId: string, userId: string) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+    });
+    if (!match) {
+      throw new NotFoundException('Không tìm thấy trận đấu.');
+    }
+
+    if (match.status !== 'SCHEDULED') {
+      throw new BadRequestException('Chỉ có thể xóa trận đấu ở trạng thái SCHEDULED.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.matchSegment.deleteMany({ where: { matchId } });
+      await tx.matchLineupPlayer.deleteMany({ where: { matchLineup: { matchId } } });
+      await tx.matchLineup.deleteMany({ where: { matchId } });
+      await tx.match.delete({ where: { id: matchId } });
+    });
+
+    await this.auditService.log({
+      organizationId: match.organizationId,
+      tournamentId: match.tournamentId,
+      actorUserId: userId,
+      action: 'MATCH_DELETED',
+      entityType: 'Match',
+      entityId: matchId,
+      beforeData: match,
+    });
+
+    await this.validatorService.validateAll(match.tournamentId);
+
+    return { deleted: true };
   }
 }

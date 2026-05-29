@@ -197,11 +197,7 @@ export class BracketService {
         createdNodes.push(bNode);
       }
 
-      // Update tournament status to KNOCKOUT_GENERATED
-      await tx.tournament.update({
-        where: { id: tournamentId },
-        data: { status: 'KNOCKOUT_GENERATED' },
-      });
+      // Removed deprecated status update for KNOCKOUT_GENERATED
 
       await this.auditService.log({
         organizationId: tournament.organizationId,
@@ -249,10 +245,7 @@ export class BracketService {
     if (!winnerToKey) {
       // If no next node key, this was the Final match!
       // Tournament is complete!
-      await prisma.tournament.update({
-        where: { id: node.tournamentId },
-        data: { status: 'COMPLETED' },
-      });
+      // Removed deprecated status update for COMPLETED
       return;
     }
 

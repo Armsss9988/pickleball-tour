@@ -4,11 +4,14 @@ import { AuditService } from '../audit/audit.service';
 import { Ruleset as DomainRuleset } from '@golab/domain';
 import { CreateRulesetDto, Gender } from '@golab/contracts';
 
+import { TournamentSectionValidatorService } from '../tournament/tournament-section-validator.service';
+
 @Injectable()
 export class RulesetService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
+    private readonly validatorService: TournamentSectionValidatorService,
   ) {}
 
   /**
@@ -230,6 +233,9 @@ export class RulesetService {
         entityId: activeRulesetId,
         afterData: updatedRuleset,
       });
+
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['players', 'teams', 'lineup']);
+      await this.validatorService.validateAll(tournamentId);
 
       return updatedRuleset;
     });

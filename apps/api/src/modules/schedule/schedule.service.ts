@@ -7,12 +7,14 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ScheduleGeneratorService } from '@golab/domain';
 import { MatchStatus, SegmentStatus } from '@golab/contracts';
+import { TournamentSectionValidatorService } from '../tournament/tournament-section-validator.service';
 
 @Injectable()
 export class ScheduleService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly validatorService: TournamentSectionValidatorService,
   ) {}
 
   /**
@@ -37,12 +39,6 @@ export class ScheduleService {
 
     if (!tournament) {
       throw new NotFoundException(`Không tìm thấy giải đấu.`);
-    }
-
-    if (tournament.status !== 'GROUP_ASSIGNED') {
-      throw new BadRequestException(
-        'Sinh lịch thi đấu đang khóa vì chưa phân bảng. Hãy phân 8 đội vào bảng trước.',
-      );
     }
 
     const ruleset = tournament.ruleset;
@@ -71,7 +67,12 @@ export class ScheduleService {
         where: { tournamentId, stageId: stage.id },
       });
 
-      const courts = ['Sân 1', 'Sân 2']; // Default courts
+      // Default courts: fetch from DB if there are any, else default strings
+      const dbCourts = await tx.court.findMany({
+        where: { tournamentId, isActive: true },
+        orderBy: { sortOrder: 'asc' },
+      });
+
       const intervalMinutes = 45; // Default match duration slot
       const startDate = tournament.openingTime || new Date();
 
@@ -88,8 +89,22 @@ export class ScheduleService {
           const pair = pairings[idx];
           if (!pair) continue;
 
-          const courtIdx = idx % courts.length;
-          const timeSlot = Math.floor(idx / courts.length);
+          // Assign court if courts exist in DB, otherwise use default names
+          let courtId: string | null = null;
+          let courtName: string | null = null;
+
+          if (dbCourts.length > 0) {
+            const courtIdx = idx % dbCourts.length;
+            const court = dbCourts[courtIdx]!;
+            courtId = court.id;
+            courtName = court.name;
+          } else {
+            const courts = ['Sân 1', 'Sân 2'];
+            const courtIdx = idx % courts.length;
+            courtName = courts[courtIdx] || 'Sân 1';
+          }
+
+          const timeSlot = Math.floor(idx / (dbCourts.length > 0 ? dbCourts.length : 2));
           const scheduledTime = new Date(
             startDate.getTime() + timeSlot * intervalMinutes * 60 * 1000,
           );
@@ -106,7 +121,8 @@ export class ScheduleService {
               roundNo: Math.floor(idx / 2) + 1,
               label: `${group.name} - Trận ${idx + 1}`,
               status: 'SCHEDULED' as MatchStatus,
-              courtName: courts[courtIdx],
+              courtId,
+              courtName,
               scheduledTime,
             },
           });
@@ -124,7 +140,7 @@ export class ScheduleService {
                 organizationId: tournament.organizationId,
                 tournamentId,
                 matchId: match.id,
-                segmentOrder: segIdx, // 0-indexed for consistency
+                segmentOrder: segIdx,
                 segmentKey: rSeg.segmentKey,
                 name: rSeg.name,
                 targetScore: rSeg.targetScore,
@@ -137,12 +153,6 @@ export class ScheduleService {
         }
       }
 
-      // Transition tournament status to SCHEDULE_GENERATED
-      await tx.tournament.update({
-        where: { id: tournamentId },
-        data: { status: 'SCHEDULE_GENERATED' },
-      });
-
       await this.auditService.log({
         organizationId: tournament.organizationId,
         tournamentId,
@@ -151,6 +161,9 @@ export class ScheduleService {
         entityType: 'Tournament',
         entityId: tournamentId,
       });
+
+      // Trigger section validations
+      await this.validatorService.validateAll(tournamentId);
 
       return tx.match.findMany({
         where: { tournamentId, stageId: stage.id },
@@ -165,7 +178,7 @@ export class ScheduleService {
   }
 
   /**
-   * Updates scheduling details for a specific match (e.g. court and start time).
+   * Updates scheduling details for a specific match.
    */
   async updateMatchSchedule(
     matchId: string,
@@ -173,6 +186,7 @@ export class ScheduleService {
     courtName: string | null,
     matchNo: number | null,
     userId: string,
+    courtId?: string | null,
   ) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
@@ -187,6 +201,7 @@ export class ScheduleService {
       data: {
         scheduledTime: scheduledTime ? new Date(scheduledTime) : null,
         courtName: courtName || null,
+        courtId: courtId !== undefined ? courtId : undefined,
         matchNo: matchNo !== null ? matchNo : undefined,
       },
     });
@@ -201,6 +216,9 @@ export class ScheduleService {
       beforeData: match,
       afterData: updated,
     });
+
+    // Re-validate scheduling and court conflicts
+    await this.validatorService.validateAll(match.tournamentId);
 
     return updated;
   }

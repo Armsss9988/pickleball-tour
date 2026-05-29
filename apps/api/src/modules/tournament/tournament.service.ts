@@ -11,12 +11,15 @@ import {
   UpdateTournamentDto,
   TournamentStatus,
 } from '@golab/contracts';
+import { TournamentSectionValidatorService } from './tournament-section-validator.service';
+import { getEffectivePhase, canUnpublish } from '@golab/domain';
 
 @Injectable()
 export class TournamentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly validatorService: TournamentSectionValidatorService,
   ) {}
 
   /**
@@ -32,6 +35,7 @@ export class TournamentService {
             name: true,
           },
         },
+        sectionStatuses: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -53,6 +57,7 @@ export class TournamentService {
             scoringConfig: true,
           },
         },
+        sectionStatuses: true,
       },
     });
 
@@ -64,7 +69,7 @@ export class TournamentService {
   }
 
   /**
-   * Fetches a tournament by its slug (useful for public APIs).
+   * Fetches a tournament by its slug.
    */
   async findBySlug(orgId: string, slug: string) {
     const tournament = await this.prisma.tournament.findFirst({
@@ -79,6 +84,7 @@ export class TournamentService {
             scoringConfig: true,
           },
         },
+        sectionStatuses: true,
       },
     });
 
@@ -95,7 +101,6 @@ export class TournamentService {
    * Creates a new tournament.
    */
   async create(orgId: string, dto: CreateTournamentDto, userId: string) {
-    // Check if slug is unique inside organization
     const existing = await this.prisma.tournament.findFirst({
       where: { organizationId: orgId, slug: dto.slug },
     });
@@ -126,9 +131,12 @@ export class TournamentService {
         publicEnabled: false,
         status: 'DRAFT',
         createdById: userId,
-        rulesetId: '00000000-0000-0000-0000-000000000010',
+        rulesetId: '00000000-0000-0000-0000-000000000010', // Default template ruleset ID
       },
     });
+
+    // Run initial section validation
+    await this.validatorService.validateAll(tournament.id);
 
     await this.auditService.log({
       organizationId: orgId,
@@ -149,21 +157,6 @@ export class TournamentService {
   async update(id: string, dto: UpdateTournamentDto, userId: string) {
     const t = await this.findOne(id);
 
-    if (dto.publicEnabled === true) {
-      if (t.status !== 'COMPLETED' && t.status !== 'PUBLISHED') {
-        throw new BadRequestException(
-          'Chưa thể công khai giải vì giải chưa hoàn tất tất cả các bước chuẩn bị.',
-        );
-      }
-      const readiness = await this.getPublishReadiness(id, t);
-      if (readiness.length > 0) {
-        throw new BadRequestException(
-          `Chưa thể công khai giải vì còn thiếu: ${readiness.join(', ')}.`,
-        );
-      }
-    }
-
-    // If ruleset is being updated, verify lock rules
     if (dto.slug && dto.slug !== t.slug) {
       const existing = await this.prisma.tournament.findFirst({
         where: {
@@ -189,10 +182,11 @@ export class TournamentService {
         registrationDeadline: dto.registrationDeadline
           ? new Date(dto.registrationDeadline)
           : undefined,
-        publicEnabled:
-          dto.publicEnabled !== undefined ? dto.publicEnabled : undefined,
       },
     });
+
+    // Re-validate info and related sections
+    await this.validatorService.validateAll(id);
 
     await this.auditService.log({
       organizationId: t.organizationId,
@@ -209,28 +203,27 @@ export class TournamentService {
   }
 
   /**
-   * Publishes the tournament public landing page.
+   * Publishes the tournament (Two-Tier).
    */
   async publish(id: string, userId: string) {
     const t = await this.findOne(id);
 
-    if (t.status !== 'COMPLETED' && t.status !== 'PUBLISHED') {
-      throw new BadRequestException(
-        'Chưa thể công khai giải vì giải chưa hoàn tất.',
-      );
+    if (t.status !== 'DRAFT') {
+      throw new BadRequestException('Giải đấu không ở trạng thái nháp DRAFT.');
     }
 
-    const readiness = await this.getPublishReadiness(id, t);
+    const { publishReady, operationalReady } = await this.validatorService.validateAll(id);
 
-    if (readiness.length > 0) {
-      throw new BadRequestException(
-        `Chưa thể công khai giải vì còn thiếu: ${readiness.join(', ')}.`,
-      );
+    if (!publishReady.ready) {
+      throw new BadRequestException({
+        message: 'Chưa đủ điều kiện công khai giải đấu.',
+        missing: publishReady.missing,
+      });
     }
 
     const updated = await this.prisma.tournament.update({
       where: { id },
-      data: { publicEnabled: true },
+      data: { status: 'PUBLISHED', publicEnabled: true },
     });
 
     await this.auditService.log({
@@ -244,81 +237,55 @@ export class TournamentService {
       afterData: updated,
     });
 
-    return updated;
+    return {
+      published: true,
+      operationallyReady: operationalReady.ready,
+      operationalWarnings: operationalReady.missing,
+    };
   }
 
-  private async getPublishReadiness(
-    id: string,
-    tournament?: Awaited<ReturnType<TournamentService['findOne']>>,
-  ) {
-    const activeTournament = tournament ?? (await this.findOne(id));
-    const [
-      teamCount,
-      matchCount,
-      resultConfirmedMatchCount,
-      knockoutStageCount,
-    ] = await this.prisma.$transaction([
-      this.prisma.team.count({ where: { tournamentId: id } }),
-      this.prisma.match.count({ where: { tournamentId: id } }),
-      this.prisma.match.count({
-        where: { tournamentId: id, status: 'RESULT_CONFIRMED' },
-      }),
-      this.prisma.stage.count({
-        where: { tournamentId: id, type: 'PLAYOFF' },
-      }),
-    ]);
+  /**
+   * Unpublishes the tournament (DRAFT mode).
+   */
+  async unpublish(id: string, userId: string) {
+    const t = await this.findOne(id);
 
-    const missing: string[] = [];
-
-    if (
-      !activeTournament.name?.trim() ||
-      !activeTournament.slug?.trim() ||
-      !activeTournament.venueName?.trim() ||
-      !activeTournament.openingTime
-    ) {
-      missing.push('thông tin giải');
+    if (t.status !== 'PUBLISHED') {
+      throw new BadRequestException('Giải đấu không ở trạng thái công khai PUBLISHED.');
     }
 
-    const ruleset = activeTournament.ruleset;
-    const hasValidRuleset = Boolean(
-      ruleset &&
-      ruleset.teamCompositionRule &&
-      ruleset.scoringConfig &&
-      ruleset.segmentDefinitions.length > 0,
-    );
+    const sectionStatuses = await this.prisma.tournamentSectionStatus.findMany({
+      where: { tournamentId: id },
+    });
 
-    if (!hasValidRuleset) {
-      missing.push('ruleset');
+    const required = ['ruleset', 'players', 'teams', 'schedule'];
+    const isOperationallyReady = required.every(key => {
+      const s = sectionStatuses.find(ss => ss.sectionKey === key);
+      return s?.status === 'VALID';
+    });
+
+    const phase = getEffectivePhase(t.status, t.openingTime, isOperationallyReady);
+    if (!canUnpublish(phase)) {
+      throw new BadRequestException('Không thể hủy công khai giải đấu khi giải đã bắt đầu thi đấu.');
     }
 
-    if (teamCount < 8) {
-      missing.push('đội thi đấu');
-    }
+    const updated = await this.prisma.tournament.update({
+      where: { id },
+      data: { status: 'DRAFT', publicEnabled: false },
+    });
 
-    if (matchCount === 0) {
-      missing.push('lịch thi đấu');
-    }
+    await this.auditService.log({
+      organizationId: t.organizationId,
+      tournamentId: id,
+      actorUserId: userId,
+      action: 'TOURNAMENT_UNPUBLISHED',
+      entityType: 'Tournament',
+      entityId: id,
+      beforeData: t,
+      afterData: updated,
+    });
 
-    if (matchCount > 0 && resultConfirmedMatchCount < matchCount) {
-      missing.push('kết quả trận đấu');
-    }
-
-    if (
-      knockoutStageCount > 0 &&
-      activeTournament.status !== 'COMPLETED' &&
-      activeTournament.status !== 'PUBLISHED'
-    ) {
-      missing.push('vòng knockout hoàn tất');
-    }
-
-    if (
-      activeTournament.status !== 'COMPLETED' &&
-      activeTournament.status !== 'PUBLISHED'
-    ) {
-      missing.push('trạng thái hoàn tất');
-    }
-
-    return missing;
+    return updated;
   }
 
   /**
@@ -339,7 +306,6 @@ export class TournamentService {
       data: { status: targetStatus },
     });
 
-    // Write matching audit log action
     await this.auditService.log({
       organizationId: t.organizationId,
       tournamentId: id,

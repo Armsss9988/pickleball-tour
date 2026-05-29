@@ -7,11 +7,14 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { StageType } from '@golab/contracts';
 
+import { TournamentSectionValidatorService } from '../tournament/tournament-section-validator.service';
+
 @Injectable()
 export class GroupService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly validatorService: TournamentSectionValidatorService,
   ) {}
 
   /**
@@ -198,11 +201,7 @@ export class GroupService {
         }
       }
 
-      // Update tournament status to GROUP_ASSIGNED
-      await tx.tournament.update({
-        where: { id: tournamentId },
-        data: { status: 'GROUP_ASSIGNED' },
-      });
+      // Removed status: 'GROUP_ASSIGNED' update
 
       await this.auditService.log({
         organizationId: tournament.organizationId,
@@ -213,6 +212,9 @@ export class GroupService {
         entityId: tournamentId,
         afterData: assignment,
       });
+
+      // Trigger section validations
+      await this.validatorService.validateAll(tournamentId);
 
       return this.getGroupsWithTeams(tournamentId);
     });

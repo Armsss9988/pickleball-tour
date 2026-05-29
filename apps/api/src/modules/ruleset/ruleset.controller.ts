@@ -5,7 +5,9 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import type { CreateRulesetDto } from '@golab/contracts';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+import { TournamentPhaseGuard } from '../../shared/guards/tournament-phase.guard';
+
+@UseGuards(JwtAuthGuard, RolesGuard, TournamentPhaseGuard)
 @Controller('tournaments/:tournamentId/ruleset')
 export class RulesetController {
   constructor(private readonly rulesetService: RulesetService) {}

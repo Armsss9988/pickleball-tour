@@ -12,7 +12,7 @@ import { useToast } from '@/components/toast';
 import { ConfirmModal } from '@/components/confirm-modal';
 import { EmptyState } from '@/components/empty-state';
 import { PageLoading } from '@/components/loading-skeleton';
-import { Target, ExternalLink, CheckCircle2, AlertTriangle } from '@/components/icons';
+import { Target, ExternalLink, CheckCircle2, AlertTriangle, AlertCircle, Loader2 } from '@/components/icons';
 
 interface MatchListItem {
   id: string;
@@ -20,12 +20,15 @@ interface MatchListItem {
   label?: string | null;
   roundNo?: number | null;
   courtName?: string | null;
+  teamAId?: string | null;
+  teamBId?: string | null;
   group?: { code: string } | null;
-  teamA?: { name?: string | null } | null;
-  teamB?: { name?: string | null } | null;
+  teamA?: { id: string; name?: string | null } | null;
+  teamB?: { id: string; name?: string | null } | null;
   result?: {
     teamAScore: number;
     teamBScore: number;
+    winnerTeamId?: string | null;
   } | null;
 }
 
@@ -45,33 +48,42 @@ function filterScoringMatches(data: MatchListItem[]): MatchListItem[] {
 export default function AdminScoringPage() {
   const { tournament, loading: tLoading } = useActiveTournament();
   const { toast } = useToast();
-  const { role } = getCurrentUser();
+  const currentUser = getCurrentUser();
+  const role = currentUser.role;
+  const isSuperAdmin = role === 'super_admin';
+
   const [matches, setMatches] = useState<MatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [matchToConfirm, setMatchToConfirm] = useState<MatchListItem | null>(null);
+  
+  // Override result states
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [matchToOverride, setMatchToOverride] = useState<MatchListItem | null>(null);
+  const [overrideAScore, setOverrideAScore] = useState(0);
+  const [overrideBScore, setOverrideBScore] = useState(0);
+  const [overrideWinnerId, setOverrideWinnerId] = useState('');
+  const [overrideReason, setOverrideReason] = useState('');
+
   const [actionLoading, setActionLoading] = useState(false);
 
+  const loadMatches = async () => {
+    if (!tournament) return;
+    try {
+      setLoading(true);
+      const data = (await apiFetch(`/tournaments/${tournament.id}/matches`)) as MatchListItem[];
+      setMatches(filterScoringMatches(data));
+    } catch (error: unknown) {
+      console.error(error);
+      toast(getErrorMessage(error, 'Lỗi tải danh sách trận đấu.'), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      if (!tournament) return;
-
-      void (async () => {
-        try {
-          setLoading(true);
-          const data = (await apiFetch(`/tournaments/${tournament.id}/matches`)) as MatchListItem[];
-          setMatches(filterScoringMatches(data));
-        } catch (error: unknown) {
-          console.error(error);
-          toast(getErrorMessage(error, 'Lỗi tải danh sách trận đấu.'), 'error');
-        } finally {
-          setLoading(false);
-        }
-      })();
-    }, 0);
-
-    return () => window.clearTimeout(timerId);
-  }, [toast, tournament]);
+    loadMatches();
+  }, [tournament]);
 
   const uxContext = buildTournamentUxContext({
     tournament,
@@ -106,12 +118,49 @@ export default function AdminScoringPage() {
       toast('Đã xác nhận kết quả thành công! Bảng xếp hạng đã cập nhật.', 'success');
       setConfirmModalOpen(false);
       setMatchToConfirm(null);
-      if (tournament) {
-        const data = (await apiFetch(`/tournaments/${tournament.id}/matches`)) as MatchListItem[];
-        setMatches(filterScoringMatches(data));
-      }
+      loadMatches();
     } catch (error: unknown) {
       toast(getErrorMessage(error, 'Lỗi xác nhận kết quả.'), 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const openOverrideModal = (match: MatchListItem) => {
+    setMatchToOverride(match);
+    setOverrideAScore(match.result?.teamAScore ?? 0);
+    setOverrideBScore(match.result?.teamBScore ?? 0);
+    setOverrideWinnerId(match.result?.winnerTeamId ?? match.teamA?.id ?? '');
+    setOverrideReason('');
+    setOverrideModalOpen(true);
+  };
+
+  const handleOverrideResult = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!matchToOverride || !isSuperAdmin) return;
+    if (!overrideReason.trim()) {
+      toast('Vui lòng nhập lý do ghi đè kết quả.', 'error');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await apiFetch(`/matches/${matchToOverride.id}/override-result`, {
+        method: 'POST',
+        body: {
+          teamAScore: overrideAScore,
+          teamBScore: overrideBScore,
+          winnerTeamId: overrideWinnerId,
+          reason: overrideReason.trim(),
+        },
+      });
+
+      toast('Ghi đè kết quả và cập nhật BXH thành công!', 'success');
+      setOverrideModalOpen(false);
+      setMatchToOverride(null);
+      loadMatches();
+    } catch (error: unknown) {
+      toast(getErrorMessage(error, 'Lỗi ghi đè kết quả trận đấu.'), 'error');
     } finally {
       setActionLoading(false);
     }
@@ -194,7 +243,7 @@ export default function AdminScoringPage() {
                     <td className="px-4 font-mono text-base font-bold text-slate-200">
                       {match.result ? `${match.result.teamAScore} - ${match.result.teamBScore}` : '—'}
                     </td>
-                    <td className="space-x-3 px-4 py-4 text-right">
+                    <td className="space-x-2.5 px-4 py-4 text-right">
                       {canOpenScoreDesk && ['RUNNING', 'SEGMENT_BREAK', 'READY'].includes(match.status) && (
                         <Link
                           href={`/score/${match.id}`}
@@ -209,11 +258,22 @@ export default function AdminScoringPage() {
                       {canConfirmResults && match.status === 'COMPLETED' && (
                         <button
                           onClick={() => openConfirmModal(match)}
-                          className="inline-flex items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400 transition-colors hover:text-emerald-300"
+                          className="inline-flex items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400 transition-colors hover:text-emerald-350"
                           disabled={actionLoading}
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Xác Nhận KQ
+                        </button>
+                      )}
+
+                      {isSuperAdmin && ['COMPLETED', 'RESULT_CONFIRMED'].includes(match.status) && (
+                        <button
+                          onClick={() => openOverrideModal(match)}
+                          className="inline-flex items-center gap-1 rounded border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-400 transition-colors hover:text-rose-300"
+                          disabled={actionLoading}
+                        >
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          Ghi đè KQ
                         </button>
                       )}
                     </td>
@@ -229,6 +289,7 @@ export default function AdminScoringPage() {
         )}
       </div>
 
+      {/* Confirm Confirmation Modal */}
       <ConfirmModal
         open={confirmModalOpen}
         title="Xác nhận kết quả trận đấu?"
@@ -243,6 +304,97 @@ export default function AdminScoringPage() {
           setMatchToConfirm(null);
         }}
       />
+
+      {/* Result Override Dialog (Super Admin) */}
+      {overrideModalOpen && matchToOverride && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+          <form
+            onSubmit={handleOverrideResult}
+            className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-2xl animate-scale-in"
+          >
+            <div className="flex items-center gap-2 text-rose-500 border-b border-slate-800 pb-3">
+              <AlertTriangle className="h-5 w-5" />
+              <h3 className="text-base font-bold text-slate-100">Ghi Đè Kết Quả Trận Đấu</h3>
+            </div>
+
+            <p className="text-xs leading-relaxed text-slate-400">
+              Quyền Super Admin: Cho phép chỉnh sửa trực tiếp điểm số chung cuộc của trận đấu và điều chỉnh bảng xếp hạng. Hành động này sẽ được ghi nhật ký hệ thống.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-350">{matchToOverride.teamA?.name || 'Đội A'}</label>
+                <input
+                  type="number"
+                  min={0}
+                  required
+                  value={overrideAScore}
+                  onChange={(e) => setOverrideAScore(parseInt(e.target.value, 10))}
+                  className="w-full rounded-xl border border-slate-750 bg-slate-950/50 px-3 py-2 text-sm text-slate-200 outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-350">{matchToOverride.teamB?.name || 'Đội B'}</label>
+                <input
+                  type="number"
+                  min={0}
+                  required
+                  value={overrideBScore}
+                  onChange={(e) => setOverrideBScore(parseInt(e.target.value, 10))}
+                  className="w-full rounded-xl border border-slate-750 bg-slate-950/50 px-3 py-2 text-sm text-slate-200 outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-350">Chọn Đội Chiến Thắng</label>
+              <select
+                required
+                value={overrideWinnerId}
+                onChange={(e) => setOverrideWinnerId(e.target.value)}
+                className="w-full rounded-xl border border-slate-750 bg-slate-950/50 px-3 py-2 text-sm text-slate-200 outline-none focus:border-amber-500"
+              >
+                <option value={matchToOverride.teamA?.id}>{matchToOverride.teamA?.name || 'Đội A'}</option>
+                <option value={matchToOverride.teamB?.id}>{matchToOverride.teamB?.name || 'Đội B'}</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-350">Lý do ghi đè kết quả</label>
+              <textarea
+                required
+                placeholder="Ví dụ: Cập nhật lại điểm do trọng tài nhập sai kết quả chặng 3..."
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                rows={3}
+                className="w-full rounded-xl border border-slate-750 bg-slate-950/50 px-3 py-2 text-xs text-slate-200 outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setOverrideModalOpen(false);
+                  setMatchToOverride(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-350 text-xs font-bold transition-all"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={actionLoading || !overrideReason.trim()}
+                className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-slate-950 text-xs font-bold transition-all flex items-center gap-1"
+              >
+                {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Xác Nhận Ghi Đè
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

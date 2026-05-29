@@ -3,11 +3,15 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreatePlayerDto, BulkImportPlayerDto, Gender } from '@golab/contracts';
 
+import { TournamentSectionValidatorService } from '../tournament/tournament-section-validator.service';
+import { getEffectivePhase } from '@golab/domain';
+
 @Injectable()
 export class PlayerService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
+    private readonly validatorService: TournamentSectionValidatorService,
   ) {}
 
   /**
@@ -149,15 +153,29 @@ export class PlayerService {
         include: { playerProfile: true },
       });
 
+      const sectionStatuses = await tx.tournamentSectionStatus.findMany({
+        where: { tournamentId },
+      });
+      const required = ['ruleset', 'players', 'teams', 'schedule'];
+      const isOperationallyReady = required.every(key => {
+        const s = sectionStatuses.find(ss => ss.sectionKey === key);
+        return s?.status === 'VALID';
+      });
+      const phase = getEffectivePhase(tournament.status, tournament.openingTime, isOperationallyReady);
+      const action = phase === 'PUBLISHED_RUNNING' ? 'PLAYER_ADDED_EMERGENCY' : 'PLAYER_CREATED';
+
       await this.auditService.log({
         organizationId: tournament.organizationId,
         tournamentId,
         actorUserId: userId,
-        action: 'PLAYER_CREATED',
+        action,
         entityType: 'PlayerProfile',
         entityId: profile.id,
         afterData: reg,
       });
+
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['teams']);
+      await this.validatorService.validateAll(tournamentId);
 
       return reg;
     });
@@ -271,6 +289,9 @@ export class PlayerService {
         entityId: tournamentId,
         afterData: { created, updated, mode },
       });
+
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['teams']);
+      await this.validatorService.validateAll(tournamentId);
 
       return { created, updated, warnings };
     });

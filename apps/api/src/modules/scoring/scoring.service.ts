@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ScoreGateway } from '../../gateways/score.gateway';
-import { ScoringEngine, MatchDomainInput } from '@golab/domain';
+import { ScoringEngine, MatchDomainInput, getEffectivePhase, isScoringAllowed } from '@golab/domain';
 import { MatchStatus, SegmentStatus } from '@golab/contracts';
 
 @Injectable()
@@ -83,19 +83,44 @@ export class ScoringService {
   async addScoreEvent(matchId: string, scoringTeamId: string, userId: string) {
     const domainInput = await this.loadDomainMatchInput(matchId);
 
-    // Apply point using pure domain ScoringEngine
-    const result = ScoringEngine.applyScorePoint(domainInput, scoringTeamId);
-
     const matchObj = await this.prisma.match.findUnique({
       where: { id: matchId },
     });
+
+    if (!matchObj) {
+      throw new NotFoundException('Không tìm thấy trận đấu.');
+    }
+
+    // Check if scoring is allowed based on tournament phase
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: matchObj.tournamentId },
+      include: { sectionStatuses: true },
+    });
+
+    if (!tournament) {
+      throw new NotFoundException('Không tìm thấy giải đấu.');
+    }
+
+    const required = ['ruleset', 'players', 'teams', 'schedule'];
+    const isOperationallyReady = required.every(key => {
+      const s = tournament.sectionStatuses.find(ss => ss.sectionKey === key);
+      return s?.status === 'VALID';
+    });
+
+    const phase = getEffectivePhase(tournament.status, tournament.openingTime, isOperationallyReady);
+    if (!isScoringAllowed(phase)) {
+      throw new BadRequestException('Giải đấu chưa đủ điều kiện vận hành để chấm điểm (kiểm tra các thiết lập thiếu).');
+    }
+
+    // Apply point using pure domain ScoringEngine
+    const result = ScoringEngine.applyScorePoint(domainInput, scoringTeamId);
 
     return this.prisma.$transaction(async (tx) => {
       // 1. Save Score Event
       const newEvent = await tx.scoreEvent.create({
         data: {
-          organizationId: matchObj!.organizationId,
-          tournamentId: matchObj!.tournamentId,
+          organizationId: matchObj.organizationId,
+          tournamentId: matchObj.tournamentId,
           matchId,
           segmentId: result.newEventPayload.segmentId,
           scoringTeamId: result.newEventPayload.scoringTeamId,
@@ -149,11 +174,11 @@ export class ScoringService {
             winnerTeamId: state.winnerTeamId!,
           },
           create: {
-            organizationId: matchObj!.organizationId,
-            tournamentId: matchObj!.tournamentId,
+            organizationId: matchObj.organizationId,
+            tournamentId: matchObj.tournamentId,
             matchId,
-            teamAId: matchObj!.teamAId!,
-            teamBId: matchObj!.teamBId!,
+            teamAId: matchObj.teamAId!,
+            teamBId: matchObj.teamBId!,
             teamAScore: state.scoreA,
             teamBScore: state.scoreB,
             winnerTeamId: state.winnerTeamId!,
@@ -162,8 +187,8 @@ export class ScoringService {
       }
 
       await this.auditService.log({
-        organizationId: matchObj!.organizationId,
-        tournamentId: matchObj!.tournamentId,
+        organizationId: matchObj.organizationId,
+        tournamentId: matchObj.tournamentId,
         actorUserId: userId,
         action: 'SCORE_EVENT_CREATED',
         entityType: 'Match',
@@ -177,9 +202,9 @@ export class ScoringService {
 
       // 6. Broadcast WebSocket update
       const activeSeg = state.segments[state.activeSegmentIndex];
-      this.scoreGateway.broadcastScoreUpdate(matchId, matchObj!.tournamentId, {
+      this.scoreGateway.broadcastScoreUpdate(matchId, matchObj.tournamentId, {
         matchId,
-        tournamentId: matchObj!.tournamentId,
+        tournamentId: matchObj.tournamentId,
         scoreA: state.scoreA,
         scoreB: state.scoreB,
         matchStatus: state.status,
@@ -218,6 +243,10 @@ export class ScoringService {
       where: { id: matchId },
     });
 
+    if (!matchObj) {
+      throw new NotFoundException('Không tìm thấy trận đấu.');
+    }
+
     const activeEvents = domainInput.scoreEvents.filter((e) => !e.isUndone);
     const lastActiveEvent = activeEvents[activeEvents.length - 1];
 
@@ -242,7 +271,6 @@ export class ScoringService {
       const replayedInput = {
         ...domainInput,
         scoreEvents: updatedEvents,
-        // Override status to running since we are pulling back from completed
         status: 'RUNNING' as MatchStatus,
       };
 
@@ -276,8 +304,8 @@ export class ScoringService {
       }
 
       await this.auditService.log({
-        organizationId: matchObj!.organizationId,
-        tournamentId: matchObj!.tournamentId,
+        organizationId: matchObj.organizationId,
+        tournamentId: matchObj.tournamentId,
         actorUserId: userId,
         action: 'SCORE_EVENT_UNDONE',
         entityType: 'Match',
@@ -292,9 +320,9 @@ export class ScoringService {
 
       // 6. Broadcast WebSocket update
       const activeSeg = state.segments[state.activeSegmentIndex];
-      this.scoreGateway.broadcastScoreUpdate(matchId, matchObj!.tournamentId, {
+      this.scoreGateway.broadcastScoreUpdate(matchId, matchObj.tournamentId, {
         matchId,
-        tournamentId: matchObj!.tournamentId,
+        tournamentId: matchObj.tournamentId,
         scoreA: state.scoreA,
         scoreB: state.scoreB,
         matchStatus: state.status,
@@ -439,7 +467,91 @@ export class ScoringService {
       return result;
     });
 
-    // 3. Emit match.confirmed event to decouple recalculate standings / advance playoff bracket
+    this.eventEmitter.emit('match.confirmed', {
+      matchId,
+      groupId: match.groupId,
+      tournamentId: match.tournamentId,
+      userId,
+    });
+
+    return result;
+  }
+
+  /**
+   * Super Admin only result override mechanism.
+   */
+  async overrideResult(
+    matchId: string,
+    dto: { teamAScore: number; teamBScore: number; winnerTeamId: string; reason: string },
+    userId: string,
+    userRoles: string[]
+  ) {
+    const isSuperAdmin = userRoles.includes('SUPER_ADMIN') || userRoles.includes('platform_owner');
+    if (!isSuperAdmin) {
+      throw new ForbiddenException('Chỉ Super Admin được phép ghi đè (override) kết quả trận đấu.');
+    }
+
+    if (!dto.reason || dto.reason.trim() === '') {
+      throw new BadRequestException('Phải cung cấp lý do ghi đè kết quả.');
+    }
+
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: { result: true },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Không tìm thấy trận đấu.');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.match.update({
+        where: { id: matchId },
+        data: {
+          status: 'RESULT_CONFIRMED' as MatchStatus,
+          winnerTeamId: dto.winnerTeamId,
+        },
+      });
+
+      const beforeData = match.result;
+      const updatedResult = await tx.matchResult.upsert({
+        where: { matchId },
+        update: {
+          teamAScore: dto.teamAScore,
+          teamBScore: dto.teamBScore,
+          winnerTeamId: dto.winnerTeamId,
+          confirmedById: userId,
+          confirmedAt: new Date(),
+        },
+        create: {
+          organizationId: match.organizationId,
+          tournamentId: match.tournamentId,
+          matchId,
+          teamAId: match.teamAId!,
+          teamBId: match.teamBId!,
+          teamAScore: dto.teamAScore,
+          teamBScore: dto.teamBScore,
+          winnerTeamId: dto.winnerTeamId,
+          confirmedById: userId,
+          confirmedAt: new Date(),
+        },
+      });
+
+      await this.auditService.log({
+        organizationId: match.organizationId,
+        tournamentId: match.tournamentId,
+        actorUserId: userId,
+        action: 'RESULT_OVERRIDDEN',
+        entityType: 'Match',
+        entityId: matchId,
+        beforeData,
+        afterData: updatedResult,
+        reason: dto.reason,
+      });
+
+      return updatedResult;
+    });
+
     this.eventEmitter.emit('match.confirmed', {
       matchId,
       groupId: match.groupId,

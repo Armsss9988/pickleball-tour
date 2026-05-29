@@ -50,16 +50,6 @@ enum RegistrationSource {
 
 enum TournamentStatus {
   DRAFT
-  PLAYER_IMPORT
-  PLAYERS_READY
-  TEAM_DRAW_COMPLETED
-  GROUP_ASSIGNED
-  SCHEDULE_GENERATED
-  RUNNING
-  GROUP_COMPLETED
-  KNOCKOUT_GENERATED
-  KNOCKOUT_RUNNING
-  COMPLETED
   PUBLISHED
 }
 
@@ -145,6 +135,7 @@ model Organization {
   awards             Award[]
   awardRecipients    AwardRecipient[]
   auditLogs          AuditLog[]
+  courts             Court[]
 
   @@map("organizations")
 }
@@ -215,6 +206,8 @@ model Tournament {
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
   organization       Organization             @relation(fields: [organizationId], references: [id])
+  courts             Court[]
+  sectionStatuses    TournamentSectionStatus[]
   createdBy          User?                    @relation("TournamentCreatedBy", fields: [createdById], references: [id])
   ruleset            TournamentRuleset?       @relation(fields: [rulesetId], references: [id])
   registrations      TournamentRegistration[]
@@ -557,6 +550,7 @@ model Match {
   teamBId        String?     @map("team_b_id")
   scheduledTime  DateTime?   @map("scheduled_time")
   courtName      String?     @map("court_name")
+  courtId        String?     @map("court_id")
   status         MatchStatus @default(SCHEDULED)
   winnerTeamId   String?     @map("winner_team_id")
   metadata       Json        @default("{}")
@@ -570,6 +564,7 @@ model Match {
   teamA        Team?          @relation("MatchTeamA", fields: [teamAId], references: [id])
   teamB        Team?          @relation("MatchTeamB", fields: [teamBId], references: [id])
   winner       Team?          @relation("MatchWinner", fields: [winnerTeamId], references: [id])
+  court        Court?         @relation(fields: [courtId], references: [id])
   segments     MatchSegment[]
   lineups      MatchLineup[]
   scoreEvents  ScoreEvent[]
@@ -846,4 +841,45 @@ model AuditLog {
   @@index([actorUserId, createdAt(sort: Desc)])
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+model Court {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  tournamentId   String   @map("tournament_id")
+  name           String
+  description    String?
+  isActive       Boolean  @default(true) @map("is_active")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id])
+  matches      Match[]
+
+  @@unique([tournamentId, name])
+  @@map("courts")
+}
+
+model TournamentSectionStatus {
+  id           String            @id @default(uuid())
+  tournamentId String            @map("tournament_id")
+  sectionKey   String            @map("section_key") // "ruleset" | "players" | "teams" | "schedule" | "lineup"
+  status       SectionStatusEnum @default(EMPTY)
+  validatedAt  DateTime?         @map("validated_at")
+  errorDetails Json?             @default("[]") @map("error_details")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, sectionKey])
+  @@map("tournament_section_statuses")
+}
+
+enum SectionStatusEnum {
+  EMPTY
+  VALID
+  INVALID
+  NEEDS_REVIEW
 }

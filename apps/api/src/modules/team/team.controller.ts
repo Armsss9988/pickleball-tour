@@ -51,4 +51,16 @@ export class TeamController {
   ) {
     return this.teamService.confirmDraw(tournamentId, drawId, req.user.id);
   }
+
+  @Post('tournaments/:tournamentId/teams/:teamId/replace-member')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
+  async replaceMember(
+    @Param('tournamentId') tournamentId: string,
+    @Param('teamId') teamId: string,
+    @Request() req: any,
+    @Body('oldPlayerId') oldPlayerId: string,
+    @Body('newPlayerId') newPlayerId: string
+  ) {
+    return this.teamService.replaceMember(tournamentId, teamId, oldPlayerId, newPlayerId, req.user.id);
+  }
 }

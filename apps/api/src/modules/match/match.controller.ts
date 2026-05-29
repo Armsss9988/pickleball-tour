@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { MatchService } from './match.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -40,5 +40,11 @@ export class MatchController {
   @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin', 'SCORER')
   async startMatch(@Param('matchId') matchId: string, @Request() req: any) {
     return this.matchService.startMatch(matchId, req.user.id);
+  }
+
+  @Delete('matches/:matchId')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
+  async deleteMatch(@Param('matchId') matchId: string, @Request() req: any) {
+    return this.matchService.deleteMatch(matchId, req.user.id);
   }
 }

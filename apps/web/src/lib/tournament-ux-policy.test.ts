@@ -12,10 +12,10 @@ const baseContext: TournamentUxContext = {
   tournamentId: 't1',
   tournamentSlug: 'cup-golab',
   status: 'DRAFT',
+  phase: 'DRAFT',
   publicEnabled: false,
   hasTournamentInfo: false,
   hasValidRuleset: false,
-  hasDependentSetupData: false,
   playerTotal: 0,
   maleCount: 0,
   femaleCount: 0,
@@ -32,6 +32,11 @@ const baseContext: TournamentUxContext = {
   resultConfirmedMatchCount: 0,
   hasKnockoutStage: false,
   currentUserOwnsTeam: false,
+  isRulesetLocked: false,
+  canUnpublish: true,
+  isOperationallyReady: false,
+  hasScoredMatches: false,
+  sectionStatuses: {},
 };
 
 describe('tournament UX policy', () => {
@@ -89,13 +94,13 @@ describe('tournament UX policy', () => {
     }).allowed).toBe(true);
   });
 
-  it('locks ruleset editing after dependent setup data exists', () => {
+  it('locks ruleset editing after ruleset is locked', () => {
     const access = getActionAccess('editRuleset', 'btc_admin', {
       ...baseContext,
-      hasDependentSetupData: true,
+      isRulesetLocked: true,
     });
     expect(access.allowed).toBe(false);
-    expect(access.reason).toContain('đã có dữ liệu phụ thuộc');
+    expect(access.reason).toContain('Ruleset đã bị khóa');
   });
 
   it('allows publish readiness before public mode is enabled', () => {
@@ -106,7 +111,7 @@ describe('tournament UX policy', () => {
       teamCount: 8,
       matchCount: 12,
       resultConfirmedMatchCount: 12,
-      status: 'COMPLETED',
+      status: 'PUBLISHED',
     });
     expect(readiness.ready).toBe(true);
     expect(readiness.missing).toEqual([]);
@@ -118,13 +123,14 @@ describe('tournament UX policy', () => {
       teamCount: 8,
       matchCount: 12,
       resultConfirmedMatchCount: 12,
-      status: 'COMPLETED',
+      status: 'PUBLISHED',
     });
     expect(access.allowed).toBe(true);
   });
 
   it('maps technical status to human labels', () => {
-    expect(getHumanStatusLabel('TEAM_DRAW_COMPLETED')).toBe('Đã có đội');
+    expect(getHumanStatusLabel('DRAFT')).toBe('Nháp (Đang chuẩn bị)');
+    expect(getHumanStatusLabel('PUBLISHED')).toBe('Đã công khai');
   });
 
   it('returns the next action from missing dependencies', () => {

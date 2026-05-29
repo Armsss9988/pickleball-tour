@@ -21,6 +21,8 @@ import {
   RefreshCw,
   ExternalLink,
   AlertTriangle,
+  Lock,
+  X,
 } from '@/components/icons';
 import { StepperProgress, type Step } from '@/components/stepper-progress';
 import { apiFetch } from '@/lib/api-client';
@@ -38,6 +40,7 @@ import {
   type DependencyWarning,
 } from '@/lib/tournament-ux-policy';
 import { useActiveTournament } from '@/lib/use-tournament';
+import { useToast } from '@/components/toast';
 
 interface PlayerPreview {
   id: string;
@@ -225,7 +228,9 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
   const [loadingStats, setLoadingStats] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [publishMessage, setPublishMessage] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!tournament) {
@@ -464,6 +469,32 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleUnpublish() {
+    if (!tournament || !uxContext.canUnpublish || isUnpublishing) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Hủy công khai sẽ rút giải đấu về trạng thái Nháp (DRAFT) để tiếp tục chuẩn bị và ẩn khỏi trang xem công khai. Bạn có chắc muốn tiếp tục?',
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsUnpublishing(true);
+      setPublishMessage(null);
+      await apiFetch(`/tournaments/${tournament.id}/unpublish`, { method: 'POST' });
+      await reload();
+      toast('Đã rút giải đấu về trạng thái Nháp (DRAFT) thành công.', 'success');
+    } catch (error) {
+      setPublishMessage(error instanceof Error ? error.message : 'Không thể hủy công khai giải lúc này.');
+    } finally {
+      setIsUnpublishing(false);
+    }
+  }
+
   if (tLoading || loadingStats) {
     return <PageLoading />;
   }
@@ -587,77 +618,147 @@ export default function AdminDashboardPage() {
         </div>
 
         {isAdminRole ? (
-          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/65 p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Checklist công khai
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-slate-700/50 bg-slate-900/65 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Checklist công khai
+                  </div>
+                  <h3 className="mt-1 text-lg font-bold text-slate-100">
+                    {publishReadiness.ready ? 'Đủ điều kiện công khai' : 'Chưa thể công khai'}
+                  </h3>
                 </div>
-                <h3 className="mt-1 text-lg font-bold text-slate-100">
-                  {publishReadiness.ready ? 'Đủ điều kiện công khai' : 'Chưa thể công khai'}
-                </h3>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  publishReadiness.ready
+                    ? 'bg-emerald-500/10 text-emerald-400'
+                    : 'bg-amber-500/10 text-amber-400'
+                }`}>
+                  {publishCardText}
+                </span>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                publishReadiness.ready
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : 'bg-amber-500/10 text-amber-400'
-              }`}>
-                {publishCardText}
-              </span>
+
+              {publishReadiness.ready ? (
+                <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                  Dữ liệu cốt lõi đã đủ. Bạn có thể công khai giải khi đã sẵn sàng cho người xem bên ngoài.
+                </p>
+              ) : (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {publishReadiness.missing.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-slate-700/60 bg-slate-950/70 px-3 py-1 text-xs font-medium text-slate-300"
+                    >
+                      Còn thiếu: {item}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-4">
+                {tournament.status === 'PUBLISHED' ? (
+                  <div className="rounded-xl border border-slate-750 bg-slate-950/30 px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                        <Lock className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-slate-200">Giải đấu đã được công khai</div>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                          Khách bên ngoài hiện tại có thể xem lịch, kết quả và các thông tin liên quan.
+                        </p>
+                        {publishMessage && (
+                          <p className="mt-2 text-xs leading-relaxed text-slate-350">{publishMessage}</p>
+                        )}
+                      </div>
+                    </div>
+                    {uxContext.canUnpublish ? (
+                      <button
+                        type="button"
+                        onClick={handleUnpublish}
+                        disabled={isUnpublishing}
+                        className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-400 hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50 transition-colors border border-amber-500/10"
+                      >
+                        <X className="h-3.5 w-3.5 animate-pulse" />
+                        {isUnpublishing ? 'Đang hủy công khai...' : 'Hủy công khai giải (DRAFT)'}
+                      </button>
+                    ) : (
+                      <div className="mt-3 text-xs text-rose-400 font-medium">
+                        Không thể hủy công khai giải vì giải đã bắt đầu thi đấu (ở chặng tính điểm).
+                      </div>
+                    )}
+                  </div>
+                ) : publishAccess.allowed ? (
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-slate-200">Công khai giải</div>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                          Khi đủ điều kiện, thao tác này sẽ bật giải ra khu vực công khai cho khách xem.
+                        </p>
+                        {publishMessage && (
+                          <p className="mt-2 text-xs leading-relaxed text-slate-300">{publishMessage}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handlePublish}
+                      disabled={isPublishing}
+                      className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" />
+                      {isPublishing ? 'Đang công khai...' : 'Công khai ngay'}
+                    </button>
+                  </div>
+                ) : (
+                  <ActionGate
+                    access={publishAccess}
+                    href={`/admin/${tournament.id}`}
+                    label="Công khai giải"
+                    description="Chỉ bật khi các dữ liệu bắt buộc đã hoàn tất."
+                  />
+                )}
+              </div>
             </div>
 
-            {publishReadiness.ready ? (
-              <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                Dữ liệu cốt lõi đã đủ. Bạn có thể công khai giải khi đã sẵn sàng cho người xem bên ngoài.
-              </p>
-            ) : (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {publishReadiness.missing.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-slate-700/60 bg-slate-950/70 px-3 py-1 text-xs font-medium text-slate-300"
-                  >
-                    Còn thiếu: {item}
-                  </span>
-                ))}
+            {/* Trạng thái vận hành giải */}
+            <div className="rounded-2xl border border-slate-700/50 bg-slate-900/65 p-5">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-3">
+                Trạng thái vận hành giải
               </div>
-            )}
-
-            <div className="mt-4">
-              {publishAccess.allowed ? (
-                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                      <ArrowRight className="h-4 w-4" />
+              <div className="space-y-2.5">
+                {[
+                  { key: 'info', label: 'Thông tin giải đấu' },
+                  { key: 'ruleset', label: 'Luật thi đấu (Ruleset)' },
+                  { key: 'players', label: 'Vận động viên (Players)' },
+                  { key: 'teams', label: 'Bốc thăm & Đội (Teams)' },
+                  { key: 'schedule', label: 'Cấu hình lịch & Sân (Schedule)' },
+                ].map(({ key, label }) => {
+                  const status = uxContext.sectionStatuses?.[key] || 'EMPTY';
+                  
+                  const statusStyles: Record<string, { bg: string, text: string, border: string, label: string }> = {
+                    EMPTY: { bg: 'bg-slate-900/40', text: 'text-slate-500', border: 'border-slate-800', label: 'Chưa nhập' },
+                    VALID: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/25', label: 'Hợp lệ' },
+                    INVALID: { bg: 'bg-rose-500/10', text: 'text-rose-450', border: 'border-rose-500/25', label: 'Chưa đạt' },
+                    NEEDS_REVIEW: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/25', label: 'Cần duyệt lại' },
+                  };
+                  
+                  const style = statusStyles[status] || statusStyles.EMPTY;
+                  
+                  return (
+                    <div key={key} className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-850">
+                      <span className="text-xs font-semibold text-slate-300">{label}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${style.bg} ${style.text} ${style.border}`}>
+                        {style.label}
+                      </span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-slate-200">Công khai giải</div>
-                      <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                        Khi đủ điều kiện, thao tác này sẽ bật giải ra khu vực công khai cho khách xem.
-                      </p>
-                      {publishMessage && (
-                        <p className="mt-2 text-xs leading-relaxed text-slate-300">{publishMessage}</p>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handlePublish}
-                    disabled={isPublishing}
-                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-                  >
-                    <ArrowRight className="h-3.5 w-3.5" />
-                    {isPublishing ? 'Đang công khai...' : 'Công khai ngay'}
-                  </button>
-                </div>
-              ) : (
-                <ActionGate
-                  access={publishAccess}
-                  href={`/admin/${tournament.id}`}
-                  label="Công khai giải"
-                  description="Chỉ bật khi các dữ liệu bắt buộc đã hoàn tất."
-                />
-              )}
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : (

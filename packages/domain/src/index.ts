@@ -19,3 +19,6 @@ export * from './schedule/schedule-generator.service';
 export * from './bracket/bracket.entity';
 export * from './bracket/bracket-generator.service';
 export * from './ranking/ranking.calculator';
+export * from './tournament/tournament-phase';
+export * from './tournament/section-validator';
+export * from './lineup/lineup-window';

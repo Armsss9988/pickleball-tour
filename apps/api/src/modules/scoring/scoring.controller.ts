@@ -44,4 +44,22 @@ export class ScoringController {
   async confirmResult(@Param('matchId') matchId: string, @Request() req: any) {
     return this.scoringService.confirmResult(matchId, req.user.id);
   }
+
+  @Post('matches/:matchId/override-result')
+  @Roles('SUPER_ADMIN', 'platform_owner')
+  async overrideResult(
+    @Param('matchId') matchId: string,
+    @Request() req: any,
+    @Body('teamAScore') teamAScore: number,
+    @Body('teamBScore') teamBScore: number,
+    @Body('winnerTeamId') winnerTeamId: string,
+    @Body('reason') reason: string
+  ) {
+    return this.scoringService.overrideResult(
+      matchId,
+      { teamAScore, teamBScore, winnerTeamId, reason },
+      req.user.id,
+      req.user.roles
+    );
+  }
 }

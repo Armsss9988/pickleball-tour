@@ -16,11 +16,30 @@ export const RegistrationSourceEnum = z.enum(['ADMIN_IMPORT', 'MANUAL_ADMIN', 'S
 export type RegistrationSource = z.infer<typeof RegistrationSourceEnum>;
 
 export const TournamentStatusEnum = z.enum([
-  'DRAFT', 'PLAYER_IMPORT', 'PLAYERS_READY', 'TEAM_DRAW_COMPLETED',
-  'GROUP_ASSIGNED', 'SCHEDULE_GENERATED', 'RUNNING', 'GROUP_COMPLETED',
-  'KNOCKOUT_GENERATED', 'KNOCKOUT_RUNNING', 'COMPLETED', 'PUBLISHED',
+  'DRAFT', 'PUBLISHED',
 ]);
 export type TournamentStatus = z.infer<typeof TournamentStatusEnum>;
+
+export const SectionStatusEnum = z.enum([
+  'EMPTY', 'VALID', 'INVALID', 'NEEDS_REVIEW',
+]);
+export type SectionStatus = z.infer<typeof SectionStatusEnum>;
+
+export const AuditAction = {
+  // Tournament
+  TOURNAMENT_PUBLISHED: 'TOURNAMENT_PUBLISHED',
+  TOURNAMENT_UNPUBLISHED: 'TOURNAMENT_UNPUBLISHED',
+  // Player / Team
+  PLAYER_ADDED_EMERGENCY: 'PLAYER_ADDED_EMERGENCY',
+  TEAM_MEMBER_REPLACED: 'TEAM_MEMBER_REPLACED',
+  // Match
+  MATCH_DELETED: 'MATCH_DELETED',
+  MATCH_SCHEDULE_UPDATED: 'MATCH_SCHEDULE_UPDATED',
+  // Results
+  RESULT_OVERRIDDEN: 'RESULT_OVERRIDDEN',
+  SCORE_CORRECTED: 'SCORE_CORRECTED',
+} as const;
+export type AuditActionType = keyof typeof AuditAction;
 
 export const TeamMemberRoleEnum = z.enum(['CAPTAIN', 'MEMBER']);
 export type TeamMemberRole = z.infer<typeof TeamMemberRoleEnum>;

@@ -5,9 +5,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { TournamentService } from '../tournament/tournament.service';
 import { TeamDrawService, DrawPlayerInput } from '@golab/domain';
-import { TournamentStatus } from '@golab/contracts';
+import { TournamentSectionValidatorService } from '../tournament/tournament-section-validator.service';
 
 function normalizeGender(gender: string | null | undefined) {
   return String(gender ?? '')
@@ -20,7 +19,7 @@ export class TeamService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
-    private readonly tournamentService: TournamentService,
+    private readonly validatorService: TournamentSectionValidatorService,
   ) {}
 
   /**
@@ -93,6 +92,9 @@ export class TeamService {
       afterData: updated,
     });
 
+    // Re-validate
+    await this.validatorService.validateAll(team.tournamentId);
+
     return updated;
   }
 
@@ -127,19 +129,6 @@ export class TeamService {
 
     if (!tournament) {
       throw new NotFoundException(`Không tìm thấy giải đấu.`);
-    }
-
-    // Verify status is valid for draw
-    const allowedStates: TournamentStatus[] = [
-      'DRAFT',
-      'PLAYER_IMPORT',
-      'PLAYERS_READY',
-      'TEAM_DRAW_COMPLETED',
-    ];
-    if (!allowedStates.includes(tournament.status)) {
-      throw new BadRequestException(
-        `Không thể bốc thăm đội khi giải đấu đang ở trạng thái ${tournament.status}.`,
-      );
     }
 
     const ruleset = tournament.ruleset;
@@ -246,7 +235,7 @@ export class TeamService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. Delete existing teams and memberships for this tournament to avoid duplicates
+      // 1. Delete existing teams and memberships for this tournament
       await tx.teamMember.deleteMany({ where: { tournamentId } });
       await tx.team.deleteMany({ where: { tournamentId } });
 
@@ -264,7 +253,6 @@ export class TeamService {
           },
         });
 
-        // Set the first male as default captain for convenience
         let captainPlayerId: string | null = null;
 
         for (const p of t.players) {
@@ -284,7 +272,6 @@ export class TeamService {
           }
         }
 
-        // Set captain
         if (captainPlayerId) {
           await tx.team.update({
             where: { id: team.id },
@@ -311,12 +298,6 @@ export class TeamService {
         data: { status: 'CANCELLED' },
       });
 
-      // 5. Advance tournament status to TEAM_DRAW_COMPLETED
-      await tx.tournament.update({
-        where: { id: tournamentId },
-        data: { status: 'TEAM_DRAW_COMPLETED' },
-      });
-
       await this.auditService.log({
         organizationId: draw.organizationId,
         tournamentId,
@@ -326,7 +307,99 @@ export class TeamService {
         entityId: drawId,
       });
 
+      // Re-validate and mark dependents
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['lineup']);
+      await this.validatorService.validateAll(tournamentId);
+
       return confirmedTeams;
     });
+  }
+
+  /**
+   * Replaces a member in a team manually (Emergency/Replacement).
+   */
+  async replaceMember(
+    tournamentId: string,
+    teamId: string,
+    oldPlayerId: string,
+    newPlayerId: string,
+    userId: string,
+  ) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+    });
+    if (!team) {
+      throw new NotFoundException('Không tìm thấy đội');
+    }
+
+    const registration = await this.prisma.tournamentRegistration.findUnique({
+      where: {
+        tournamentId_playerProfileId: {
+          tournamentId,
+          playerProfileId: newPlayerId,
+        },
+      },
+    });
+    if (!registration) {
+      throw new BadRequestException('VĐV mới chưa đăng ký giải đấu này.');
+    }
+
+    const alreadyInTeam = await this.prisma.teamMember.findFirst({
+      where: { tournamentId, playerProfileId: newPlayerId },
+    });
+    if (alreadyInTeam) {
+      throw new BadRequestException('VĐV mới đã thuộc một đội khác.');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // 1. Delete old member
+      await tx.teamMember.delete({
+        where: {
+          teamId_playerProfileId: {
+            teamId,
+            playerProfileId: oldPlayerId,
+          },
+        },
+      });
+
+      // 2. Add new member
+      const newMember = await tx.teamMember.create({
+        data: {
+          organizationId: team.organizationId,
+          tournamentId,
+          teamId,
+          playerProfileId: newPlayerId,
+          role: 'MEMBER',
+          joinedMethod: 'manual_replace',
+        },
+      });
+
+      // 3. Update captain if old was captain
+      if (team.captainPlayerId === oldPlayerId) {
+        await tx.team.update({
+          where: { id: teamId },
+          data: { captainPlayerId: newPlayerId },
+        });
+      }
+
+      await this.auditService.log({
+        organizationId: team.organizationId,
+        tournamentId,
+        actorUserId: userId,
+        action: 'TEAM_MEMBER_REPLACED',
+        entityType: 'Team',
+        entityId: teamId,
+        beforeData: { playerId: oldPlayerId },
+        afterData: { playerId: newPlayerId },
+      });
+
+      return newMember;
+    });
+
+    // Mark dependent lineup sections as NEEDS_REVIEW and validate
+    await this.validatorService.markSectionNeedsReview(tournamentId, ['lineup']);
+    await this.validatorService.validateAll(tournamentId);
+
+    return result;
   }
 }
