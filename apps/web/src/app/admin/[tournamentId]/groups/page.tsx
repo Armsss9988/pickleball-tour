@@ -84,7 +84,7 @@ export default function GroupsPage() {
     setActionLoading(true);
 
     try {
-      await apiFetch(`/tournaments/${tournament.id}/groups/random`, {
+      await apiFetch(`/tournaments/${tournament.id}/groups/random-assignment`, {
         method: 'POST',
       });
 
@@ -103,7 +103,7 @@ export default function GroupsPage() {
     setActionLoading(true);
 
     try {
-      await apiFetch(`/tournaments/${tournament.id}/schedule/generate`, {
+      await apiFetch(`/tournaments/${tournament.id}/schedule/generate-group-stage`, {
         method: 'POST',
       });
 
