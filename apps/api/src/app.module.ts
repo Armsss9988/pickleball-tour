@@ -19,6 +19,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { RegistrationModule } from './modules/registration/registration.module';
 import { AwardModule } from './modules/award/award.module';
+import { PublicModule } from './modules/public/public.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { AwardModule } from './modules/award/award.module';
     OrganizationModule,
     RegistrationModule,
     AwardModule,
+    PublicModule,
   ],
   controllers: [AppController],
   providers: [AppService],

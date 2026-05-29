@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import Link from 'next/link';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 
@@ -21,84 +24,22 @@ export default function PublicSpectatorPage() {
   
   const socketRef = useRef<Socket | null>(null);
 
-  // Programmatic guest viewer login to bypass JWT guard on all APIs seamlessly
-  const ensureGuestAuthToken = async () => {
-    try {
-      const userToken = localStorage.getItem('golab_access_token');
-      if (userToken) return userToken;
-
-      const guestToken = sessionStorage.getItem('golab_guest_token');
-      if (guestToken) return guestToken;
-
-      // Auto login as read-only Scorer (guest account)
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'scorer@golab.vn', password: 'scorer123' })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        sessionStorage.setItem('golab_guest_token', data.accessToken);
-        return data.accessToken;
-      }
-    } catch (e) {
-      console.error('Guest auto-auth failed:', e);
-    }
-    return null;
-  };
-
-  // Helper fetcher using guest credentials
-  const publicApiFetch = async (endpoint: string) => {
-    const token = await ensureGuestAuthToken();
-    const res = await fetch(`/api${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
-    });
-    if (!res.ok) {
-      throw new Error(`Lỗi tải API ${endpoint} (Mã: ${res.status})`);
-    }
-    return res.json();
-  };
-
-  const loadAllData = async (showLoading = true) => {
+  const loadAllData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
       setError('');
-
-      // 1. Fetch all tournaments to find the one matching slug
-      const tournamentsList = await publicApiFetch('/tournaments');
-      const activeTournament = tournamentsList.find((t: any) => t.slug === slug);
-      
-      if (!activeTournament) {
-        throw new Error(`Không tìm thấy giải đấu với slug "${slug}"`);
+      const res = await fetch(`/api/public/tournaments/${encodeURIComponent(slug)}`);
+      if (!res.ok) {
+        throw new Error(`Lỗi tải dữ liệu giải đấu công khai (Mã: ${res.status})`);
       }
-      setTournament(activeTournament);
 
-      // 2. Fetch matches
-      const matchData = await publicApiFetch(`/tournaments/${activeTournament.id}/matches`);
-      setMatches(matchData);
-
-      // 3. Fetch groups and standings
-      const groupData = await publicApiFetch(`/tournaments/${activeTournament.id}/groups`);
-      setGroups(groupData);
-
-      const standingsData = await publicApiFetch(`/tournaments/${activeTournament.id}/standings`);
-      setStandings(standingsData);
-
-      // 4. Fetch teams
-      const teamData = await publicApiFetch(`/tournaments/${activeTournament.id}/teams`);
-      setTeams(teamData);
-
-      // 5. Fetch bracket if generated
-      try {
-        const bracketData = await publicApiFetch(`/tournaments/${activeTournament.id}/bracket`);
-        setBracket(bracketData);
-      } catch (bracketErr) {
-        console.log('Knockout bracket not yet generated.');
-        setBracket([]);
-      }
+      const data = await res.json();
+      setTournament(data.tournament);
+      setMatches(data.matches || []);
+      setGroups(data.groups || []);
+      setStandings(data.standings || []);
+      setTeams(data.teams || []);
+      setBracket(data.bracket || []);
 
     } catch (e: any) {
       console.error(e);
@@ -106,10 +47,12 @@ export default function PublicSpectatorPage() {
     } finally {
       if (showLoading) setLoading(false);
     }
-  };
+  }, [slug]);
 
   useEffect(() => {
-    loadAllData();
+    const initialLoadTimer = window.setTimeout(() => {
+      void loadAllData();
+    }, 0);
 
     // Establish WebSocket listener for live point updates!
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
@@ -130,9 +73,10 @@ export default function PublicSpectatorPage() {
     });
 
     return () => {
+      window.clearTimeout(initialLoadTimer);
       if (socket) socket.disconnect();
     };
-  }, [slug]);
+  }, [loadAllData]);
 
   // When tournament ID is determined, join the socket room
   useEffect(() => {
@@ -162,7 +106,7 @@ export default function PublicSpectatorPage() {
           <span className="text-4xl text-rose-500">⚠️</span>
           <h2 className="text-lg font-bold text-slate-100">Không tìm thấy giải đấu</h2>
           <p className="text-xs text-slate-400">{error || 'Giải đấu chưa được xuất bản hoặc đường link không chính xác.'}</p>
-          <a href="/" className="btn btn-secondary text-xs w-full py-2">Quay lại trang chủ</a>
+          <Link href="/" className="btn btn-secondary text-xs w-full py-2">Quay lại trang chủ</Link>
         </div>
       </div>
     );
