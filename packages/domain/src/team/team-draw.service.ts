@@ -64,6 +64,48 @@ export class TeamDrawService {
   ): DrawTeamsResult {
     const rand = this.seededRandom(seed);
 
+    // If maleCount and femaleCount are both 0, draw gender-neutrally
+    if (composition.maleCount === 0 && composition.femaleCount === 0) {
+      const shuffled = this.shuffle(players, rand);
+      let teamCount = composition.teamSize > 0 ? Math.floor(shuffled.length / composition.teamSize) : 0;
+      if (requestedTeamCount !== undefined && requestedTeamCount > 0) {
+        teamCount = Math.min(teamCount, requestedTeamCount);
+      }
+
+      if (teamCount <= 0) {
+        return { teams: [], backups: players };
+      }
+
+      const teams: DrawnTeamResult[] = [];
+      for (let i = 1; i <= teamCount; i++) {
+        const code = String.fromCharCode(64 + i);
+        teams.push({
+          teamNo: i,
+          name: `Đội ${i}`,
+          code,
+          players: [],
+        });
+      }
+
+      let playerPtr = 0;
+      for (const team of teams) {
+        for (let p = 0; p < composition.teamSize; p++) {
+          if (playerPtr < shuffled.length) {
+            team.players.push(shuffled[playerPtr]);
+            playerPtr++;
+          }
+        }
+      }
+
+      const backups: DrawPlayerInput[] = [];
+      while (playerPtr < shuffled.length) {
+        backups.push(shuffled[playerPtr]);
+        playerPtr++;
+      }
+
+      return { teams, backups };
+    }
+
     // 1. Separate and shuffle by gender
     const males = this.shuffle(
       players.filter((p) => p.gender === 'MALE'),

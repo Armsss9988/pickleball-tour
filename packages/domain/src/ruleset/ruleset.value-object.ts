@@ -73,10 +73,12 @@ export class Ruleset extends ValueObject<CreateRulesetDto> {
 
     // 2. Team Composition check
     const comp = config.teamComposition;
-    if (comp.maleCount + comp.femaleCount !== comp.teamSize) {
-      throw new ValidationError(
-        `Tổng số vận động viên nam (${comp.maleCount}) và nữ (${comp.femaleCount}) phải bằng quy mô đội (${comp.teamSize}).`
-      );
+    if (comp.maleCount > 0 || comp.femaleCount > 0) {
+      if (comp.maleCount + comp.femaleCount !== comp.teamSize) {
+        throw new ValidationError(
+          `Tổng số vận động viên nam (${comp.maleCount}) và nữ (${comp.femaleCount}) phải bằng quy mô đội (${comp.teamSize}).`
+        );
+      }
     }
 
     // 3. Player limit check

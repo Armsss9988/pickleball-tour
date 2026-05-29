@@ -4,7 +4,7 @@ import { useActiveTournament } from '@/lib/use-tournament';
 import { PageHeader } from '@/components/page-header';
 import { PageLoading } from '@/components/loading-skeleton';
 import { apiFetch } from '@/lib/api-client';
-import { ClipboardList, Users, Target, Save, Edit3, X, Lock } from '@/components/icons';
+import { ClipboardList, Users, Target, Save, Edit3, X, Lock, Plus, Trash2 } from '@/components/icons';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { getCurrentUser } from '@/lib/current-user';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
@@ -74,21 +74,25 @@ export default function RulesetSettingsPage() {
   const currentUser = useMemo(() => getCurrentUser(), []);
   const { toast } = useToast();
 
-  // Form states
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
-  const [segment1Name, setSegment1Name] = useState('Đôi Nam Nữ');
-  const [segment1Score, setSegment1Score] = useState(8);
-  const [segment2Name, setSegment2Name] = useState('Đôi Nam');
-  const [segment2Score, setSegment2Score] = useState(16);
-  const [segment3Name, setSegment3Name] = useState('Đôi Nữ');
-  const [segment3Score, setSegment3Score] = useState(24);
+  const [genderFormat, setGenderFormat] = useState<'strict' | 'any'>('strict');
+  const [teamSize, setTeamSize] = useState(5);
   const [maleCount, setMaleCount] = useState(3);
   const [femaleCount, setFemaleCount] = useState(2);
   const [allMustPlay, setAllMustPlay] = useState(true);
   const [maleMaxSegments, setMaleMaxSegments] = useState(1);
   const [femaleMaxSegments, setFemaleMaxSegments] = useState(2);
+  const [noOverlapAllPlayers, setNoOverlapAllPlayers] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [segmentsList, setSegmentsList] = useState<SegmentDefinitionUI[]>([
+    { segmentKey: 'mixed_doubles', name: 'Đôi Nam Nữ', targetScore: 8, playerCount: 2, genderRule: 'mixed' },
+    { segmentKey: 'mens_doubles', name: 'Đôi Nam', targetScore: 16, playerCount: 2, genderRule: 'male_only' },
+    { segmentKey: 'womens_doubles', name: 'Đôi Nữ', targetScore: 24, playerCount: 2, genderRule: 'female_only' },
+  ]);
+
+  const [overlapsList, setOverlapsList] = useState<OverlapRuleUI[]>([]);
 
   const [rulesetState, setRulesetState] = useState<any>(null);
   const [rulesetLoading, setRulesetLoading] = useState(true);
@@ -133,31 +137,50 @@ export default function RulesetSettingsPage() {
         setName(data.name || '');
 
         const segs = data.segmentDefinitions || data.segments || [];
-        if (segs[0]) {
-          setSegment1Name(segs[0].name || 'Đôi Nam Nữ');
-          setSegment1Score(segs[0].targetScore || 8);
-        }
-        if (segs[1]) {
-          setSegment2Name(segs[1].name || 'Đôi Nam');
-          setSegment2Score(segs[1].targetScore || 16);
-        }
-        if (segs[2]) {
-          setSegment3Name(segs[2].name || 'Đôi Nữ');
-          setSegment3Score(segs[2].targetScore || 24);
+        if (segs.length > 0) {
+          setSegmentsList(segs.map((s: any) => ({
+            segmentKey: s.segmentKey || `seg_${Math.random().toString(36).substr(2, 9)}`,
+            name: s.name || '',
+            targetScore: s.targetScore || 0,
+            playerCount: s.playerCount || 2,
+            genderRule: s.genderRule || 'any',
+          })));
         }
 
         const comp = data.teamCompositionRule || data.teamComposition;
         if (comp) {
-          setMaleCount(comp.maleCount ?? 3);
-          setFemaleCount(comp.femaleCount ?? 2);
+          const mc = comp.maleCount ?? 0;
+          const fc = comp.femaleCount ?? 0;
+          setMaleCount(mc);
+          setFemaleCount(fc);
+          setTeamSize(comp.teamSize ?? 5);
           setAllMustPlay(comp.allMustPlay ?? true);
+          if (mc > 0 || fc > 0) {
+            setGenderFormat('strict');
+          } else {
+            setGenderFormat('any');
+          }
         }
 
         const limits = data.playerLimitRules || data.playerLimits || [];
         const maleLim = limits.find((l: any) => l.gender === 'MALE');
         const femaleLim = limits.find((l: any) => l.gender === 'FEMALE');
-        if (maleLim) setMaleMaxSegments(maleLim.maxSegments ?? 1);
-        if (femaleLim) setFemaleMaxSegments(femaleLim.maxSegments ?? 2);
+        const mMax = maleLim?.maxSegments ?? 1;
+        const fMax = femaleLim?.maxSegments ?? 2;
+        setMaleMaxSegments(mMax);
+        setFemaleMaxSegments(fMax);
+        if (mMax === 1 && fMax === 1) {
+          setNoOverlapAllPlayers(true);
+        } else {
+          setNoOverlapAllPlayers(false);
+        }
+
+        const overlaps = data.overlapRules || [];
+        setOverlapsList(overlaps.map((o: any) => ({
+          segmentAKey: o.segmentAKey,
+          segmentBKey: o.segmentBKey,
+          gender: o.gender,
+        })));
       }
     } catch (error) {
       console.error('Failed to load ruleset:', error);
@@ -194,6 +217,61 @@ export default function RulesetSettingsPage() {
   });
   const editAccess = getActionAccess('editRuleset', currentUser.role, uxContext);
 
+  const handleAddSegment = () => {
+    const lastSeg = segmentsList[segmentsList.length - 1];
+    const lastScore = lastSeg ? Number(lastSeg.targetScore) : 0;
+    const newKey = `seg_${Math.random().toString(36).substr(2, 9)}`;
+    setSegmentsList([
+      ...segmentsList,
+      {
+        segmentKey: newKey,
+        name: `Chặng ${segmentsList.length + 1}`,
+        targetScore: lastScore + 8,
+        playerCount: 2,
+        genderRule: 'any',
+      },
+    ]);
+  };
+
+  const handleRemoveSegment = (index: number) => {
+    if (segmentsList.length <= 1) return;
+    const itemToRemove = segmentsList[index];
+    setSegmentsList(segmentsList.filter((_, idx) => idx !== index));
+    setOverlapsList(
+      overlapsList.filter(
+        (o) => o.segmentAKey !== itemToRemove.segmentKey && o.segmentBKey !== itemToRemove.segmentKey
+      )
+    );
+  };
+
+  const handleSegmentChange = (index: number, fields: Partial<SegmentDefinitionUI>) => {
+    setSegmentsList(
+      segmentsList.map((s, idx) => (idx === index ? { ...s, ...fields } : s))
+    );
+  };
+
+  const handleAddOverlap = () => {
+    if (segmentsList.length < 2) return;
+    setOverlapsList([
+      ...overlapsList,
+      {
+        segmentAKey: segmentsList[0].segmentKey,
+        segmentBKey: segmentsList[1].segmentKey,
+        gender: 'MALE',
+      },
+    ]);
+  };
+
+  const handleRemoveOverlap = (index: number) => {
+    setOverlapsList(overlapsList.filter((_, idx) => idx !== index));
+  };
+
+  const handleOverlapChange = (index: number, fields: Partial<OverlapRuleUI>) => {
+    setOverlapsList(
+      overlapsList.map((o, idx) => (idx === index ? { ...o, ...fields } : o))
+    );
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editAccess.allowed) {
@@ -206,28 +284,51 @@ export default function RulesetSettingsPage() {
       return;
     }
 
-    const s1 = Number(segment1Score);
-    const s2 = Number(segment2Score);
-    const s3 = Number(segment3Score);
-    const mc = Number(maleCount);
-    const fc = Number(femaleCount);
-    const mMax = Number(maleMaxSegments);
-    const fMax = Number(femaleMaxSegments);
-
-    if (s1 <= 0 || s2 <= s1 || s3 <= s2) {
-      toast('Điểm chạm thi đấu phải tăng dần theo từng chặng (Chặng 1 < Chặng 2 < Chặng 3).', 'error');
+    if (segmentsList.length === 0) {
+      toast('Cần ít nhất 1 chặng thi đấu.', 'error');
       return;
     }
 
-    if (mc < 0 || fc < 0) {
+    for (let i = 0; i < segmentsList.length; i++) {
+      const currentScore = Number(segmentsList[i].targetScore);
+      if (isNaN(currentScore) || currentScore <= 0) {
+        toast(`Chặng "${segmentsList[i].name}" có số điểm chạm không hợp lệ.`, 'error');
+        return;
+      }
+      if (i > 0) {
+        const prevScore = Number(segmentsList[i - 1].targetScore);
+        if (currentScore <= prevScore) {
+          toast(
+            `Điểm chạm của chặng "${segmentsList[i].name}" (${currentScore}) phải lớn hơn chặng trước "${segmentsList[i - 1].name}" (${prevScore}).`,
+            'error'
+          );
+          return;
+        }
+      }
+    }
+
+    const mc = genderFormat === 'strict' ? Number(maleCount) : 0;
+    const fc = genderFormat === 'strict' ? Number(femaleCount) : 0;
+    const tSize = genderFormat === 'strict' ? mc + fc : Number(teamSize);
+
+    if (genderFormat === 'strict' && (mc < 0 || fc < 0)) {
       toast('Số lượng VĐV nam/nữ không được nhỏ hơn 0.', 'error');
       return;
     }
+    if (genderFormat === 'any' && tSize <= 0) {
+      toast('Quy mô đội hình tuyển phải lớn hơn 0.', 'error');
+      return;
+    }
+
+    const mMax = noOverlapAllPlayers ? 1 : Number(maleMaxSegments);
+    const fMax = noOverlapAllPlayers ? 1 : Number(femaleMaxSegments);
 
     if (mMax <= 0 || fMax <= 0) {
       toast('Số chặng thi đấu tối đa của VĐV phải lớn hơn 0.', 'error');
       return;
     }
+
+    const finalWinScore = Number(segmentsList[segmentsList.length - 1].targetScore);
 
     try {
       setSaving(true);
@@ -235,37 +336,17 @@ export default function RulesetSettingsPage() {
         name: name.trim(),
         sport: 'pickleball',
         isTemplate: false,
-        segments: [
-          {
-            segmentKey: 'mixed_doubles',
-            name: segment1Name.trim(),
-            targetScore: s1,
-            playerCount: 2,
-            genderRule: 'mixed',
-            orderIndex: 0,
-            isDrawable: true,
-          },
-          {
-            segmentKey: 'mens_doubles',
-            name: segment2Name.trim(),
-            targetScore: s2,
-            playerCount: 2,
-            genderRule: 'male_only',
-            orderIndex: 1,
-            isDrawable: true,
-          },
-          {
-            segmentKey: 'womens_doubles',
-            name: segment3Name.trim(),
-            targetScore: s3,
-            playerCount: 2,
-            genderRule: 'female_only',
-            orderIndex: 2,
-            isDrawable: true,
-          },
-        ],
+        segments: segmentsList.map((s, idx) => ({
+          segmentKey: s.segmentKey,
+          name: s.name.trim(),
+          targetScore: Number(s.targetScore),
+          playerCount: Number(s.playerCount),
+          genderRule: s.genderRule,
+          orderIndex: idx,
+          isDrawable: true,
+        })),
         teamComposition: {
-          teamSize: mc + fc,
+          teamSize: tSize,
           maleCount: mc,
           femaleCount: fc,
           allMustPlay: allMustPlay,
@@ -274,16 +355,14 @@ export default function RulesetSettingsPage() {
           { gender: 'MALE', minSegments: 1, maxSegments: mMax },
           { gender: 'FEMALE', minSegments: 1, maxSegments: fMax },
         ],
-        overlapRules: [
-          {
-            segmentAKey: 'mens_doubles',
-            segmentBKey: 'mixed_doubles',
-            gender: 'MALE',
-            isForbidden: true,
-          },
-        ],
+        overlapRules: overlapsList.map((o) => ({
+          segmentAKey: o.segmentAKey,
+          segmentBKey: o.segmentBKey,
+          gender: o.gender,
+          isForbidden: true,
+        })),
         scoringConfig: {
-          winScore: s3,
+          winScore: finalWinScore,
           noDeuce: true,
           sideSwitchAfterSegments: 0,
           pointsForWin: 3,
@@ -307,6 +386,8 @@ export default function RulesetSettingsPage() {
       setSaving(false);
     }
   };
+
+  const currentTeamSize = genderFormat === 'strict' ? maleCount + femaleCount : teamSize;
 
   return (
     <div className="premium-container animate-scale-in">
@@ -375,7 +456,6 @@ export default function RulesetSettingsPage() {
 
           {isEditing ? (
             <form onSubmit={handleSave} className="space-y-6">
-              {/* Ruleset Name */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-slate-400">Tên thể thức luật</label>
                 <input
@@ -389,130 +469,335 @@ export default function RulesetSettingsPage() {
                 />
               </div>
 
-              {/* Targets config */}
-              <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <Target className="w-4 h-4 text-sky-400" />
-                  Điểm chạm chặng & Điểm thắng chung cuộc
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] text-slate-455">Chặng 1 (Đôi Nam Nữ)</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      value={segment1Score}
-                      onChange={(e) => setSegment1Score(Number(e.target.value))}
-                      className="w-full premium-input text-sm"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] text-slate-455">Chặng 2 (Đôi Nam)</label>
-                    <input
-                      type="number"
-                      required
-                      min={2}
-                      value={segment2Score}
-                      onChange={(e) => setSegment2Score(Number(e.target.value))}
-                      className="w-full premium-input text-sm"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] text-slate-455">Chặng 3 (Đôi Nữ - Thắng chung cuộc)</label>
-                    <input
-                      type="number"
-                      required
-                      min={3}
-                      value={segment3Score}
-                      onChange={(e) => setSegment3Score(Number(e.target.value))}
-                      className="w-full premium-input text-sm font-bold text-amber-400"
-                      disabled={saving}
-                    />
-                  </div>
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  * Điểm mục tiêu của chặng cuối cùng sẽ tự động đồng bộ thành điểm chạm chiến thắng chung cuộc của trận đấu.
-                </p>
-              </div>
-
-              {/* Team Composition & Player limits */}
               <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                   <Users className="w-4 h-4 text-emerald-400" />
-                  Quy mô đội hình tuyển & Giới hạn chặng
+                  Thể thức Giới tính & Quy mô
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] text-slate-455">Số lượng VĐV Nam mỗi đội</label>
+                
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                     <input
-                      type="number"
-                      required
-                      min={0}
-                      value={maleCount}
-                      onChange={(e) => setMaleCount(Number(e.target.value))}
-                      className="w-full premium-input text-sm"
-                      disabled={saving}
+                      type="radio"
+                      name="genderFormat"
+                      checked={genderFormat === 'strict'}
+                      onChange={() => setGenderFormat('strict')}
+                      className="text-amber-500 focus:ring-amber-500 bg-slate-800 border-slate-700"
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] text-slate-455">Số lượng VĐV Nữ mỗi đội</label>
+                    Ràng buộc giới tính (Ví dụ: Đội có 3 Nam, 2 Nữ)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                     <input
-                      type="number"
-                      required
-                      min={0}
-                      value={femaleCount}
-                      onChange={(e) => setFemaleCount(Number(e.target.value))}
-                      className="w-full premium-input text-sm"
-                      disabled={saving}
+                      type="radio"
+                      name="genderFormat"
+                      checked={genderFormat === 'any'}
+                      onChange={() => setGenderFormat('any')}
+                      className="text-amber-500 focus:ring-amber-500 bg-slate-800 border-slate-700"
                     />
-                  </div>
-                  <div className="flex items-center gap-2 h-full pt-4">
-                    <input
-                      type="checkbox"
-                      id="allMustPlay"
-                      checked={allMustPlay}
-                      onChange={(e) => setAllMustPlay(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
-                      disabled={saving}
-                    />
-                    <label htmlFor="allMustPlay" className="text-xs font-semibold text-slate-300 cursor-pointer">
-                      Tất cả 5 thành viên phải ra sân ít nhất 1 lần
-                    </label>
-                  </div>
+                    Tự do / Một giới tính (Chỉ yêu cầu tổng số lượng)
+                  </label>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] text-slate-455">Số chặng tối đa VĐV Nam được đánh / trận</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      value={maleMaxSegments}
-                      onChange={(e) => setMaleMaxSegments(Number(e.target.value))}
-                      className="w-full premium-input text-sm"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] text-slate-455">Số chặng tối đa VĐV Nữ được đánh / trận</label>
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      value={femaleMaxSegments}
-                      onChange={(e) => setFemaleMaxSegments(Number(e.target.value))}
-                      className="w-full premium-input text-sm"
-                      disabled={saving}
-                    />
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                  {genderFormat === 'strict' ? (
+                    <>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] text-slate-455">Số lượng VĐV Nam / đội</label>
+                        <input
+                          type="number"
+                          required
+                          min={0}
+                          value={maleCount}
+                          onChange={(e) => setMaleCount(Number(e.target.value))}
+                          className="w-full premium-input text-sm"
+                          disabled={saving}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] text-slate-455">Số lượng VĐV Nữ / đội</label>
+                        <input
+                          type="number"
+                          required
+                          min={0}
+                          value={femaleCount}
+                          onChange={(e) => setFemaleCount(Number(e.target.value))}
+                          className="w-full premium-input text-sm"
+                          disabled={saving}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[11px] text-slate-455">Tổng quy mô đội</label>
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${maleCount + femaleCount} người`}
+                          className="w-full premium-input text-sm bg-slate-900/60 text-slate-400 cursor-not-allowed"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-1.5 col-span-2 md:col-span-1">
+                      <label className="block text-[11px] text-slate-455">Tổng số lượng VĐV / đội</label>
+                      <input
+                        type="number"
+                        required
+                        min={1}
+                        value={teamSize}
+                        onChange={(e) => setTeamSize(Number(e.target.value))}
+                        className="w-full premium-input text-sm"
+                        disabled={saving}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <input
+                    type="checkbox"
+                    id="allMustPlay"
+                    checked={allMustPlay}
+                    onChange={(e) => setAllMustPlay(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                    disabled={saving}
+                  />
+                  <label htmlFor="allMustPlay" className="text-xs font-semibold text-slate-300 cursor-pointer">
+                    Tất cả {currentTeamSize} thành viên bắt buộc phải ra sân thi đấu ít nhất 1 lần
+                  </label>
                 </div>
               </div>
 
-              {/* Submit buttons */}
+              <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-emerald-400" />
+                  Giới hạn số chặng thi đấu
+                </h4>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="noOverlapAll"
+                    checked={noOverlapAllPlayers}
+                    onChange={(e) => setNoOverlapAllPlayers(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                    disabled={saving}
+                  />
+                  <label htmlFor="noOverlapAll" className="text-xs font-semibold text-slate-300 cursor-pointer text-amber-400">
+                    ⚠️ Mỗi VĐV chỉ được thi đấu tối đa 1 chặng / trận (Không ai được đánh 2 nội dung)
+                  </label>
+                </div>
+
+                {!noOverlapAllPlayers && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] text-slate-455">Số chặng tối đa VĐV Nam được đánh / trận</label>
+                      <input
+                        type="number"
+                        required
+                        min={1}
+                        value={maleMaxSegments}
+                        onChange={(e) => setMaleMaxSegments(Number(e.target.value))}
+                        className="w-full premium-input text-sm"
+                        disabled={saving}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] text-slate-455">Số chặng tối đa VĐV Nữ được đánh / trận</label>
+                      <input
+                        type="number"
+                        required
+                        min={1}
+                        value={femaleMaxSegments}
+                        onChange={(e) => setFemaleMaxSegments(Number(e.target.value))}
+                        className="w-full premium-input text-sm"
+                        disabled={saving}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                <div className="flex items-center justify-between border-b border-slate-850 pb-2">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                    <Target className="w-4 h-4 text-sky-400" />
+                    Các chặng thi đấu tiếp sức
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={handleAddSegment}
+                    className="btn btn-xs flex items-center gap-1 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/20 px-2 py-1"
+                    disabled={saving}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Thêm chặng
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {segmentsList.map((segment, index) => (
+                    <div key={segment.segmentKey} className="flex flex-col gap-3 p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl relative group">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-sky-400">Chặng {index + 1}</span>
+                        {segmentsList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSegment(index)}
+                            className="text-slate-500 hover:text-rose-400 transition-colors"
+                            title="Xóa chặng này"
+                            disabled={saving}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                        <div className="space-y-1 col-span-1 md:col-span-2">
+                          <label className="text-[10px] text-slate-500">Tên chặng</label>
+                          <input
+                            type="text"
+                            required
+                            value={segment.name}
+                            onChange={(e) => handleSegmentChange(index, { name: e.target.value })}
+                            className="w-full premium-input text-xs"
+                            placeholder="Tên chặng thi đấu"
+                            disabled={saving}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500">Điểm chạm</label>
+                          <input
+                            type="number"
+                            required
+                            min={1}
+                            value={segment.targetScore}
+                            onChange={(e) => handleSegmentChange(index, { targetScore: Number(e.target.value) })}
+                            className="w-full premium-input text-xs font-semibold text-amber-400"
+                            disabled={saving}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500">Số VĐV / chặng</label>
+                          <input
+                            type="number"
+                            required
+                            min={1}
+                            value={segment.playerCount}
+                            onChange={(e) => handleSegmentChange(index, { playerCount: Number(e.target.value) })}
+                            className="w-full premium-input text-xs"
+                            disabled={saving}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500">Luật giới tính</label>
+                          <select
+                            value={segment.genderRule}
+                            onChange={(e) => handleSegmentChange(index, { genderRule: e.target.value as any })}
+                            className="w-full premium-input text-xs"
+                            disabled={saving}
+                          >
+                            <option value="any">Tự do / Bất kỳ giới tính nào</option>
+                            {genderFormat === 'strict' && (
+                              <>
+                                <option value="mixed">Đôi Nam Nữ (Ít nhất 1 Nam, 1 Nữ)</option>
+                                <option value="male_only">Chỉ Nam</option>
+                                <option value="female_only">Chỉ Nữ</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-slate-500">Mã định danh chặng</label>
+                          <input
+                            type="text"
+                            readOnly
+                            value={segment.segmentKey}
+                            className="w-full premium-input text-xs bg-slate-900/60 text-slate-500 cursor-not-allowed font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  * Điểm chạm của chặng cuối cùng sẽ tự động làm điểm chạm kết thúc trận đấu.
+                </p>
+              </div>
+
+              {genderFormat === 'strict' && !noOverlapAllPlayers && (
+                <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                  <div className="flex items-center justify-between border-b border-slate-850 pb-2">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-emerald-400" />
+                      Quy tắc cấm trùng lặp VĐV giữa các chặng
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={handleAddOverlap}
+                      className="btn btn-xs flex items-center gap-1 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 px-2 py-1"
+                      disabled={saving || segmentsList.length < 2}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Thêm quy định
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                    {overlapsList.length > 0 ? (
+                      overlapsList.map((overlap, index) => (
+                        <div key={index} className="flex items-center gap-2 p-2 bg-slate-900/40 border border-slate-800/80 rounded-xl">
+                          <span className="text-xs text-slate-400">Cấm VĐV</span>
+                          <select
+                            value={overlap.gender}
+                            onChange={(e) => handleOverlapChange(index, { gender: e.target.value as any })}
+                            className="premium-input text-xs py-1"
+                            disabled={saving}
+                          >
+                            <option value="MALE">Nam</option>
+                            <option value="FEMALE">Nữ</option>
+                          </select>
+                          <span className="text-xs text-slate-400">đánh cả</span>
+                          <select
+                            value={overlap.segmentAKey}
+                            onChange={(e) => handleOverlapChange(index, { segmentAKey: e.target.value })}
+                            className="premium-input text-xs py-1 flex-1"
+                            disabled={saving}
+                          >
+                            {segmentsList.map((s) => (
+                              <option key={s.segmentKey} value={s.segmentKey}>{s.name}</option>
+                            ))}
+                          </select>
+                          <span className="text-xs text-slate-400">và</span>
+                          <select
+                            value={overlap.segmentBKey}
+                            onChange={(e) => handleOverlapChange(index, { segmentBKey: e.target.value })}
+                            className="premium-input text-xs py-1 flex-1"
+                            disabled={saving}
+                          >
+                            {segmentsList.map((s) => (
+                              <option key={s.segmentKey} value={s.segmentKey}>{s.name}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOverlap(index)}
+                            className="text-slate-500 hover:text-rose-455 transition-colors p-1"
+                            disabled={saving}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-500 italic">Chưa thiết lập quy định cấm trùng chặng cụ thể nào.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={saving}
@@ -550,11 +835,34 @@ export default function RulesetSettingsPage() {
                     Quy mô đội hình tuyển
                   </div>
                   <div className="text-base font-semibold text-slate-200 mt-1">
-                    Quy mô: {composition?.teamSize || 5} VĐV ({composition?.maleCount || 3} Nam, {composition?.femaleCount || 2} Nữ)
+                    {composition?.maleCount || composition?.femaleCount ? (
+                      `Quy mô: ${composition?.teamSize || 5} VĐV (${composition?.maleCount || 0} Nam, ${composition?.femaleCount || 0} Nữ)`
+                    ) : (
+                      `Quy mô: ${composition?.teamSize || 5} VĐV (Tự do/Bất kỳ giới tính nào)`
+                    )}
                   </div>
                   <div className="text-xs text-slate-500">
-                    Tất cả thành viên bắt buộc phải ra sân thi đấu ít nhất 1 lần.
+                    {composition?.allMustPlay ? 'Tất cả thành viên bắt buộc phải ra sân thi đấu ít nhất 1 lần.' : 'Không bắt buộc tất cả thành viên ra sân.'}
                   </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-wider">
+                  <Lock className="w-4 h-4 text-emerald-400" />
+                  Giới hạn số chặng thi đấu
+                </div>
+                <div className="text-xs text-slate-300 space-y-1">
+                  {rulesetState?.playerLimits?.map((limit: any) => (
+                    <div key={limit.gender}>
+                      • Giới tính {limit.gender === 'MALE' ? 'Nam' : 'Nữ'}: Thi đấu từ {limit.minSegments} đến {limit.maxSegments} chặng / trận.
+                    </div>
+                  ))}
+                  {rulesetState?.playerLimits?.every((l: any) => l.maxSegments === 1) && (
+                    <div className="text-amber-400 font-semibold mt-1">
+                      ⚠️ Mỗi VĐV chỉ được thi đấu tối đa 1 chặng / trận (Không ai được đánh 2 nội dung).
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -572,6 +880,9 @@ export default function RulesetSettingsPage() {
                           <span className="text-[10px] text-slate-500 ml-2 font-mono bg-slate-800 px-1.5 py-0.5 rounded">
                             {segment.segmentKey}
                           </span>
+                          <span className="text-[10px] text-slate-400 ml-2 bg-slate-850 px-1.5 py-0.5 rounded">
+                            {(segment as any).playerCount ?? 2} VĐV · Giới tính: {(segment as any).genderRule === 'mixed' ? 'Mixed' : (segment as any).genderRule === 'male_only' ? 'Nam' : (segment as any).genderRule === 'female_only' ? 'Nữ' : 'Tự do'}
+                          </span>
                         </div>
                       </div>
                       <div className="font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 text-xs">
@@ -581,10 +892,41 @@ export default function RulesetSettingsPage() {
                   ))}
                 </div>
               </div>
+              {rulesetState?.overlapRules && rulesetState.overlapRules.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quy tắc cấm trùng chặng</span>
+                  <div className="flex flex-col gap-2">
+                    {rulesetState.overlapRules.map((rule: any, idx: number) => {
+                      const segA = segments.find(s => s.segmentKey === rule.segmentAKey)?.name || rule.segmentAKey;
+                      const segB = segments.find(s => s.segmentKey === rule.segmentBKey)?.name || rule.segmentBKey;
+                      return (
+                        <div key={idx} className="p-3 bg-slate-900/20 border border-slate-800 rounded-xl text-xs text-slate-350 font-medium">
+                          • Cấm VĐV <span className="text-amber-400 font-bold">{rule.gender === 'MALE' ? 'Nam' : 'Nữ'}</span> thi đấu đồng thời ở cả hai chặng <span className="font-semibold">{segA}</span> và <span className="font-semibold">{segB}</span>.
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
       </div>
     </div>
   );
+}
+
+interface SegmentDefinitionUI {
+  id?: string;
+  segmentKey: string;
+  name: string;
+  targetScore: number;
+  playerCount: number;
+  genderRule: 'mixed' | 'male_only' | 'female_only' | 'any';
+}
+
+interface OverlapRuleUI {
+  segmentAKey: string;
+  segmentBKey: string;
+  gender: 'MALE' | 'FEMALE';
 }

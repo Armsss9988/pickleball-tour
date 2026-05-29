@@ -578,40 +578,45 @@ export default function AdminDashboardPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_0.95fr]">
         <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/8 via-slate-900/80 to-slate-900/95 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.35)]">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/90">
-                Việc cần làm tiếp theo
-              </div>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-100">
-                {nextAction.label}
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">
-                {nextAction.description}
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                <span className="rounded-full border border-slate-700/60 bg-slate-900/70 px-2.5 py-1">
-                  Vai trò hiện tại: {getRoleLabel(role)}
-                </span>
-                <span className="rounded-full border border-slate-700/60 bg-slate-900/70 px-2.5 py-1">
-                  Trạng thái: {getHumanStatusLabel(tournament.status)}
-                </span>
-                {currentUser.user?.displayName && (
-                  <span className="rounded-full border border-slate-700/60 bg-slate-900/70 px-2.5 py-1">
-                    Người dùng: {currentUser.user.displayName}
-                  </span>
-                )}
-              </div>
+          <div className="flex flex-col gap-4">
+            {/* Label */}
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300/90">
+              Việc cần làm tiếp theo
             </div>
 
-            <div className="w-full max-w-xl lg:min-w-[340px]">
+            {/* Heading + description */}
+            <div className="min-w-0">
+              <h2 className="text-2xl font-black tracking-tight text-slate-100">
+                {nextAction.label}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                {nextAction.description}
+              </p>
+            </div>
+
+            {/* Context badges */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full border border-slate-700/60 bg-slate-900/60 px-2.5 py-1 text-slate-300">
+                Vai trò: <span className="font-semibold text-slate-100">{getRoleLabel(role)}</span>
+              </span>
+              <span className="rounded-full border border-slate-700/60 bg-slate-900/60 px-2.5 py-1 text-slate-300">
+                Trạng thái: <span className="font-semibold text-amber-300">{getHumanStatusLabel(tournament.status)}</span>
+              </span>
+              {currentUser.user?.displayName && (
+                <span className="rounded-full border border-slate-700/60 bg-slate-900/60 px-2.5 py-1 text-slate-300">
+                  {currentUser.user.displayName}
+                </span>
+              )}
+            </div>
+
+            {/* CTA action — full width at bottom */}
+            <div className="pt-1">
               <ActionGate
                 access={nextActionAccess}
                 href={nextAction.href}
                 label={nextAction.label}
                 description={nextAction.description}
                 compact={true}
-                className="border-amber-500/20 bg-slate-950/45"
               />
             </div>
           </div>

@@ -16,4 +16,16 @@ describe('Team Draw Service', () => {
       expect(team.players.filter((p) => p.gender === 'FEMALE')).toHaveLength(2);
     }
   });
+
+  it('should draw gender-neutral teams correctly when maleCount and femaleCount are both 0', () => {
+    const composition = { teamSize: 5, maleCount: 0, femaleCount: 0 };
+    const result = TeamDrawService.draw(playersFixture as any, composition, 'golab-seed-123', 8);
+
+    expect(result.teams).toHaveLength(8);
+    expect(result.backups).toHaveLength(0);
+
+    for (const team of result.teams) {
+      expect(team.players).toHaveLength(5);
+    }
+  });
 });

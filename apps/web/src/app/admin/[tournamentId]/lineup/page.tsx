@@ -91,6 +91,11 @@ function filterLineupMatches(data: MatchListItem[]): MatchListItem[] {
 
 export default function LineupPage() {
   const { tournament, loading: tLoading } = useActiveTournament();
+  const getPlayerCountForSegment = (segmentKey: string) => {
+    const rulesetSegments = (tournament as any)?.ruleset?.segmentDefinitions || (tournament as any)?.ruleset?.segments || [];
+    const matched = rulesetSegments.find((s: any) => s.segmentKey === segmentKey);
+    return matched?.playerCount ?? 2;
+  };
   const { toast } = useToast();
   const currentUser = getCurrentUser();
   const { role, user } = currentUser;
@@ -403,7 +408,7 @@ export default function LineupPage() {
                       <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
 
                       <div className="grid grid-cols-2 gap-2">
-                        {Array.from({ length: 2 }).map((_, slotIdx) => (
+                        {Array.from({ length: getPlayerCountForSegment(segment.segmentKey) }).map((_, slotIdx) => (
                           <select
                             key={slotIdx}
                             value={lineupsData[ownedTeamKey][segment.id]?.[slotIdx] || ''}
@@ -445,7 +450,7 @@ export default function LineupPage() {
                       <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
 
                       <div className="grid grid-cols-2 gap-2">
-                        {Array.from({ length: 2 }).map((_, slotIdx) => (
+                        {Array.from({ length: getPlayerCountForSegment(segment.segmentKey) }).map((_, slotIdx) => (
                           <select
                             key={slotIdx}
                             value={lineupsData.teamA[segment.id]?.[slotIdx] || ''}
@@ -486,7 +491,7 @@ export default function LineupPage() {
                       <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
 
                       <div className="grid grid-cols-2 gap-2">
-                        {Array.from({ length: 2 }).map((_, slotIdx) => (
+                        {Array.from({ length: getPlayerCountForSegment(segment.segmentKey) }).map((_, slotIdx) => (
                           <select
                             key={slotIdx}
                             value={lineupsData.teamB[segment.id]?.[slotIdx] || ''}

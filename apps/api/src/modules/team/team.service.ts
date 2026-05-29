@@ -162,9 +162,16 @@ export class TeamService {
       femaleCount: ruleset.teamCompositionRule.femaleCount,
     };
 
-    const requiredTotal = 8 * composition.teamSize;
-    const requiredMale = 8 * composition.maleCount;
-    const requiredFemale = 8 * composition.femaleCount;
+    const teamCount = Math.floor(playersInput.length / composition.teamSize);
+    if (teamCount <= 0) {
+      throw new BadRequestException(
+        `Không đủ vận động viên để lập bất kỳ đội nào (yêu cầu quy mô đội là ${composition.teamSize} VĐV).`,
+      );
+    }
+
+    const requiredTotal = teamCount * composition.teamSize;
+    const requiredMale = teamCount * composition.maleCount;
+    const requiredFemale = teamCount * composition.femaleCount;
     const actualMale = playersInput.filter(
       (player) => normalizeGender(player.gender) === 'MALE',
     ).length;
@@ -174,11 +181,14 @@ export class TeamService {
 
     if (
       playersInput.length !== requiredTotal ||
-      actualMale !== requiredMale ||
-      actualFemale !== requiredFemale
+      (composition.maleCount > 0 && actualMale !== requiredMale) ||
+      (composition.femaleCount > 0 && actualFemale !== requiredFemale)
     ) {
       throw new BadRequestException(
-        `Bốc thăm đang khóa vì chưa đủ vận động viên. Cần ${requiredTotal} VĐV: ${requiredMale} nam, ${requiredFemale} nữ. Hiện có ${playersInput.length} VĐV: ${actualMale} nam, ${actualFemale} nữ.`,
+        `Bốc thăm đang khóa vì số lượng vận động viên không khớp yêu cầu của thể thức. Cần tổng cộng ${requiredTotal} VĐV` +
+          (composition.maleCount > 0 ? `, ${requiredMale} Nam` : '') +
+          (composition.femaleCount > 0 ? `, ${requiredFemale} Nữ` : '') +
+          `. Hiện có ${playersInput.length} VĐV: ${actualMale} Nam, ${actualFemale} Nữ.`,
       );
     }
 
