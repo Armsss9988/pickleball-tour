@@ -541,12 +541,9 @@ export default function AdminDashboardPage() {
                 href={nextAction.href}
                 label={nextAction.label}
                 description={nextAction.description}
+                compact={true}
                 className="border-amber-500/20 bg-slate-950/45"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
-                  <ArrowRight className="h-4 w-4" />
-                </div>
-              </ActionGate>
+              />
             </div>
           </div>
         </div>
