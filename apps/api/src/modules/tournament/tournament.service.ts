@@ -192,6 +192,13 @@ export class TournamentService {
    */
   async publish(id: string, userId: string) {
     const t = await this.findOne(id);
+
+    if (t.status !== 'COMPLETED' && t.status !== 'PUBLISHED') {
+      throw new BadRequestException(
+        'Chưa thể công khai giải vì giải chưa hoàn tất.',
+      );
+    }
+
     const readiness = await this.getPublishReadiness(id, t);
 
     if (readiness.length > 0) {

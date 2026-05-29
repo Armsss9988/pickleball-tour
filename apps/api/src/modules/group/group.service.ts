@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { StageType } from '@golab/contracts';
@@ -7,7 +11,7 @@ import { StageType } from '@golab/contracts';
 export class GroupService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -92,7 +96,7 @@ export class GroupService {
   async assignTeams(
     tournamentId: string,
     assignment: { code: string; teamIds: string[] }[],
-    userId: string
+    userId: string,
   ) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
@@ -100,6 +104,16 @@ export class GroupService {
 
     if (!tournament) {
       throw new NotFoundException(`Không tìm thấy giải đấu.`);
+    }
+
+    const teamsCount = await this.prisma.team.count({
+      where: { tournamentId },
+    });
+
+    if (teamsCount < 8) {
+      throw new BadRequestException(
+        `Phân bảng đang khóa vì chưa đủ đội. Hiện có ${teamsCount}/8 đội.`,
+      );
     }
 
     // 1. Perform validation checks
@@ -110,18 +124,24 @@ export class GroupService {
     const allTeamIds = new Set<string>();
     for (const group of assignment) {
       if (group.teamIds.length !== 4) {
-        throw new BadRequestException(`Bảng ${group.code} phải chứa đúng 4 đội (đang có ${group.teamIds.length}).`);
+        throw new BadRequestException(
+          `Bảng ${group.code} phải chứa đúng 4 đội (đang có ${group.teamIds.length}).`,
+        );
       }
       for (const tid of group.teamIds) {
         if (allTeamIds.has(tid)) {
-          throw new BadRequestException('Một đội không thể xuất hiện ở cả hai bảng.');
+          throw new BadRequestException(
+            'Một đội không thể xuất hiện ở cả hai bảng.',
+          );
         }
         allTeamIds.add(tid);
       }
     }
 
     if (allTeamIds.size !== 8) {
-      throw new BadRequestException(`Tổng số đội phân bổ phải bằng 8 (hiện tại có ${allTeamIds.size} đội).`);
+      throw new BadRequestException(
+        `Tổng số đội phân bổ phải bằng 8 (hiện tại có ${allTeamIds.size} đội).`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -207,7 +227,9 @@ export class GroupService {
     });
 
     if (teams.length !== 8) {
-      throw new BadRequestException(`Bắt buộc phải có đúng 8 đội đã xác nhận bốc thăm (hiện tại: ${teams.length}).`);
+      throw new BadRequestException(
+        `Bắt buộc phải có đúng 8 đội đã xác nhận bốc thăm (hiện tại: ${teams.length}).`,
+      );
     }
 
     // Shuffle teams list

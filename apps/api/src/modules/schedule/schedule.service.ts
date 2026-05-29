@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ScheduleGeneratorService } from '@golab/domain';
@@ -8,7 +12,7 @@ import { MatchStatus, SegmentStatus } from '@golab/contracts';
 export class ScheduleService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -37,13 +41,15 @@ export class ScheduleService {
 
     if (tournament.status !== 'GROUP_ASSIGNED') {
       throw new BadRequestException(
-        `Không thể tạo lịch thi đấu ở trạng thái ${tournament.status}. Hãy hoàn thành phân bảng trước.`
+        'Sinh lịch thi đấu đang khóa vì chưa phân bảng. Hãy phân 8 đội vào bảng trước.',
       );
     }
 
     const ruleset = tournament.ruleset;
     if (!ruleset || ruleset.segmentDefinitions.length === 0) {
-      throw new BadRequestException(`Giải đấu chưa có cấu hình luật hoặc chặng thi đấu.`);
+      throw new BadRequestException(
+        `Giải đấu chưa có cấu hình luật hoặc chặng thi đấu.`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -84,7 +90,9 @@ export class ScheduleService {
 
           const courtIdx = idx % courts.length;
           const timeSlot = Math.floor(idx / courts.length);
-          const scheduledTime = new Date(startDate.getTime() + timeSlot * intervalMinutes * 60 * 1000);
+          const scheduledTime = new Date(
+            startDate.getTime() + timeSlot * intervalMinutes * 60 * 1000,
+          );
 
           const match = await tx.match.create({
             data: {
@@ -105,7 +113,7 @@ export class ScheduleService {
 
           // Create segments for this match
           const sortedRulesetSegs = [...ruleset.segmentDefinitions].sort(
-            (a, b) => a.orderIndex - b.orderIndex
+            (a, b) => a.orderIndex - b.orderIndex,
           );
 
           for (let segIdx = 0; segIdx < sortedRulesetSegs.length; segIdx++) {
@@ -164,7 +172,7 @@ export class ScheduleService {
     scheduledTime: string | null,
     courtName: string | null,
     matchNo: number | null,
-    userId: string
+    userId: string,
   ) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },

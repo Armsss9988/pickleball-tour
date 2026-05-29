@@ -302,7 +302,12 @@ export class LineupService {
           );
         }
 
-        if (isCaptain && team.captain?.userId !== userId) {
+        if (
+          isCaptain &&
+          (!team.captainPlayerId ||
+            !team.captain ||
+            team.captain.userId !== userId)
+        ) {
           throw new ForbiddenException(
             'Bạn chỉ được gửi lineup cho đội mà mình đang phụ trách.',
           );
