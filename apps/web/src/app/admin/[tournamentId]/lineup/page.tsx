@@ -18,6 +18,8 @@ type TeamKey = 'teamA' | 'teamB';
 interface MatchListItem {
   id: string;
   status: string;
+  teamAId?: string | null;
+  teamBId?: string | null;
   roundNo?: number | null;
   label?: string | null;
   group?: { code: string } | null;
@@ -130,8 +132,20 @@ export default function LineupPage() {
     .filter((team) => team.captain?.userId && team.captain.userId === user?.id)
     .map((team) => team.id);
   const tournamentOwnsTeam = ownedTeamIds.length > 0;
+  const visibleMatches = role === 'captain'
+    ? matches.filter((match) => (
+      (match.teamAId ? ownedTeamIds.includes(match.teamAId) : false)
+      || (match.teamBId ? ownedTeamIds.includes(match.teamBId) : false)
+    ))
+    : matches;
   const ownedTeamKey: TeamKey | null = matchDetails
     ? (ownedTeamIds.includes(matchDetails.teamAId) ? 'teamA' : ownedTeamIds.includes(matchDetails.teamBId) ? 'teamB' : null)
+    : null;
+  const ownedTeamName = matchDetails && ownedTeamKey
+    ? (ownedTeamKey === 'teamA' ? matchDetails.teamA?.name : matchDetails.teamB?.name)
+    : null;
+  const ownedTeamMembers = matchDetails && ownedTeamKey
+    ? (ownedTeamKey === 'teamA' ? matchDetails.teamA?.members : matchDetails.teamB?.members)
     : null;
 
   const uxContext = buildTournamentUxContext({
@@ -148,8 +162,11 @@ export default function LineupPage() {
 
   const submitAccess = getActionAccess('submitLineup', role, uxContext);
   const canLockLineups = role === 'btc_admin' || role === 'super_admin';
-  const isLineupLocked = matchDetails?.status === 'READY';
-  const captainBlockedForSelectedMatch = role === 'captain' && Boolean(matchDetails) && ownedTeamKey === null;
+  const selectedStillVisible = selectedMatch ? visibleMatches.some((match) => match.id === selectedMatch.id) : false;
+  const activeSelectedMatch = selectedStillVisible ? selectedMatch : null;
+  const activeMatchDetails = selectedStillVisible ? matchDetails : null;
+  const isLineupLocked = activeMatchDetails?.status === 'READY';
+  const captainBlockedForSelectedMatch = role === 'captain' && Boolean(activeMatchDetails) && ownedTeamKey === null;
   const disableLineupEditing = actionLoading || !submitAccess.allowed || isLineupLocked || captainBlockedForSelectedMatch;
 
   function canEditTeam(teamKey: TeamKey): boolean {
@@ -298,13 +315,13 @@ export default function LineupPage() {
             Trận đấu chờ lineup
           </h3>
 
-          {matches.length > 0 ? (
+          {visibleMatches.length > 0 ? (
             <div className="max-h-[400px] space-y-2 overflow-y-auto pr-1">
-              {matches.map((match) => (
+              {visibleMatches.map((match) => (
                 <div
                   key={match.id}
                   onClick={() => handleSelectMatch(match)}
-                  className={`cursor-pointer rounded-xl border border-slate-800 bg-slate-900/40 p-3.5 shadow transition-all hover:border-amber-500 hover:bg-slate-800/25 ${selectedMatch?.id === match.id ? 'border-amber-500 bg-amber-500/5' : ''}`}
+                  className={`cursor-pointer rounded-xl border border-slate-800 bg-slate-900/40 p-3.5 shadow transition-all hover:border-amber-500 hover:bg-slate-800/25 ${activeSelectedMatch?.id === match.id ? 'border-amber-500 bg-amber-500/5' : ''}`}
                 >
                   <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-amber-500">
                     {match.group ? `Bảng ${match.group.code} · Lượt ${match.roundNo}` : match.label || 'Playoff'}
@@ -324,8 +341,12 @@ export default function LineupPage() {
           ) : (
             <EmptyState
               icon={ClipboardList}
-              title="Chưa có trận cần khai báo lineup"
-              description={submitAccess.reason ?? 'BTC cần sinh lịch thi đấu trước khi đội trưởng hoặc BTC khai báo lineup.'}
+              title={role === 'captain' ? 'Bạn chưa có trận nào cần khai báo lineup' : 'Chưa có trận cần khai báo lineup'}
+              description={role === 'captain'
+                ? (tournamentOwnsTeam
+                  ? 'Đội của bạn chưa có trận nào cần khai báo lineup ở thời điểm này.'
+                  : 'Tài khoản đội trưởng này chưa được gán làm captain cho đội nào trong giải.')
+                : (submitAccess.reason ?? 'BTC cần sinh lịch thi đấu trước khi đội trưởng hoặc BTC khai báo lineup.')}
               actionLabel={submitAccess.nextLabel}
               actionHref={submitAccess.nextHref}
             />
@@ -333,7 +354,7 @@ export default function LineupPage() {
         </div>
 
         <div className="space-y-6 lg:col-span-2">
-          {matchDetails ? (
+          {activeMatchDetails ? (
             <div className="card animate-scale-in space-y-6 p-6 shadow-xl">
               <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                 <div className="flex items-center gap-2 text-base font-bold text-slate-100">
@@ -370,14 +391,56 @@ export default function LineupPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {role === 'captain' && ownedTeamKey && ownedTeamMembers ? (
                 <div className="space-y-4">
-                  <h4 className="flex items-center justify-between border-b border-slate-800 pb-2 text-sm font-bold text-sky-400">
-                    <span>{matchDetails.teamA?.name}</span>
-                    <span className="text-[10px] font-normal text-slate-500">Đội A</span>
+                  <h4 className="flex items-center justify-between border-b border-slate-800 pb-2 text-sm font-bold text-amber-400">
+                    <span>{ownedTeamName}</span>
+                    <span className="text-[10px] font-normal text-slate-500">Đội của bạn</span>
                   </h4>
 
                   {matchDetails.segments.map((segment) => (
+                    <div key={segment.id} className="space-y-2 rounded-xl border border-slate-850 bg-slate-900/60 p-3 transition-colors hover:border-slate-800">
+                      <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {Array.from({ length: 2 }).map((_, slotIdx) => (
+                          <select
+                            key={slotIdx}
+                            value={lineupsData[ownedTeamKey][segment.id]?.[slotIdx] || ''}
+                            onChange={(event) => handlePlayerChange(ownedTeamKey, segment.id, slotIdx, event.target.value)}
+                            className="premium-input text-xs"
+                            disabled={!canEditTeam(ownedTeamKey)}
+                          >
+                            <option value="">-- Chọn VĐV --</option>
+                            {ownedTeamMembers.map((member) => (
+                              <option key={member.playerProfile.id} value={member.playerProfile.id}>
+                                {member.playerProfile.fullName} ({member.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'})
+                              </option>
+                            ))}
+                          </select>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={() => handleSubmitLineup(ownedTeamKey)}
+                    className="btn btn-secondary flex w-full items-center justify-center gap-2 border-slate-700 py-2.5 text-xs hover:bg-slate-800"
+                    disabled={!canEditTeam(ownedTeamKey)}
+                  >
+                    <Save className="h-4 w-4" />
+                    Lưu Lineup Đội Của Bạn
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="space-y-4">
+                  <h4 className="flex items-center justify-between border-b border-slate-800 pb-2 text-sm font-bold text-sky-400">
+                    <span>{activeMatchDetails.teamA?.name}</span>
+                    <span className="text-[10px] font-normal text-slate-500">Đội A</span>
+                  </h4>
+
+                  {activeMatchDetails.segments.map((segment) => (
                     <div key={segment.id} className="space-y-2 rounded-xl border border-slate-850 bg-slate-900/60 p-3 transition-colors hover:border-slate-800">
                       <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
 
@@ -391,7 +454,7 @@ export default function LineupPage() {
                             disabled={!canEditTeam('teamA')}
                           >
                             <option value="">-- Chọn VĐV --</option>
-                            {matchDetails.teamA?.members?.map((member) => (
+                            {activeMatchDetails.teamA?.members?.map((member) => (
                               <option key={member.playerProfile.id} value={member.playerProfile.id}>
                                 {member.playerProfile.fullName} ({member.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'})
                               </option>
@@ -414,11 +477,11 @@ export default function LineupPage() {
 
                 <div className="space-y-4">
                   <h4 className="flex items-center justify-between border-b border-slate-800 pb-2 text-sm font-bold text-rose-400">
-                    <span>{matchDetails.teamB?.name}</span>
+                    <span>{activeMatchDetails.teamB?.name}</span>
                     <span className="text-[10px] font-normal text-slate-500">Đội B</span>
                   </h4>
 
-                  {matchDetails.segments.map((segment) => (
+                  {activeMatchDetails.segments.map((segment) => (
                     <div key={segment.id} className="space-y-2 rounded-xl border border-slate-850 bg-slate-900/60 p-3 transition-colors hover:border-slate-800">
                       <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
 
@@ -432,7 +495,7 @@ export default function LineupPage() {
                             disabled={!canEditTeam('teamB')}
                           >
                             <option value="">-- Chọn VĐV --</option>
-                            {matchDetails.teamB?.members?.map((member) => (
+                            {activeMatchDetails.teamB?.members?.map((member) => (
                               <option key={member.playerProfile.id} value={member.playerProfile.id}>
                                 {member.playerProfile.fullName} ({member.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'})
                               </option>
@@ -452,7 +515,8 @@ export default function LineupPage() {
                     Lưu Lineup Đội B
                   </button>
                 </div>
-              </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-2 rounded-3xl border border-dashed border-slate-800 bg-slate-800/10 p-10 py-20 text-center text-xs italic text-slate-500 shadow-inner">
