@@ -125,11 +125,27 @@ export class LineupService {
       }
     }
 
+    const sortedTargets = [...ruleset.segmentDefinitions]
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((d) => d.targetScore);
+
     return this.prisma.$transaction(async (tx) => {
+      // Step 1: Assign temporary negative values to avoid unique constraint violation on (matchId, segmentOrder)
       for (const [idx, key] of finalOrderKeys.entries()) {
         await tx.matchSegment.update({
           where: { matchId_segmentKey: { matchId, segmentKey: key } },
-          data: { segmentOrder: idx },
+          data: { segmentOrder: -1 - idx },
+        });
+      }
+
+      // Step 2: Assign final correct ordering indexes and cumulative target scores
+      for (const [idx, key] of finalOrderKeys.entries()) {
+        await tx.matchSegment.update({
+          where: { matchId_segmentKey: { matchId, segmentKey: key } },
+          data: {
+            segmentOrder: idx,
+            targetScore: sortedTargets[idx] || 0,
+          },
         });
       }
 
@@ -173,22 +189,43 @@ export class LineupService {
       throw new BadRequestException(`Không thể thay đổi thứ tự chặng đấu.`);
     }
 
-    const matchSegKeys = match.segments.map((s) => s.segmentKey);
-    const allMatchKeysPresent =
-      keys.length === matchSegKeys.length &&
-      keys.every((k) => matchSegKeys.includes(k));
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: match.tournamentId },
+      include: {
+        ruleset: {
+          include: {
+            segmentDefinitions: true,
+          },
+        },
+      },
+    });
 
-    if (!allMatchKeysPresent) {
-      throw new BadRequestException(
-        `Danh sách chặng cung cấp không khớp với chặng cấu hình của trận đấu.`,
-      );
+    const ruleset = tournament?.ruleset;
+    if (!ruleset) {
+      throw new BadRequestException('Giải đấu chưa được cấu hình luật.');
     }
 
+    const sortedTargets = [...ruleset.segmentDefinitions]
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((d) => d.targetScore);
+
     return this.prisma.$transaction(async (tx) => {
+      // Step 1: Assign temporary negative values to avoid unique constraint violation on (matchId, segmentOrder)
       for (const [idx, key] of keys.entries()) {
         await tx.matchSegment.update({
           where: { matchId_segmentKey: { matchId, segmentKey: key } },
-          data: { segmentOrder: idx },
+          data: { segmentOrder: -1 - idx },
+        });
+      }
+
+      // Step 2: Assign final correct ordering indexes and target scores
+      for (const [idx, key] of keys.entries()) {
+        await tx.matchSegment.update({
+          where: { matchId_segmentKey: { matchId, segmentKey: key } },
+          data: {
+            segmentOrder: idx,
+            targetScore: sortedTargets[idx] || 0,
+          },
         });
       }
 

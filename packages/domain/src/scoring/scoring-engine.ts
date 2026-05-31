@@ -203,7 +203,7 @@ export class ScoringEngine {
       nextB++;
     }
 
-    const nextEventNo = match.scoreEvents.filter((e) => !e.isUndone).length + 1;
+    const nextEventNo = match.scoreEvents.length + 1;
 
     const transitions: string[] = ['SCORE_UPDATED'];
 

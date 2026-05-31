@@ -16,7 +16,6 @@ export class RankingMapper {
       pointsFor: std.pointsFor,
       pointsAgainst: std.pointsAgainst,
       pointDiff: std.pointDiff,
-      points: std.points,
       rank: std.rank ?? 0,
       tieBreakDetail: {
         requiresAdminDecision: std.requiresAdminDecision,

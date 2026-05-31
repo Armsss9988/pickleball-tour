@@ -21,13 +21,11 @@ describe('TeamService dependency guards', () => {
       },
       tournamentRegistration: {
         findMany: jest.fn().mockResolvedValue([
-          {
-            playerProfile: {
-              id: 'p1',
-              fullName: 'Player 1',
-              gender: 'male',
-            },
-          },
+          { playerProfile: { id: 'p1', fullName: 'Player 1', gender: 'male' } },
+          { playerProfile: { id: 'p2', fullName: 'Player 2', gender: 'male' } },
+          { playerProfile: { id: 'p3', fullName: 'Player 3', gender: 'male' } },
+          { playerProfile: { id: 'p4', fullName: 'Player 4', gender: 'male' } },
+          { playerProfile: { id: 'p5', fullName: 'Player 5', gender: 'male' } },
         ]),
       },
       teamDraw: {

@@ -55,6 +55,9 @@ export {
   Clock,
   History,
   MapPin,
+  Download,
+  FileDown,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export type { LucideIcon } from 'lucide-react';

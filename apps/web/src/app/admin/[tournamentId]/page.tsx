@@ -227,6 +227,7 @@ export default function AdminDashboardPage() {
   );
   const [stats, setStats] = useState<DashboardStats>(emptyStats);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [rulesetData, setRulesetData] = useState<RulesetLike | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [publishMessage, setPublishMessage] = useState<string | null>(null);
@@ -241,6 +242,15 @@ export default function AdminDashboardPage() {
     async function loadStats() {
       try {
         setLoadingStats(true);
+
+        // Fetch ruleset separately — the /ruleset sub-endpoint correctly falls back
+        // to the template ruleset even when tournament.rulesetId is null.
+        try {
+          const fetchedRuleset = await apiFetch(`/tournaments/${activeTournament.id}/ruleset`);
+          setRulesetData(fetchedRuleset ?? null);
+        } catch {
+          setRulesetData(null);
+        }
 
         const playersData = await apiFetch(`/tournaments/${activeTournament.id}/players`);
         const players = Array.isArray(playersData?.items) ? playersData.items : [];
@@ -286,8 +296,11 @@ export default function AdminDashboardPage() {
   }, [currentUser]);
 
   const uxContext = useMemo(() => {
+    const tournamentWithRuleset = tournament
+      ? { ...tournament, ruleset: rulesetData ?? tournament.ruleset }
+      : null;
     return buildTournamentUxContext({
-      tournament,
+      tournament: tournamentWithRuleset,
       stats: {
         playersCount: stats.playersCount,
         malesCount: stats.malesCount,
@@ -301,7 +314,7 @@ export default function AdminDashboardPage() {
       },
       currentUserOwnsTeam: role === 'captain',
     });
-  }, [role, stats, tournament]);
+  }, [role, stats, tournament, rulesetData]);
 
   const nextAction = useMemo(() => getNextRecommendedAction(role, uxContext), [role, uxContext]);
   const nextActionAccess = useMemo(
@@ -313,7 +326,9 @@ export default function AdminDashboardPage() {
 
   const dependencyWarnings = useMemo(() => getDependencyWarnings(uxContext), [uxContext]);
 
-  const ruleset = tournament?.ruleset as RulesetLike | undefined;
+  // Prefer separately-fetched rulesetData (from /ruleset sub-endpoint) which
+  // correctly returns a fallback template even when tournament.rulesetId is null.
+  const ruleset = (rulesetData ?? tournament?.ruleset) as RulesetLike | undefined;
   const composition = getRulesetComposition(ruleset);
   const segments = getRulesetSegments(ruleset);
   const isAdminRole = role === 'btc_admin' || role === 'super_admin';
@@ -631,7 +646,14 @@ export default function AdminDashboardPage() {
                     Checklist công khai
                   </div>
                   <h3 className="mt-1 text-lg font-bold text-slate-100">
-                    {publishReadiness.ready ? 'Đủ điều kiện công khai' : 'Chưa thể công khai'}
+                    {tournament.status === 'PUBLISHED'
+                      ? publishReadiness.ready
+                        ? 'Đã công khai & Hoàn thiện'
+                        : 'Đang công khai (Chưa hoàn thiện)'
+                      : publishReadiness.ready
+                        ? 'Đủ điều kiện công khai'
+                        : 'Chưa thể công khai'
+                    }
                   </h3>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
