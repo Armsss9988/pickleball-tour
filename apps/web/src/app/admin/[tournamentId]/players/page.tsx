@@ -303,8 +303,8 @@ export default function PlayersPage() {
     return <PageLoading />;
   }
 
-  const males = players.filter(p => p.gender === 'MALE').length;
-  const females = players.filter(p => p.gender === 'FEMALE').length;
+  const males = players.filter(p => p.gender?.toUpperCase() === 'MALE').length;
+  const females = players.filter(p => p.gender?.toUpperCase() === 'FEMALE').length;
 
   return (
     <div className="premium-container space-y-6">
@@ -354,8 +354,8 @@ export default function PlayersPage() {
                     <tr key={p.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-4 px-4 font-semibold text-slate-200">{p.fullName}</td>
                       <td className="px-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${p.gender === 'MALE' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-                          {p.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${p.gender?.toUpperCase() === 'MALE' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                          {p.gender?.toUpperCase() === 'MALE' ? '♂ Nam' : '♀ Nữ'}
                         </span>
                       </td>
                       <td className="px-4 text-slate-400 font-mono text-xs">{p.phone || '—'}</td>
@@ -613,11 +613,11 @@ export default function PlayersPage() {
                         <td className="py-3 px-4 font-semibold text-slate-200">{p.fullName}</td>
                         <td className="py-3 px-4">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                            p.gender === 'MALE'
+                            p.gender?.toUpperCase() === 'MALE'
                               ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
                               : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                           }`}>
-                            {p.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'}
+                            {p.gender?.toUpperCase() === 'MALE' ? '♂ Nam' : '♀ Nữ'}
                           </span>
                         </td>
                         <td className="py-3 px-4 font-mono">{p.phone || '—'}</td>

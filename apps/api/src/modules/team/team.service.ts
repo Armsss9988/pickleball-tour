@@ -412,4 +412,84 @@ export class TeamService {
 
     return result;
   }
+
+  /**
+   * Swaps two members between their respective teams manually.
+   */
+  async swapPlayers(
+    tournamentId: string,
+    playerAId: string,
+    playerBId: string,
+    userId: string,
+  ) {
+    const memberA = await this.prisma.teamMember.findFirst({
+      where: { tournamentId, playerProfileId: playerAId },
+      include: { team: true },
+    });
+    const memberB = await this.prisma.teamMember.findFirst({
+      where: { tournamentId, playerProfileId: playerBId },
+      include: { team: true },
+    });
+
+    if (!memberA || !memberB) {
+      throw new BadRequestException('Một hoặc cả hai VĐV không thuộc đội nào trong giải đấu này.');
+    }
+
+    if (memberA.teamId === memberB.teamId) {
+      throw new BadRequestException('Hai VĐV này đang thuộc cùng một đội.');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // 1. Swap teamIds
+      await tx.teamMember.update({
+        where: { id: memberA.id },
+        data: { teamId: memberB.teamId },
+      });
+
+      await tx.teamMember.update({
+        where: { id: memberB.id },
+        data: { teamId: memberA.teamId },
+      });
+
+      // 2. If either was captain, update team captains
+      const teamA = memberA.team;
+      const teamB = memberB.team;
+
+      if (teamA.captainPlayerId === playerAId) {
+        await tx.team.update({
+          where: { id: teamA.id },
+          data: { captainPlayerId: playerBId },
+        });
+      }
+      if (teamB.captainPlayerId === playerBId) {
+        await tx.team.update({
+          where: { id: teamB.id },
+          data: { captainPlayerId: playerAId },
+        });
+      }
+
+      await this.auditService.log({
+        organizationId: teamA.organizationId,
+        tournamentId,
+        actorUserId: userId,
+        action: 'TEAM_MEMBERS_SWAPPED',
+        entityType: 'Team',
+        entityId: teamA.id,
+        afterData: {
+          playerAId,
+          teamAId: teamA.id,
+          playerBId,
+          teamBId: teamB.id,
+        },
+      });
+
+      return { success: true };
+    });
+
+    // Mark dependent sections as NEEDS_REVIEW and validate
+    await this.validatorService.markSectionNeedsReview(tournamentId, ['lineup', 'teams']);
+    await this.validatorService.validateAll(tournamentId);
+
+    return result;
+  }
 }

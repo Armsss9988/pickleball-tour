@@ -63,4 +63,15 @@ export class TeamController {
   ) {
     return this.teamService.replaceMember(tournamentId, teamId, oldPlayerId, newPlayerId, req.user.id);
   }
+
+  @Post('tournaments/:tournamentId/teams/swap-players')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
+  async swapPlayers(
+    @Param('tournamentId') tournamentId: string,
+    @Request() req: any,
+    @Body('playerAId') playerAId: string,
+    @Body('playerBId') playerBId: string
+  ) {
+    return this.teamService.swapPlayers(tournamentId, playerAId, playerBId, req.user.id);
+  }
 }

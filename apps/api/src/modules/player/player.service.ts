@@ -64,7 +64,7 @@ export class PlayerService {
       items: items.map((reg) => ({
         id: reg.playerProfile.id,
         fullName: reg.playerProfile.fullName,
-        gender: reg.playerProfile.gender.toLowerCase(),
+        gender: reg.playerProfile.gender,
         phone: reg.playerProfile.phone,
         registrationStatus: reg.status.toLowerCase(),
         claimStatus: reg.playerProfile.claimStatus.toLowerCase(),
@@ -327,8 +327,8 @@ export class PlayerService {
     });
 
     const totalActual = registrations.length;
-    const maleActual = registrations.filter((r) => r.playerProfile.gender === 'MALE').length;
-    const femaleActual = registrations.filter((r) => r.playerProfile.gender === 'FEMALE').length;
+    const maleActual = registrations.filter((r) => r.playerProfile.gender?.toUpperCase() === 'MALE').length;
+    const femaleActual = registrations.filter((r) => r.playerProfile.gender?.toUpperCase() === 'FEMALE').length;
 
     // Standard GOLAB format requires exactly 8 teams
     const teamCount = 8;

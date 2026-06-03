@@ -68,8 +68,8 @@ export class TournamentSectionValidatorService {
     });
     const players = {
       total: registrations.length,
-      males: registrations.filter(r => r.playerProfile.gender === 'MALE').length,
-      females: registrations.filter(r => r.playerProfile.gender === 'FEMALE').length,
+      males: registrations.filter(r => r.playerProfile.gender?.toUpperCase() === 'MALE').length,
+      females: registrations.filter(r => r.playerProfile.gender?.toUpperCase() === 'FEMALE').length,
     };
 
     // 4. Teams
@@ -85,8 +85,8 @@ export class TournamentSectionValidatorService {
     const membersCounts = dbTeams.map(t => t.members.length);
     const membersGenders = dbTeams.map(t => ({
       teamId: t.id,
-      males: t.members.filter(m => m.playerProfile.gender === 'MALE').length,
-      females: t.members.filter(m => m.playerProfile.gender === 'FEMALE').length,
+      males: t.members.filter(m => m.playerProfile.gender?.toUpperCase() === 'MALE').length,
+      females: t.members.filter(m => m.playerProfile.gender?.toUpperCase() === 'FEMALE').length,
     }));
 
     const teams = {
