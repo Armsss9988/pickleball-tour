@@ -12,6 +12,7 @@ type TournamentSummary = {
   registrationDeadline: Date | null;
   status: string;
   publicEnabled: boolean;
+  rulesetId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -50,6 +51,7 @@ describe('PublicService', () => {
     registrationDeadline: null,
     status: 'PUBLISHED',
     publicEnabled: true,
+    rulesetId: null,
     createdAt: new Date('2026-05-01T00:00:00.000Z'),
     updatedAt: new Date('2026-05-29T00:00:00.000Z'),
   };
@@ -194,5 +196,22 @@ describe('PublicService', () => {
     await expect(
       service.getTournamentCenter('summer-open'),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('returns public tournament summary by id for guest admin redirects', async () => {
+    prisma.tournament.findMany.mockResolvedValue([tournament]);
+
+    await expect(service.getPublicTournamentSummaryById('t-1')).resolves.toEqual({
+      id: 't-1',
+      name: 'Summer Open',
+      slug: 'summer-open',
+      description: null,
+      venueName: 'Court 1',
+      openingTime: new Date('2026-05-29T10:00:00.000Z'),
+      registrationDeadline: null,
+      status: 'PUBLISHED',
+      publicEnabled: true,
+      rulesetId: null,
+    });
   });
 });

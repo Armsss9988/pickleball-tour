@@ -5,39 +5,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { SidebarWrapper } from '@/components/sidebar';
 import { PageLoading } from '@/components/loading-skeleton';
 import { getCurrentUser, type CurrentUserState } from '@/lib/current-user';
+import {
+  areaFromPath,
+  getAdminRouteRedirect,
+} from '@/lib/admin-route-access';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
-import { getVisibleAreasForRole, type AppRole, type AreaKey } from '@/lib/tournament-ux-policy';
+import { getVisibleAreasForRole, type AreaKey } from '@/lib/tournament-ux-policy';
 import { useActiveTournament } from '@/lib/use-tournament';
-
-function areaFromPath(pathname: string): AreaKey {
-  if (pathname.endsWith('/tournament')) return 'tournament';
-  if (pathname.endsWith('/ruleset')) return 'ruleset';
-  if (pathname.endsWith('/players')) return 'players';
-  if (pathname.endsWith('/schedule')) return 'schedule';
-  if (pathname.endsWith('/draw')) return 'draw';
-  if (pathname.endsWith('/teams')) return 'teams';
-  if (pathname.endsWith('/groups')) return 'groups';
-  if (pathname.endsWith('/matches')) return 'matches';
-  if (pathname.endsWith('/lineup')) return 'lineup';
-  if (pathname.endsWith('/scoring')) return 'scoring';
-  if (pathname.endsWith('/standings')) return 'standings';
-  if (pathname.endsWith('/bracket')) return 'bracket';
-  if (pathname.endsWith('/awards')) return 'awards';
-  if (pathname.endsWith('/audit')) return 'audit';
-  return 'dashboard';
-}
-
-function getRoleFallbackHref(role: AppRole, tournamentId: string): string {
-  if (role === 'scorer') {
-    return `/admin/${tournamentId}/scoring`;
-  }
-
-  if (role === 'captain') {
-    return `/admin/${tournamentId}/lineup`;
-  }
-
-  return `/admin/${tournamentId}`;
-}
 
 const guestUser: CurrentUserState = {
   user: null,
@@ -59,12 +33,12 @@ function subscribeToUserStore(onStoreChange: () => void) {
 export default function TournamentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { tournament, loading } = useActiveTournament();
   const currentUser = useSyncExternalStore(
     subscribeToUserStore,
     getCurrentUser,
     () => guestUser,
   );
+  const { tournament, loading } = useActiveTournament(currentUser.role);
 
   const context = useMemo(
     () => buildTournamentUxContext({ tournament }),
@@ -76,44 +50,37 @@ export default function TournamentLayout({ children }: { children: React.ReactNo
     return new Set(getVisibleAreasForRole(currentUser.role, context));
   }, [context, currentUser.role]);
 
-  const shouldRedirectGuest = Boolean(
-    tournament
-    && currentUser
-    && currentUser.role === 'guest',
-  );
+  const redirectHref = useMemo(() => {
+    if (loading) {
+      return null;
+    }
 
-  const shouldRedirectForbiddenArea = Boolean(
-    tournament
-    && currentUser
-    && (currentUser.role === 'super_admin' || currentUser.role === 'btc_admin')
-    && !visibleAreas.has(currentArea)
-  );
-
-  const fallbackHref = tournament ? getRoleFallbackHref(currentUser.role, tournament.id) : '/login';
+    return getAdminRouteRedirect({
+      role: currentUser.role,
+      currentArea,
+      visibleAreas,
+      tournament: tournament
+        ? {
+            id: tournament.id,
+            slug: tournament.slug,
+            publicEnabled: tournament.publicEnabled,
+          }
+        : null,
+    });
+  }, [currentArea, currentUser.role, loading, tournament, visibleAreas]);
 
   useEffect(() => {
-    if (loading || !tournament) {
+    if (loading || !redirectHref) {
       return;
     }
-
-    if (shouldRedirectGuest) {
-      router.replace(tournament.publicEnabled && tournament.slug ? `/t/${tournament.slug}` : '/login');
-      return;
-    }
-
-    if (shouldRedirectForbiddenArea) {
-      router.replace(fallbackHref);
-    }
+    router.replace(redirectHref);
   }, [
-    fallbackHref,
     loading,
+    redirectHref,
     router,
-    shouldRedirectForbiddenArea,
-    shouldRedirectGuest,
-    tournament,
   ]);
 
-  if (loading || shouldRedirectGuest || shouldRedirectForbiddenArea) {
+  if (loading || redirectHref) {
     return <PageLoading />;
   }
 

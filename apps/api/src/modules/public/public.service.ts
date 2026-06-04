@@ -9,6 +9,63 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 export class PublicService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getPublicTournamentSummaryById(tournamentId: string) {
+    const publicStatuses = ['COMPLETED', 'PUBLISHED'] as const;
+
+    const tournaments = await this.prisma.tournament.findMany({
+      where: {
+        id: tournamentId,
+        publicEnabled: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        venueName: true,
+        openingTime: true,
+        registrationDeadline: true,
+        status: true,
+        publicEnabled: true,
+        rulesetId: true,
+        updatedAt: true,
+      },
+      take: 2,
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const finishedTournaments = tournaments.filter((tournament) =>
+      publicStatuses.includes(tournament.status as (typeof publicStatuses)[number]),
+    );
+
+    if (finishedTournaments.length === 0) {
+      throw new NotFoundException(
+        `Không tìm thấy giải đấu công khai với id "${tournamentId}".`,
+      );
+    }
+
+    if (finishedTournaments.length > 1) {
+      throw new BadRequestException(
+        `Id công khai "${tournamentId}" đang bị trùng giữa nhiều tổ chức.`,
+      );
+    }
+
+    const tournament = finishedTournaments[0]!;
+
+    return {
+      id: tournament.id,
+      name: tournament.name,
+      slug: tournament.slug,
+      description: tournament.description,
+      venueName: tournament.venueName,
+      openingTime: tournament.openingTime,
+      registrationDeadline: tournament.registrationDeadline,
+      status: tournament.status,
+      publicEnabled: tournament.publicEnabled,
+      rulesetId: tournament.rulesetId ?? null,
+    };
+  }
+
   async getTournamentCenter(slug: string) {
     const publicStatuses = ['COMPLETED', 'PUBLISHED'] as const;
 

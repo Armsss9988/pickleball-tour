@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from './api-client';
+import type { AppRole } from './tournament-ux-policy';
 
 export interface Tournament {
   id: string;
@@ -18,7 +19,15 @@ export interface Tournament {
   ruleset?: any;
 }
 
-export function useActiveTournament() {
+async function fetchTournamentForRole(tournamentId: string, role: AppRole) {
+  if (role === 'guest') {
+    return apiFetch(`/public/tournaments/by-id/${tournamentId}`);
+  }
+
+  return apiFetch(`/tournaments/${tournamentId}`);
+}
+
+export function useActiveTournament(role: AppRole = 'guest') {
   const params = useParams();
   const tournamentId = params?.tournamentId as string | undefined;
 
@@ -33,8 +42,10 @@ export function useActiveTournament() {
 
       if (tournamentId) {
         // Fetch specific tournament by ID
-        const fullDetails = await apiFetch(`/tournaments/${tournamentId}`);
+        const fullDetails = await fetchTournamentForRole(tournamentId, role);
         setTournament(fullDetails);
+      } else if (role === 'guest') {
+        setTournament(null);
       } else {
         // Fallback for non-dynamic paths: Fetch first tournament or auto-create default
         const tournaments = await apiFetch('/tournaments');
@@ -68,7 +79,7 @@ export function useActiveTournament() {
     } finally {
       setLoading(false);
     }
-  }, [tournamentId]);
+  }, [role, tournamentId]);
 
   useEffect(() => {
     loadOrCreate();
