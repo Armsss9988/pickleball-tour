@@ -123,6 +123,8 @@ function hasDependentSetupData(status: string, playerTotal: number, teamCount: n
     || teamCount > 0
     || matchCount > 0
     || [
+      'PLAYER_IMPORT',
+      'PLAYERS_READY',
       'TEAM_DRAW_COMPLETED',
       'GROUP_ASSIGNED',
       'SCHEDULE_GENERATED',
@@ -136,7 +138,7 @@ function hasDependentSetupData(status: string, playerTotal: number, teamCount: n
 }
 
 function areGroupsAssigned(status: string, teamCount: number, matchCount: number): boolean {
-  return teamCount > 0 && (
+  return (
     [
       'GROUP_ASSIGNED',
       'SCHEDULE_GENERATED',
