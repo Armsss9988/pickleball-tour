@@ -1,12 +1,6 @@
 export type AppRole = 'guest' | 'btc_admin' | 'scorer' | 'captain' | 'super_admin';
 
-export type TournamentStatus = 'DRAFT' | 'PUBLISHED';
-
-export type TournamentPhase =
-  | 'DRAFT'
-  | 'PUBLISHED_BEFORE_START'
-  | 'PUBLISHED_NOT_READY'
-  | 'PUBLISHED_RUNNING';
+export type TournamentStatus = 'DRAFT' | 'RUNNING' | 'COMPLETED' | 'PUBLISHED';
 
 export type AreaKey =
   | 'public'
@@ -46,17 +40,11 @@ export type ActionKey =
 export interface TournamentUxContext {
   tournamentId: string;
   tournamentSlug: string | null;
-  status: TournamentStatus | string;
-  phase: TournamentPhase;
-  openingTime: Date | string | null;
+  status: TournamentStatus;
   publicEnabled: boolean;
   hasTournamentInfo: boolean;
   hasValidRuleset: boolean;
-  isRulesetLocked: boolean;
-  canUnpublish: boolean;
-  isOperationallyReady: boolean;
-  hasScoredMatches: boolean;
-  sectionStatuses: Record<string, 'EMPTY' | 'VALID' | 'INVALID' | 'NEEDS_REVIEW'>;
+  hasDependentSetupData: boolean;
   playerTotal: number;
   maleCount: number;
   femaleCount: number;
@@ -126,14 +114,9 @@ const adminAreas: AreaKey[] = [
 
 const statusLabels: Record<string, string> = {
   DRAFT: 'Nháp (Đang chuẩn bị)',
+  RUNNING: 'Đang diễn ra',
+  COMPLETED: 'Đã hoàn tất',
   PUBLISHED: 'Đã công khai',
-};
-
-const phaseLabels: Record<string, string> = {
-  DRAFT: 'Nháp (Đang chuẩn bị)',
-  PUBLISHED_BEFORE_START: 'Đã công khai (Chưa bắt đầu)',
-  PUBLISHED_NOT_READY: 'Đã công khai (Thiếu cấu hình vận hành)',
-  PUBLISHED_RUNNING: 'Đang diễn ra',
 };
 
 export function getPrimaryRole(roles?: string[] | null): AppRole {
@@ -150,12 +133,7 @@ export function getHumanStatusLabel(status?: string | null): string {
   return statusLabels[status] ?? status;
 }
 
-export function getHumanPhaseLabel(phase?: string | null): string {
-  if (!phase) return 'Chưa rõ giai đoạn';
-  return phaseLabels[phase] ?? phase;
-}
-
-export function getVisibleAreasForRole(role: AppRole, context: TournamentUxContext): AreaKey[] {
+export function getVisibleAreasForRole(role: AppRole, _context: TournamentUxContext): AreaKey[] {
   if (role === 'guest') return ['public'];
   if (role === 'scorer') return ['scoring'];
   if (role === 'captain') return ['lineup', 'team-schedule', 'team-results'];
@@ -164,113 +142,24 @@ export function getVisibleAreasForRole(role: AppRole, context: TournamentUxConte
 }
 
 export function getAreaAccess(area: AreaKey, role: AppRole, context: TournamentUxContext): AccessResult {
-  // Guest can only view public
   if (role === 'guest') {
     if (area === 'public') return { allowed: true };
     return forbidden(role);
   }
 
-  // BTC Admin / Super Admin can access all admin areas, but let's check validation dependencies if needed
   if (role === 'super_admin' || role === 'btc_admin') {
-    switch (area) {
-      case 'public':
-        return { allowed: true };
-
-      case 'draw': {
-        // Draw requires ruleset validation and player verification
-        if (!context.hasValidRuleset) {
-          return {
-            allowed: false,
-            reason: 'Chưa bốc thăm được vì ruleset chưa hợp lệ.',
-            required: 'Thiết lập ruleset trước.',
-            nextLabel: 'Mở thiết lập ruleset',
-            nextHref: `/admin/${context.tournamentId}/ruleset`,
-          };
-        }
-        if (!hasValidPlayerComposition(context)) {
-          return {
-            allowed: false,
-            reason: `Chưa bốc thăm được vì danh sách vận động viên chưa hợp lệ. ${playerRequirementText(context)}`,
-            required: 'Nhập đủ số lượng VĐV theo ruleset.',
-            nextLabel: 'Mở trang VĐV',
-            nextHref: `/admin/${context.tournamentId}/players`,
-          };
-        }
-        return { allowed: true };
-      }
-
-      case 'groups': {
-        // Group requires teams drawn
-        if (context.teamCount < 2) {
-          return {
-            allowed: false,
-            reason: 'Chưa phân bảng được vì chưa bốc thăm tạo đội.',
-            required: 'Tiến hành bốc thăm tạo đội trước.',
-            nextLabel: 'Mở bốc thăm',
-            nextHref: `/admin/${context.tournamentId}/draw`,
-          };
-        }
-        return { allowed: true };
-      }
-
-      case 'matches':
-      case 'schedule': {
-        // Matches / schedule requires groups assigned
-        if (!context.groupsAssigned) {
-          return {
-            allowed: false,
-            reason: 'Chưa xem lịch/sân thi đấu được vì chưa phân chia bảng đấu.',
-            required: 'Chia các đội vào bảng đấu trước.',
-            nextLabel: 'Mở phân bảng',
-            nextHref: `/admin/${context.tournamentId}/groups`,
-          };
-        }
-        return { allowed: true };
-      }
-
-      case 'scoring': {
-        // Scoring is allowed if phase is PUBLISHED_RUNNING or can be opened for preparation
-        // If phase is PUBLISHED_NOT_READY, scoring is locked
-        if (context.phase === 'PUBLISHED_NOT_READY') {
-          return {
-            allowed: false,
-            reason: 'Trang chấm điểm đang khóa do giải đấu chưa hoàn tất thiết lập vận hành.',
-            required: 'Hoàn tất các bước thiết lập vận hành.',
-          };
-        }
-        return { allowed: true };
-      }
-
-      default:
-        return { allowed: true };
-    }
+    return area === 'public' || adminAreas.includes(area)
+      ? { allowed: true }
+      : forbidden(role);
   }
 
-  // Scorer can only access scoring area
   if (role === 'scorer') {
-    if (area === 'scoring') {
-      if (context.phase === 'PUBLISHED_NOT_READY') {
-        return {
-          allowed: false,
-          reason: 'Trang chấm điểm đang khóa do giải đấu chưa hoàn tất thiết lập vận hành.',
-        };
-      }
-      return { allowed: true };
-    }
+    if (area === 'scoring') return { allowed: true };
     return forbidden(role);
   }
 
-  // Captain can access lineup, team-schedule, team-results
   if (role === 'captain') {
-    if (['lineup', 'team-schedule', 'team-results'].includes(area)) {
-      if (area === 'lineup' && context.matchCount === 0) {
-        return {
-          allowed: false,
-          reason: 'Chưa khai báo đội hình ra sân được vì chưa sinh lịch thi đấu.',
-        };
-      }
-      return { allowed: true };
-    }
+    if (['lineup', 'team-schedule', 'team-results'].includes(area)) return { allowed: true };
     return forbidden(role);
   }
 
@@ -314,12 +203,12 @@ export function getActionAccess(action: ActionKey, role: AppRole, context: Tourn
     case 'editRuleset': {
       const denied = requiresAdmin(role);
       if (denied) return denied;
-      if (context.isRulesetLocked) {
+      if (context.hasDependentSetupData) {
         return {
           allowed: false,
           locked: true,
-          reason: 'Ruleset đã bị khóa sau khi giải bắt đầu và có điểm số.',
-          required: 'Không thể sửa đổi luật thi đấu lúc này.',
+          reason: 'Ruleset đang bị khóa vì đã có dữ liệu phụ thuộc từ các bước bốc thăm, phân bảng hoặc lịch thi đấu.',
+          required: 'Xóa dữ liệu phụ thuộc trước khi chỉnh sửa ruleset.',
         };
       }
       return { allowed: true };
@@ -404,11 +293,11 @@ export function getActionAccess(action: ActionKey, role: AppRole, context: Tourn
     }
     case 'scoreMatch': {
       if (role !== 'scorer' && role !== 'btc_admin' && role !== 'super_admin') return forbidden(role);
-      if (context.phase === 'PUBLISHED_NOT_READY') {
+      if (context.matchCount === 0) {
         return {
           allowed: false,
-          reason: 'Chấm điểm đang bị khóa do giải đấu chưa hoàn thiện các thiết lập vận hành bắt buộc.',
-          required: 'BTC cần cấu hình đầy đủ ruleset, đội và lịch thi đấu.',
+          reason: 'Chấm điểm đang bị khóa vì chưa có trận đấu nào được tạo.',
+          required: 'BTC cần phân bảng và sinh lịch thi đấu trước.',
         };
       }
       return { allowed: true };
@@ -438,22 +327,18 @@ export function getActionAccess(action: ActionKey, role: AppRole, context: Tourn
 export function getDependencyWarnings(context: TournamentUxContext): DependencyWarning[] {
   const warnings: DependencyWarning[] = [];
 
-  // Warn if ruleset section is invalid/empty/needs review
-  const rulesetStatus = context.sectionStatuses.ruleset;
-  if (rulesetStatus && rulesetStatus !== 'VALID') {
+  if (!context.hasValidRuleset) {
     warnings.push({
       area: 'ruleset',
       severity: 'error',
       label: 'Luật thi đấu chưa hợp lệ',
-      reason: 'Luật thi đấu cần được kiểm tra lại do có thay đổi hoặc thiết lập chưa đầy đủ.',
+      reason: 'Luật thi đấu cần được cấu hình đầy đủ trước khi tiếp tục các bước phụ thuộc.',
       actionLabel: 'Cấu hình luật thi đấu',
       actionHref: `/admin/${context.tournamentId}/ruleset`,
     });
   }
 
-  // Warn if players section is invalid
-  const playersStatus = context.sectionStatuses.players;
-  if (playersStatus && playersStatus !== 'VALID') {
+  if (context.hasValidRuleset && !hasValidPlayerComposition(context)) {
     warnings.push({
       area: 'players',
       severity: 'warning',
@@ -464,27 +349,27 @@ export function getDependencyWarnings(context: TournamentUxContext): DependencyW
     });
   }
 
-  // Warn if teams section is invalid
-  const teamsStatus = context.sectionStatuses.teams;
-  if (teamsStatus && teamsStatus !== 'VALID') {
+  if (context.teamCount < 2) {
     warnings.push({
       area: 'teams',
       severity: 'warning',
       label: 'Đội thi đấu chưa hợp lệ',
-      reason: 'Danh sách đội hoặc giới tính/số lượng thành viên đội không khớp với ruleset.',
+      reason: 'Cần hoàn tất bốc thăm để có tối thiểu 2 đội trước khi phân bảng và sinh lịch.',
       actionLabel: 'Bốc thăm/Quản lý đội',
       actionHref: `/admin/${context.tournamentId}/draw`,
     });
   }
 
-  // Warn if schedule section is invalid
-  const scheduleStatus = context.sectionStatuses.schedule;
-  if (scheduleStatus && scheduleStatus !== 'VALID') {
+  if (!context.groupsAssigned || !context.scheduleConfigReady || context.matchCount === 0) {
     warnings.push({
       area: 'schedule',
       severity: 'warning',
-      label: 'Lịch thi đấu chưa hoàn thiện hoặc có xung đột',
-      reason: 'Một số trận đấu chưa được chia sân/giờ hoặc phát hiện trùng lịch thi đấu.',
+      label: 'Lịch thi đấu chưa sẵn sàng',
+      reason: !context.groupsAssigned
+        ? 'Cần phân bảng trước khi cấu hình lịch và sinh trận đấu.'
+        : !context.scheduleConfigReady
+          ? 'Cần cấu hình sân hoặc khung giờ trước khi sinh lịch thi đấu.'
+          : 'Chưa có trận đấu nào được sinh từ cấu hình hiện tại.',
       actionLabel: 'Quản lý lịch & sân',
       actionHref: `/admin/${context.tournamentId}/schedule`,
     });
@@ -497,6 +382,18 @@ export function getPublishReadiness(context: TournamentUxContext): PublishReadin
   const missing: string[] = [];
   if (!context.hasTournamentInfo) missing.push('thông tin giải');
   if (!context.hasValidRuleset) missing.push('ruleset');
+  if (context.hasValidRuleset && !hasValidPlayerComposition(context)) missing.push('đủ vận động viên theo ruleset');
+  if (context.teamCount < 2) missing.push('tối thiểu 2 đội thi đấu');
+  if (!context.groupsAssigned) missing.push('phân bảng thi đấu');
+  if (!context.scheduleConfigReady) missing.push('cấu hình lịch/sân');
+  if (context.matchCount === 0) missing.push('sinh lịch thi đấu');
+  if (context.matchCount > 0 && context.completedMatchCount < context.matchCount) {
+    missing.push('hoàn tất các trận đấu');
+  }
+  if (context.matchCount > 0 && context.resultConfirmedMatchCount < context.matchCount) {
+    missing.push('xác nhận kết quả các trận đấu');
+  }
+  if (!['COMPLETED', 'PUBLISHED'].includes(context.status)) missing.push('giải chưa hoàn thành');
   return { ready: missing.length === 0, missing };
 }
 
@@ -570,6 +467,14 @@ export function getNextRecommendedAction(role: AppRole, context: TournamentUxCon
       label: 'Phân chia bảng đấu',
       description: 'Chia đội vào bảng đấu để chuẩn bị sinh lịch thi đấu.',
       href: `/admin/${context.tournamentId}/groups`,
+    };
+  }
+  if (!context.scheduleConfigReady) {
+    return {
+      key: 'configureSchedule',
+      label: 'Cấu hình lịch & sân',
+      description: 'Thiết lập sân đấu và khung giờ trước khi sinh lịch thi đấu.',
+      href: `/admin/${context.tournamentId}/schedule`,
     };
   }
   if (context.matchCount === 0) {

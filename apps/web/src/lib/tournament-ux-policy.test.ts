@@ -12,10 +12,10 @@ const baseContext: TournamentUxContext = {
   tournamentId: 't1',
   tournamentSlug: 'cup-golab',
   status: 'DRAFT',
-  phase: 'DRAFT',
   publicEnabled: false,
   hasTournamentInfo: false,
   hasValidRuleset: false,
+  hasDependentSetupData: false,
   playerTotal: 0,
   maleCount: 0,
   femaleCount: 0,
@@ -32,11 +32,6 @@ const baseContext: TournamentUxContext = {
   resultConfirmedMatchCount: 0,
   hasKnockoutStage: false,
   currentUserOwnsTeam: false,
-  isRulesetLocked: false,
-  canUnpublish: true,
-  isOperationallyReady: false,
-  hasScoredMatches: false,
-  sectionStatuses: {},
 };
 
 describe('tournament UX policy', () => {
@@ -48,6 +43,11 @@ describe('tournament UX policy', () => {
     expect(getVisibleAreasForRole('btc_admin', baseContext)).toContain('players');
     expect(getVisibleAreasForRole('btc_admin', baseContext)).toContain('schedule');
     expect(getVisibleAreasForRole('btc_admin', baseContext)).toContain('publish');
+  });
+
+  it('keeps schedule area visible to BTC admin before groups are assigned', () => {
+    expect(baseContext.groupsAssigned).toBe(false);
+    expect(getVisibleAreasForRole('btc_admin', baseContext)).toContain('schedule');
   });
 
   it('shows only scoring work to scorer', () => {
@@ -94,24 +94,35 @@ describe('tournament UX policy', () => {
     }).allowed).toBe(true);
   });
 
-  it('locks ruleset editing after ruleset is locked', () => {
+  it('locks ruleset editing after dependent setup data exists', () => {
     const access = getActionAccess('editRuleset', 'btc_admin', {
       ...baseContext,
-      isRulesetLocked: true,
+      hasDependentSetupData: true,
     });
     expect(access.allowed).toBe(false);
-    expect(access.reason).toContain('Ruleset đã bị khóa');
+    expect(access.locked).toBe(true);
+    expect(access.reason).toContain('dữ liệu phụ thuộc');
   });
 
-  it('allows publish readiness before public mode is enabled', () => {
+  it('allows publish readiness only after tournament completion', () => {
     const readiness = getPublishReadiness({
       ...baseContext,
       hasTournamentInfo: true,
       hasValidRuleset: true,
+      hasDependentSetupData: true,
+      playerTotal: 40,
+      maleCount: 24,
+      femaleCount: 16,
+      requiredPlayers: 40,
+      requiredMales: 24,
+      requiredFemales: 16,
+      groupsAssigned: true,
+      scheduleConfigReady: true,
       teamCount: 8,
       matchCount: 12,
+      completedMatchCount: 12,
       resultConfirmedMatchCount: 12,
-      status: 'PUBLISHED',
+      status: 'COMPLETED',
     });
     expect(readiness.ready).toBe(true);
     expect(readiness.missing).toEqual([]);
@@ -120,12 +131,47 @@ describe('tournament UX policy', () => {
       ...baseContext,
       hasTournamentInfo: true,
       hasValidRuleset: true,
+      hasDependentSetupData: true,
+      playerTotal: 40,
+      maleCount: 24,
+      femaleCount: 16,
+      requiredPlayers: 40,
+      requiredMales: 24,
+      requiredFemales: 16,
+      groupsAssigned: true,
+      scheduleConfigReady: true,
       teamCount: 8,
       matchCount: 12,
+      completedMatchCount: 12,
       resultConfirmedMatchCount: 12,
       status: 'PUBLISHED',
     });
     expect(access.allowed).toBe(true);
+  });
+
+  it('keeps publish readiness blocked while tournament is still running', () => {
+    const readiness = getPublishReadiness({
+      ...baseContext,
+      hasTournamentInfo: true,
+      hasValidRuleset: true,
+      hasDependentSetupData: true,
+      playerTotal: 40,
+      maleCount: 24,
+      femaleCount: 16,
+      requiredPlayers: 40,
+      requiredMales: 24,
+      requiredFemales: 16,
+      groupsAssigned: true,
+      scheduleConfigReady: true,
+      teamCount: 8,
+      matchCount: 12,
+      completedMatchCount: 12,
+      resultConfirmedMatchCount: 12,
+      status: 'RUNNING',
+    });
+
+    expect(readiness.ready).toBe(false);
+    expect(readiness.missing).toContain('giải chưa hoàn thành');
   });
 
   it('maps technical status to human labels', () => {
