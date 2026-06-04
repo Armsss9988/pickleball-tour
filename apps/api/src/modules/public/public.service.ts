@@ -14,6 +14,7 @@ export class PublicService {
       where: {
         slug,
         publicEnabled: true,
+        status: { in: ['COMPLETED', 'PUBLISHED'] },
       },
       select: {
         id: true,

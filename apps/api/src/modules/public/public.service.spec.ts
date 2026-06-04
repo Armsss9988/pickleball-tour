@@ -149,6 +149,16 @@ describe('PublicService', () => {
       teams: [{ id: 'team-1', code: 'A1' }],
       bracket: [{ id: 'node-1', orderNo: 1 }],
     });
+
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          slug: 'summer-open',
+          publicEnabled: true,
+          status: { in: ['COMPLETED', 'PUBLISHED'] },
+        },
+      }),
+    );
   });
 
   it('throws when no public tournament matches the slug', async () => {
@@ -157,6 +167,24 @@ describe('PublicService', () => {
     await expect(
       service.getTournamentCenter('missing-slug'),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws when a tournament is public but not finished', async () => {
+    prisma.tournament.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.getTournamentCenter('summer-open'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          slug: 'summer-open',
+          publicEnabled: true,
+          status: { in: ['COMPLETED', 'PUBLISHED'] },
+        },
+      }),
+    );
   });
 
   it('throws when the public slug is ambiguous across organizations', async () => {
