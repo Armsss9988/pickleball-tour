@@ -14,6 +14,9 @@ import {
 import { TournamentSectionValidatorService } from './tournament-section-validator.service';
 import { getEffectivePhase, canUnpublish } from '@golab/domain';
 
+const KNOCKOUT_STAGE_TYPES = ['PLAYOFF', 'SEMIFINAL', 'FINAL', 'THIRD_PLACE', 'CUSTOM'] as const;
+const KNOCKOUT_STATUSES = ['KNOCKOUT_GENERATED', 'KNOCKOUT_RUNNING', 'COMPLETED', 'PUBLISHED'] as const;
+
 @Injectable()
 export class TournamentService {
   constructor(
@@ -221,7 +224,8 @@ export class TournamentService {
       throw new BadRequestException('Chưa thể công khai giải vì giải chưa hoàn tất.');
     }
 
-    const { publishReady, operationalReady } = await this.validatorService.validateAll(id);
+    const { operationalReady } = await this.validatorService.validateAll(id);
+    const publishReady = await this.getPublishReadiness(id, t);
 
     if (!publishReady.ready) {
       throw new BadRequestException({
@@ -295,6 +299,73 @@ export class TournamentService {
     });
 
     return updated;
+  }
+
+  private async getPublishReadiness(
+    tournamentId: string,
+    tournament: {
+      name: string;
+      slug: string;
+      venueName: string | null;
+      openingTime: Date | null;
+      status: string;
+      ruleset?: {
+        segmentDefinitions?: unknown[];
+        teamCompositionRule?: unknown | null;
+        scoringConfig?: unknown | null;
+      } | null;
+    },
+  ) {
+    const [teamCount, matchCount, resultConfirmedMatchCount, knockoutStageCount] =
+      await Promise.all([
+        this.prisma.team.count({ where: { tournamentId } }),
+        this.prisma.match.count({ where: { tournamentId } }),
+        this.prisma.match.count({
+          where: { tournamentId, status: 'RESULT_CONFIRMED' },
+        }),
+        this.prisma.stage.count({
+          where: {
+            tournamentId,
+            type: { in: [...KNOCKOUT_STAGE_TYPES] },
+          },
+        }),
+      ]);
+
+    const missing: string[] = [];
+    const hasTournamentInfo = Boolean(
+      tournament.name?.trim()
+        && tournament.slug?.trim()
+        && tournament.venueName?.trim()
+        && tournament.openingTime,
+    );
+    const hasValidRuleset = Boolean(
+      tournament.ruleset?.teamCompositionRule
+        && tournament.ruleset?.scoringConfig
+        && tournament.ruleset.segmentDefinitions
+        && tournament.ruleset.segmentDefinitions.length > 0,
+    );
+    const hasKnockoutStage =
+      knockoutStageCount > 0
+      || KNOCKOUT_STATUSES.includes(
+        tournament.status as (typeof KNOCKOUT_STATUSES)[number],
+      );
+
+    if (!hasTournamentInfo) missing.push('thông tin giải');
+    if (!hasValidRuleset) missing.push('ruleset');
+    if (teamCount < 8) missing.push('đội thi đấu');
+    if (matchCount === 0) missing.push('lịch thi đấu');
+    if (resultConfirmedMatchCount < matchCount) missing.push('kết quả trận đấu');
+    if (hasKnockoutStage && !['COMPLETED', 'PUBLISHED'].includes(tournament.status)) {
+      missing.push('vòng knockout hoàn tất');
+    }
+    if (!['COMPLETED', 'PUBLISHED'].includes(tournament.status)) {
+      missing.push('trạng thái hoàn tất');
+    }
+
+    return {
+      ready: missing.length === 0,
+      missing,
+    };
   }
 
   /**

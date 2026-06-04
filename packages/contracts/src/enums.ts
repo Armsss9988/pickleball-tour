@@ -16,7 +16,18 @@ export const RegistrationSourceEnum = z.enum(['ADMIN_IMPORT', 'MANUAL_ADMIN', 'S
 export type RegistrationSource = z.infer<typeof RegistrationSourceEnum>;
 
 export const TournamentStatusEnum = z.enum([
-  'DRAFT', 'PUBLISHED', 'COMPLETED',
+  'DRAFT',
+  'PLAYER_IMPORT',
+  'PLAYERS_READY',
+  'TEAM_DRAW_COMPLETED',
+  'GROUP_ASSIGNED',
+  'SCHEDULE_GENERATED',
+  'RUNNING',
+  'GROUP_COMPLETED',
+  'KNOCKOUT_GENERATED',
+  'KNOCKOUT_RUNNING',
+  'COMPLETED',
+  'PUBLISHED',
 ]);
 export type TournamentStatus = z.infer<typeof TournamentStatusEnum>;
 

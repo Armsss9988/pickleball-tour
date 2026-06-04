@@ -1,3 +1,5 @@
+import { TournamentStatus } from '@golab/contracts';
+
 export type TournamentPhase =
   | 'DRAFT'
   | 'PUBLISHED_BEFORE_START'
@@ -5,12 +7,12 @@ export type TournamentPhase =
   | 'PUBLISHED_RUNNING';
 
 export function getEffectivePhase(
-  status: 'DRAFT' | 'PUBLISHED',
+  status: TournamentStatus,
   openingTime: Date | null | undefined,
   isOperationallyReady: boolean,
   now: Date = new Date()
 ): TournamentPhase {
-  if (status === 'DRAFT') return 'DRAFT';
+  if (status !== 'PUBLISHED') return 'DRAFT';
   if (!openingTime || now < openingTime) return 'PUBLISHED_BEFORE_START';
   return isOperationallyReady ? 'PUBLISHED_RUNNING' : 'PUBLISHED_NOT_READY';
 }

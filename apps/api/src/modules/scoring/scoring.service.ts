@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ScoreGateway } from '../../gateways/score.gateway';
-import { ScoringEngine, MatchDomainInput, getEffectivePhase, isScoringAllowed } from '@golab/domain';
+import { ScoringEngine, MatchDomainInput } from '@golab/domain';
 import { MatchStatus, SegmentStatus } from '@golab/contracts';
 
 @Injectable()
@@ -91,7 +91,7 @@ export class ScoringService {
       throw new NotFoundException('Không tìm thấy trận đấu.');
     }
 
-    // Check if scoring is allowed based on tournament phase
+    // Scoring depends on operational readiness, not public/publish phase.
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: matchObj.tournamentId },
       include: { sectionStatuses: true },
@@ -107,8 +107,7 @@ export class ScoringService {
       return s?.status === 'VALID';
     });
 
-    const phase = getEffectivePhase(tournament.status, tournament.openingTime, isOperationallyReady);
-    if (!isScoringAllowed(phase)) {
+    if (!isOperationallyReady) {
       throw new BadRequestException('Giải đấu chưa đủ điều kiện vận hành để chấm điểm (kiểm tra các thiết lập thiếu).');
     }
 

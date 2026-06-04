@@ -19,9 +19,18 @@ export class Tournament extends Entity<string> {
    */
   public canTransitionTo(target: TournamentStatus): boolean {
     const transitions: Record<TournamentStatus, TournamentStatus[]> = {
-      DRAFT: ['PUBLISHED'],
+      DRAFT: ['PLAYER_IMPORT'],
+      PLAYER_IMPORT: ['DRAFT', 'PLAYERS_READY'],
+      PLAYERS_READY: ['PLAYER_IMPORT', 'TEAM_DRAW_COMPLETED'],
+      TEAM_DRAW_COMPLETED: ['PLAYERS_READY', 'GROUP_ASSIGNED'],
+      GROUP_ASSIGNED: ['TEAM_DRAW_COMPLETED', 'SCHEDULE_GENERATED'],
+      SCHEDULE_GENERATED: ['GROUP_ASSIGNED', 'RUNNING'],
+      RUNNING: ['SCHEDULE_GENERATED', 'GROUP_COMPLETED'],
+      GROUP_COMPLETED: ['RUNNING', 'KNOCKOUT_GENERATED', 'COMPLETED'],
+      KNOCKOUT_GENERATED: ['GROUP_COMPLETED', 'KNOCKOUT_RUNNING'],
+      KNOCKOUT_RUNNING: ['KNOCKOUT_GENERATED', 'COMPLETED'],
+      COMPLETED: ['PUBLISHED'],
       PUBLISHED: ['DRAFT'],
-      COMPLETED: [],
     };
     return transitions[this._status]?.includes(target) ?? false;
   }

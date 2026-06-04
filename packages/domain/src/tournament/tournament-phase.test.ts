@@ -9,6 +9,13 @@ describe('getEffectivePhase', () => {
     expect(getEffectivePhase('DRAFT', openingTime, false, now)).toBe('DRAFT');
   });
 
+  it('pre-publish lifecycle statuses still resolve to DRAFT phase', () => {
+    const openingTime = new Date('2026-06-01T08:00:00Z');
+    const now = new Date('2026-06-02T08:00:00Z');
+    expect(getEffectivePhase('PLAYER_IMPORT', openingTime, true, now)).toBe('DRAFT');
+    expect(getEffectivePhase('COMPLETED', openingTime, true, now)).toBe('DRAFT');
+  });
+
   it('PUBLISHED + future openingTime → PUBLISHED_BEFORE_START', () => {
     const openingTime = new Date('2026-06-01T08:00:00Z');
     const now = new Date('2026-05-31T08:00:00Z');

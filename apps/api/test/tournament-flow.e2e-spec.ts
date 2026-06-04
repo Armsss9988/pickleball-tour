@@ -224,16 +224,13 @@ describe('Pickleball Tournament Platform - Full E2E Flow', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(HttpStatus.CREATED);
 
-    // 2.4 Publish tournament
+    // 2.4 Publish remains blocked before tournament completion
     const publishRes = await request(app.getHttpServer())
       .post(`/tournaments/${tournamentId}/publish`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .expect(HttpStatus.CREATED);
+      .expect(HttpStatus.BAD_REQUEST);
 
-    expect(publishRes.body.published).toBe(true);
-
-    const updatedTourney = await prisma.tournament.findUnique({ where: { id: tournamentId } });
-    expect(updatedTourney?.status).toBe('PUBLISHED');
+    expect(publishRes.body.message).toContain('giải chưa hoàn tất');
   });
 
   it('Phase 3: Emergency replacement of an injured player & re-validation', async () => {
@@ -380,6 +377,13 @@ describe('Pickleball Tournament Platform - Full E2E Flow', () => {
     expect(freshMatch?.status).toBe('READY');
 
     // 4.2 Start match and score first segment
+    const startRes = await request(app.getHttpServer())
+      .post(`/matches/${match.id}/start`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(HttpStatus.CREATED);
+
+    expect(startRes.body.status).toBe('RUNNING');
+
     // Score Team A to 7 points in segment 1 (Đôi Nam)
     await request(app.getHttpServer())
       .post(`/matches/${match.id}/score-events`)
@@ -512,5 +516,13 @@ describe('Pickleball Tournament Platform - Full E2E Flow', () => {
     });
     expect(logs.length).toBe(1);
     expect(logs[0]?.reason).toContain('Khiếu nại được chấp thuận');
+
+    // Publishing remains blocked until every match result is confirmed.
+    const publishBeforeCompletion = await request(app.getHttpServer())
+      .post(`/tournaments/${tournamentId}/publish`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(HttpStatus.BAD_REQUEST);
+
+    expect(publishBeforeCompletion.body.message).toContain('giải chưa hoàn tất');
   });
 });

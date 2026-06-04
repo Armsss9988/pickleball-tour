@@ -157,6 +157,7 @@ describe('PublicService', () => {
         where: {
           slug: 'summer-open',
           publicEnabled: true,
+          status: { in: ['COMPLETED', 'PUBLISHED'] },
         },
       }),
     );
@@ -182,6 +183,7 @@ describe('PublicService', () => {
         where: {
           slug: 'summer-open',
           publicEnabled: true,
+          status: { in: ['COMPLETED', 'PUBLISHED'] },
         },
       }),
     );
@@ -213,5 +215,15 @@ describe('PublicService', () => {
       publicEnabled: true,
       rulesetId: null,
     });
+
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 't-1',
+          publicEnabled: true,
+          status: { in: ['COMPLETED', 'PUBLISHED'] },
+        },
+      }),
+    );
   });
 });

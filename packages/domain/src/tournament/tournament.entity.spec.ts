@@ -6,8 +6,8 @@ describe('Tournament Entity', () => {
     const t = new Tournament('t-1', 'DRAFT');
     expect(t.status).toBe('DRAFT');
 
-    t.transitionTo('PUBLISHED');
-    expect(t.status).toBe('PUBLISHED');
+    t.transitionTo('PLAYER_IMPORT');
+    expect(t.status).toBe('PLAYER_IMPORT');
 
     t.transitionTo('DRAFT');
     expect(t.status).toBe('DRAFT');
@@ -18,11 +18,11 @@ describe('Tournament Entity', () => {
     expect(() => t.transitionTo('DRAFT')).toThrow();
   });
 
-  it('should treat COMPLETED as a terminal status', () => {
+  it('should allow publishing only after completion', () => {
     const t = new Tournament('t-1', 'COMPLETED');
 
     expect(t.canTransitionTo('DRAFT')).toBe(false);
-    expect(t.canTransitionTo('PUBLISHED')).toBe(false);
+    expect(t.canTransitionTo('PUBLISHED')).toBe(true);
     expect(() => t.transitionTo('DRAFT')).toThrow();
   });
 });
