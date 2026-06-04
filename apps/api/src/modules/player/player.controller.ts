@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { PlayerService } from './player.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -57,5 +57,15 @@ export class PlayerController {
   @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
   async validatePlayers(@Param('tournamentId') tournamentId: string, @Request() req: any) {
     return this.playerService.validatePlayers(tournamentId, req.user.id);
+  }
+
+  @Delete(':playerId')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
+  async removePlayer(
+    @Param('tournamentId') tournamentId: string,
+    @Param('playerId') playerId: string,
+    @Request() req: any
+  ) {
+    return this.playerService.removePlayer(tournamentId, playerId, req.user.id);
   }
 }

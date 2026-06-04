@@ -383,4 +383,77 @@ export class PlayerService {
       warnings,
     };
   }
+
+  /**
+   * Removes a single player from the tournament registration.
+   */
+  async removePlayer(tournamentId: string, playerId: string, userId: string) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+    });
+
+    if (!tournament) {
+      throw new NotFoundException(`Không tìm thấy giải đấu.`);
+    }
+
+    // 1. Check if the player is registered
+    const reg = await this.prisma.tournamentRegistration.findUnique({
+      where: {
+        tournamentId_playerProfileId: {
+          tournamentId,
+          playerProfileId: playerId,
+        },
+      },
+      include: {
+        playerProfile: true,
+      },
+    });
+
+    if (!reg) {
+      throw new NotFoundException(`Vận động viên chưa đăng ký tham gia giải đấu này.`);
+    }
+
+    // 2. Check if the player is assigned to any team in this tournament
+    const isAssigned = await this.prisma.teamMember.findFirst({
+      where: {
+        tournamentId,
+        playerProfileId: playerId,
+      },
+    });
+
+    if (isAssigned) {
+      throw new BadRequestException(
+        `Không thể xóa vận động viên "${reg.playerProfile.fullName}" vì họ đã được phân phối vào một đội tuyển. Vui lòng rút đội hình hoặc thay thế nhân sự.`
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 3. Delete the registration
+      await tx.tournamentRegistration.delete({
+        where: {
+          tournamentId_playerProfileId: {
+            tournamentId,
+            playerProfileId: playerId,
+          },
+        },
+      });
+
+      // 4. Log the action
+      await this.auditService.log({
+        organizationId: tournament.organizationId,
+        tournamentId,
+        actorUserId: userId,
+        action: 'PLAYER_REMOVED',
+        entityType: 'PlayerProfile',
+        entityId: playerId,
+        beforeData: reg,
+      });
+
+      // 5. Update validation section statuses
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['players', 'teams']);
+      await this.validatorService.validateAll(tournamentId);
+
+      return { success: true };
+    });
+  }
 }

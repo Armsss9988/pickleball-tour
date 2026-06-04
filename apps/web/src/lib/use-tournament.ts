@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { apiFetch } from './api-client';
 import type { AppRole } from './tournament-ux-policy';
+import { getCurrentUser } from './current-user';
 
 export interface Tournament {
   id: string;
@@ -40,11 +41,14 @@ export function useActiveTournament(role: AppRole = 'guest') {
       setLoading(true);
       setError(null);
 
+      // Resolve role dynamically if role parameter is not explicitly provided/overridden (is guest)
+      const activeRole = role !== 'guest' ? role : (typeof window !== 'undefined' ? getCurrentUser().role : 'guest');
+
       if (tournamentId) {
         // Fetch specific tournament by ID
-        const fullDetails = await fetchTournamentForRole(tournamentId, role);
+        const fullDetails = await fetchTournamentForRole(tournamentId, activeRole);
         setTournament(fullDetails);
-      } else if (role === 'guest') {
+      } else if (activeRole === 'guest') {
         setTournament(null);
       } else {
         // Fallback for non-dynamic paths: Fetch first tournament or auto-create default
