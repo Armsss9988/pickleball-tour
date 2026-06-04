@@ -208,8 +208,16 @@ export class TournamentService {
   async publish(id: string, userId: string) {
     const t = await this.findOne(id);
 
-    if (t.status !== 'DRAFT') {
-      throw new BadRequestException('Giải đấu không ở trạng thái nháp DRAFT.');
+    if (t.status === 'PUBLISHED' && t.publicEnabled) {
+      return {
+        published: true,
+        operationallyReady: true,
+        operationalWarnings: [],
+      };
+    }
+
+    if (t.status !== 'COMPLETED' && t.status !== 'PUBLISHED') {
+      throw new BadRequestException('Chưa thể công khai giải vì giải chưa hoàn tất.');
     }
 
     const { publishReady, operationalReady } = await this.validatorService.validateAll(id);

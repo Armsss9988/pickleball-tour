@@ -318,6 +318,7 @@ export default function AdminDashboardPage() {
   );
   const publishReadiness = useMemo(() => getPublishReadiness(uxContext), [uxContext]);
   const publishAccess = useMemo(() => getActionAccess('publishTournament', role, uxContext), [role, uxContext]);
+  const isPublished = Boolean(tournament?.publicEnabled);
 
   const dependencyWarnings = useMemo(() => getDependencyWarnings(uxContext), [uxContext]);
 
@@ -416,19 +417,19 @@ export default function AdminDashboardPage() {
     ];
   }, [tournament, uxContext, stats.teamsCount, targetTeams]);
 
-  const publishCardTitle = tournament?.publicEnabled
+  const publishCardTitle = isPublished
     ? publishReadiness.ready
       ? 'Đang công khai'
       : 'Đang công khai nhưng còn thiếu dữ liệu'
-    : publishReadiness.ready
+    : publishAccess.allowed
       ? 'Sẵn sàng công khai'
-      : 'Chưa sẵn sàng công khai';
-  const publishCardText = tournament?.publicEnabled
+      : 'Chưa thể công khai';
+  const publishCardText = isPublished
     ? 'Trang công khai đang mở cho người xem bên ngoài.'
-    : publishReadiness.ready
+    : publishAccess.allowed
       ? 'Bạn có thể bật trang công khai khi muốn.'
-      : `${publishReadiness.missing.length} mục còn thiếu`;
-  const publishToneClasses = publishReadiness.ready
+      : publishAccess.reason ?? `${publishReadiness.missing.length} mục còn thiếu`;
+  const publishToneClasses = isPublished || publishAccess.allowed
     ? 'bg-emerald-500/10 text-emerald-400'
     : 'bg-amber-500/10 text-amber-400';
   const publishMissingSummary = publishReadiness.missing.length > 0
@@ -519,7 +520,7 @@ export default function AdminDashboardPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={tournament.status} size="md" />
-            {tournament.publicEnabled ? (
+            {isPublished ? (
               publishReadiness.ready ? (
                 <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
                   Đang công khai
@@ -530,11 +531,15 @@ export default function AdminDashboardPage() {
                 </span>
               )
             ) : (
-              <span className="rounded-full border border-slate-700/60 bg-slate-900/60 px-3 py-1 text-xs font-semibold text-slate-400">
-                Chưa công khai
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                publishAccess.allowed
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                  : 'border-slate-700/60 bg-slate-900/60 text-slate-400'
+              }`}>
+                {publishAccess.allowed ? 'Sẵn sàng công khai' : 'Chưa thể công khai'}
               </span>
             )}
-            {tournament.publicEnabled && (
+            {isPublished && (
               <a
                 href={`/t/${tournament.slug}`}
                 target="_blank"
@@ -654,7 +659,7 @@ export default function AdminDashboardPage() {
               )}
 
               <div className="mt-4">
-                {tournament.publicEnabled ? (
+                {isPublished ? (
                   <div className="rounded-xl border border-slate-750 bg-slate-950/30 px-4 py-3">
                     <div className="text-sm font-semibold text-slate-200">Giải đấu đang ở khu vực công khai</div>
                     <p className="mt-1 text-xs leading-relaxed text-slate-400">
