@@ -10,11 +10,13 @@ export class PublicService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getTournamentCenter(slug: string) {
+    const publicStatuses = ['COMPLETED', 'PUBLISHED'] as const;
+
     const tournaments = await this.prisma.tournament.findMany({
       where: {
         slug,
         publicEnabled: true,
-        status: { in: ['COMPLETED', 'PUBLISHED'] },
+        status: { in: publicStatuses as any },
       },
       select: {
         id: true,

@@ -207,8 +207,9 @@ export class TournamentService {
    */
   async publish(id: string, userId: string) {
     const t = await this.findOne(id);
+    const status = t.status as TournamentStatus;
 
-    if (t.status === 'PUBLISHED' && t.publicEnabled) {
+    if (status === 'PUBLISHED' && t.publicEnabled) {
       return {
         published: true,
         operationallyReady: true,
@@ -216,7 +217,7 @@ export class TournamentService {
       };
     }
 
-    if (t.status !== 'COMPLETED' && t.status !== 'PUBLISHED') {
+    if (status !== 'COMPLETED' && status !== 'PUBLISHED') {
       throw new BadRequestException('Chưa thể công khai giải vì giải chưa hoàn tất.');
     }
 
@@ -311,7 +312,7 @@ export class TournamentService {
 
     const updated = await this.prisma.tournament.update({
       where: { id },
-      data: { status: targetStatus },
+      data: { status: targetStatus as any },
     });
 
     await this.auditService.log({

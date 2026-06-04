@@ -17,4 +17,12 @@ describe('Tournament Entity', () => {
     const t = new Tournament('t-1', 'DRAFT');
     expect(() => t.transitionTo('DRAFT')).toThrow();
   });
+
+  it('should treat COMPLETED as a terminal status', () => {
+    const t = new Tournament('t-1', 'COMPLETED');
+
+    expect(t.canTransitionTo('DRAFT')).toBe(false);
+    expect(t.canTransitionTo('PUBLISHED')).toBe(false);
+    expect(() => t.transitionTo('DRAFT')).toThrow();
+  });
 });

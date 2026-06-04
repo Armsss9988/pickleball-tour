@@ -21,6 +21,7 @@ export class Tournament extends Entity<string> {
     const transitions: Record<TournamentStatus, TournamentStatus[]> = {
       DRAFT: ['PUBLISHED'],
       PUBLISHED: ['DRAFT'],
+      COMPLETED: [],
     };
     return transitions[this._status]?.includes(target) ?? false;
   }
