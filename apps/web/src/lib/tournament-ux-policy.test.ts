@@ -101,7 +101,10 @@ describe('tournament UX policy', () => {
     });
     expect(access.allowed).toBe(false);
     expect(access.locked).toBe(true);
-    expect(access.reason).toContain('dữ liệu phụ thuộc');
+    expect(access.reason).toBe('Ruleset đang khóa vì đã có dữ liệu phụ thuộc như vận động viên, đội, lịch hoặc điểm số.');
+    expect(access.required).toBe('Muốn sửa ruleset, hãy dùng luồng rollback có kiểm soát.');
+    expect(access.nextLabel).toBe('Mở trang ruleset');
+    expect(access.nextHref).toBe('/admin/t1/ruleset');
   });
 
   it('allows publish readiness only after tournament completion', () => {
@@ -171,7 +174,37 @@ describe('tournament UX policy', () => {
     });
 
     expect(readiness.ready).toBe(false);
-    expect(readiness.missing).toContain('giải chưa hoàn thành');
+    expect(readiness.missing).toContain('trạng thái hoàn tất');
+  });
+
+  it('reports only the Task 1 publish blockers from the plan', () => {
+    const readiness = getPublishReadiness({
+      ...baseContext,
+      status: 'KNOCKOUT_RUNNING',
+      hasKnockoutStage: true,
+      teamCount: 7,
+      matchCount: 4,
+      resultConfirmedMatchCount: 3,
+    });
+
+    expect(readiness.ready).toBe(false);
+    expect(readiness.missing).toEqual([
+      'thông tin giải',
+      'ruleset',
+      'đội thi đấu',
+      'kết quả trận đấu',
+      'vòng knockout hoàn tất',
+      'trạng thái hoàn tất',
+    ]);
+  });
+
+  it('accepts the full tournament status contract in context', () => {
+    const readiness = getPublishReadiness({
+      ...baseContext,
+      status: 'TEAM_DRAW_COMPLETED',
+    });
+
+    expect(readiness.ready).toBe(false);
   });
 
   it('maps technical status to human labels', () => {

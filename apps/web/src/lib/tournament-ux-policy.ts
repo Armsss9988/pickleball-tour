@@ -1,6 +1,18 @@
 export type AppRole = 'guest' | 'btc_admin' | 'scorer' | 'captain' | 'super_admin';
 
-export type TournamentStatus = 'DRAFT' | 'RUNNING' | 'COMPLETED' | 'PUBLISHED';
+export type TournamentStatus =
+  | 'DRAFT'
+  | 'PLAYER_IMPORT'
+  | 'PLAYERS_READY'
+  | 'TEAM_DRAW_COMPLETED'
+  | 'GROUP_ASSIGNED'
+  | 'SCHEDULE_GENERATED'
+  | 'RUNNING'
+  | 'GROUP_COMPLETED'
+  | 'KNOCKOUT_GENERATED'
+  | 'KNOCKOUT_RUNNING'
+  | 'COMPLETED'
+  | 'PUBLISHED';
 
 export type AreaKey =
   | 'public'
@@ -40,7 +52,7 @@ export type ActionKey =
 export interface TournamentUxContext {
   tournamentId: string;
   tournamentSlug: string | null;
-  status: TournamentStatus;
+  status: TournamentStatus | string;
   publicEnabled: boolean;
   hasTournamentInfo: boolean;
   hasValidRuleset: boolean;
@@ -114,7 +126,15 @@ const adminAreas: AreaKey[] = [
 
 const statusLabels: Record<string, string> = {
   DRAFT: 'Nháp (Đang chuẩn bị)',
+  PLAYER_IMPORT: 'Nhập vận động viên',
+  PLAYERS_READY: 'Đủ vận động viên',
+  TEAM_DRAW_COMPLETED: 'Đã bốc thăm đội',
+  GROUP_ASSIGNED: 'Đã phân bảng',
+  SCHEDULE_GENERATED: 'Đã sinh lịch thi đấu',
   RUNNING: 'Đang diễn ra',
+  GROUP_COMPLETED: 'Hoàn tất vòng bảng',
+  KNOCKOUT_GENERATED: 'Đã tạo vòng knockout',
+  KNOCKOUT_RUNNING: 'Đang thi đấu knockout',
   COMPLETED: 'Đã hoàn tất',
   PUBLISHED: 'Đã công khai',
 };
@@ -207,8 +227,10 @@ export function getActionAccess(action: ActionKey, role: AppRole, context: Tourn
         return {
           allowed: false,
           locked: true,
-          reason: 'Ruleset đang bị khóa vì đã có dữ liệu phụ thuộc từ các bước bốc thăm, phân bảng hoặc lịch thi đấu.',
-          required: 'Xóa dữ liệu phụ thuộc trước khi chỉnh sửa ruleset.',
+          reason: 'Ruleset đang khóa vì đã có dữ liệu phụ thuộc như vận động viên, đội, lịch hoặc điểm số.',
+          required: 'Muốn sửa ruleset, hãy dùng luồng rollback có kiểm soát.',
+          nextLabel: 'Mở trang ruleset',
+          nextHref: `/admin/${context.tournamentId}/ruleset`,
         };
       }
       return { allowed: true };
@@ -382,18 +404,13 @@ export function getPublishReadiness(context: TournamentUxContext): PublishReadin
   const missing: string[] = [];
   if (!context.hasTournamentInfo) missing.push('thông tin giải');
   if (!context.hasValidRuleset) missing.push('ruleset');
-  if (context.hasValidRuleset && !hasValidPlayerComposition(context)) missing.push('đủ vận động viên theo ruleset');
-  if (context.teamCount < 2) missing.push('tối thiểu 2 đội thi đấu');
-  if (!context.groupsAssigned) missing.push('phân bảng thi đấu');
-  if (!context.scheduleConfigReady) missing.push('cấu hình lịch/sân');
-  if (context.matchCount === 0) missing.push('sinh lịch thi đấu');
-  if (context.matchCount > 0 && context.completedMatchCount < context.matchCount) {
-    missing.push('hoàn tất các trận đấu');
+  if (context.teamCount < 8) missing.push('đội thi đấu');
+  if (context.matchCount === 0) missing.push('lịch thi đấu');
+  if (context.resultConfirmedMatchCount < context.matchCount) missing.push('kết quả trận đấu');
+  if (context.hasKnockoutStage && !['COMPLETED', 'PUBLISHED'].includes(context.status)) {
+    missing.push('vòng knockout hoàn tất');
   }
-  if (context.matchCount > 0 && context.resultConfirmedMatchCount < context.matchCount) {
-    missing.push('xác nhận kết quả các trận đấu');
-  }
-  if (!['COMPLETED', 'PUBLISHED'].includes(context.status)) missing.push('giải chưa hoàn thành');
+  if (!['COMPLETED', 'PUBLISHED'].includes(context.status)) missing.push('trạng thái hoàn tất');
   return { ready: missing.length === 0, missing };
 }
 
