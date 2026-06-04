@@ -153,7 +153,8 @@ export function getHumanStatusLabel(status?: string | null): string {
   return statusLabels[status] ?? status;
 }
 
-export function getVisibleAreasForRole(role: AppRole, _context: TournamentUxContext): AreaKey[] {
+export function getVisibleAreasForRole(role: AppRole, context: TournamentUxContext): AreaKey[] {
+  void context;
   if (role === 'guest') return ['public'];
   if (role === 'scorer') return ['scoring'];
   if (role === 'captain') return ['lineup', 'team-schedule', 'team-results'];
@@ -162,6 +163,7 @@ export function getVisibleAreasForRole(role: AppRole, _context: TournamentUxCont
 }
 
 export function getAreaAccess(area: AreaKey, role: AppRole, context: TournamentUxContext): AccessResult {
+  void context;
   if (role === 'guest') {
     if (area === 'public') return { allowed: true };
     return forbidden(role);

@@ -9,3 +9,4 @@ coverage
 .DS_Store
 postgres_data
 .venv
+.worktrees

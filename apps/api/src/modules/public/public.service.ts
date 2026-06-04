@@ -16,7 +16,6 @@ export class PublicService {
       where: {
         slug,
         publicEnabled: true,
-        status: { in: publicStatuses as any },
       },
       select: {
         id: true,
@@ -36,19 +35,23 @@ export class PublicService {
       orderBy: { updatedAt: 'desc' },
     });
 
-    if (tournaments.length === 0) {
+    const finishedTournaments = tournaments.filter((tournament) =>
+      publicStatuses.includes(tournament.status as (typeof publicStatuses)[number]),
+    );
+
+    if (finishedTournaments.length === 0) {
       throw new NotFoundException(
         `Không tìm thấy giải đấu công khai với slug "${slug}".`,
       );
     }
 
-    if (tournaments.length > 1) {
+    if (finishedTournaments.length > 1) {
       throw new BadRequestException(
         `Slug công khai "${slug}" đang bị trùng giữa nhiều tổ chức.`,
       );
     }
 
-    const tournament = tournaments[0]!;
+    const tournament = finishedTournaments[0]!;
 
     const [matches, groups, standings, teams, bracket] =
       await this.prisma.$transaction([

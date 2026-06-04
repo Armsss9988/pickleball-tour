@@ -155,7 +155,6 @@ describe('PublicService', () => {
         where: {
           slug: 'summer-open',
           publicEnabled: true,
-          status: { in: ['COMPLETED', 'PUBLISHED'] },
         },
       }),
     );
@@ -181,7 +180,6 @@ describe('PublicService', () => {
         where: {
           slug: 'summer-open',
           publicEnabled: true,
-          status: { in: ['COMPLETED', 'PUBLISHED'] },
         },
       }),
     );
