@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActiveTournament } from '@/lib/use-tournament';
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -175,6 +176,15 @@ export default function GroupsPage() {
                 ? 'Giờ khai mạc đã có, có thể dùng làm mốc lên lịch.'
                 : 'Nên bổ sung giờ khai mạc ở thông tin giải để việc sinh lịch sát thực tế hơn.'}
             </div>
+            {tournament && (
+              <Link
+                href={`/admin/${tournament.id}/schedule`}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-amber-500/30 hover:text-amber-300"
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                Mở cấu hình lịch & sân
+              </Link>
+            )}
           </div>
 
           <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
@@ -217,9 +227,14 @@ export default function GroupsPage() {
           {(!assignAccess.allowed || !generateAccess.allowed) && (
             <div className="p-3 bg-rose-500/5 border border-rose-500/20 rounded-xl text-[11px] text-rose-450 leading-relaxed flex items-start gap-1.5">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>
-                {assignAccess.reason || generateAccess.reason || 'Cần hoàn tất dữ liệu bắt buộc trước khi thao tác vòng bảng.'}
-              </span>
+              <div className="space-y-1">
+                {!assignAccess.allowed && (
+                  <p>{assignAccess.reason || 'Cần hoàn tất dữ liệu bắt buộc trước khi phân bảng.'}</p>
+                )}
+                {!generateAccess.allowed && (
+                  <p>{generateAccess.reason || 'Cần hoàn tất dữ liệu bắt buộc trước khi sinh lịch thi đấu.'}</p>
+                )}
+              </div>
             </div>
           )}
         </div>

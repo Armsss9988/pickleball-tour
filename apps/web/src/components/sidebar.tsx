@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
 import {
   getVisibleAreasForRole,
-  getAreaAccess,
   type AppRole,
   type AreaKey,
   type TournamentUxContext,
@@ -14,7 +13,7 @@ import {
   LayoutDashboard, Trophy, Settings, Users, Dices,
   Shield, Calendar, Target, ClipboardList, Zap,
   BarChart3, GitBranch, Award, FileText,
-  LogOut, Menu, X, Circle, ArrowLeft, Lock,
+  LogOut, Menu, X, Circle, ArrowLeft,
 } from './icons';
 import type { LucideIcon } from './icons';
 
@@ -138,21 +137,6 @@ function SidebarContent({
                   ? pathname === `/admin/${tournamentId}`
                   : pathname === targetHref || pathname.startsWith(targetHref + '/');
                 const Icon = item.icon;
-                const areaAccess = getAreaAccess(item.key, role, context);
-
-                if (!areaAccess.allowed) {
-                  return (
-                    <div
-                      key={item.href}
-                      title={areaAccess.reason}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 bg-slate-900/10 cursor-not-allowed select-none opacity-40"
-                    >
-                      <Icon className="w-[18px] h-[18px] flex-shrink-0 text-slate-700" />
-                      <span className="flex-1 truncate">{item.label}</span>
-                      <Lock className="w-3.5 h-3.5 text-slate-700 flex-shrink-0" />
-                    </div>
-                  );
-                }
 
                 return (
                   <Link

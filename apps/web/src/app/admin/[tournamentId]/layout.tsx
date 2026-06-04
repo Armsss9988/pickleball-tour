@@ -6,7 +6,7 @@ import { SidebarWrapper } from '@/components/sidebar';
 import { PageLoading } from '@/components/loading-skeleton';
 import { getCurrentUser, type CurrentUserState } from '@/lib/current-user';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
-import { getVisibleAreasForRole, getAreaAccess, type AppRole, type AreaKey } from '@/lib/tournament-ux-policy';
+import { getVisibleAreasForRole, type AppRole, type AreaKey } from '@/lib/tournament-ux-policy';
 import { useActiveTournament } from '@/lib/use-tournament';
 
 function areaFromPath(pathname: string): AreaKey {
@@ -82,15 +82,11 @@ export default function TournamentLayout({ children }: { children: React.ReactNo
     && currentUser.role === 'guest',
   );
 
-  const areaAccess = useMemo(() => {
-    return getAreaAccess(currentArea, currentUser.role, context);
-  }, [context, currentUser.role, currentArea]);
-
   const shouldRedirectForbiddenArea = Boolean(
     tournament
     && currentUser
     && (currentUser.role === 'super_admin' || currentUser.role === 'btc_admin')
-    && (!visibleAreas.has(currentArea) || !areaAccess.allowed)
+    && !visibleAreas.has(currentArea)
   );
 
   const fallbackHref = tournament ? getRoleFallbackHref(currentUser.role, tournament.id) : '/login';
