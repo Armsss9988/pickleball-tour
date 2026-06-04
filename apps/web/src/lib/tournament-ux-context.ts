@@ -114,8 +114,8 @@ function getRequiredCounts(
   };
 }
 
-function hasKnockoutStage(status: string, matchCount: number): boolean {
-  return matchCount > 0 && ['KNOCKOUT_GENERATED', 'KNOCKOUT_RUNNING', 'COMPLETED', 'PUBLISHED'].includes(status);
+function hasKnockoutStage(status: string): boolean {
+  return ['KNOCKOUT_GENERATED', 'KNOCKOUT_RUNNING', 'COMPLETED', 'PUBLISHED'].includes(status);
 }
 
 function areGroupsAssigned(status: string, teamCount: number, matchCount: number): boolean {
@@ -165,7 +165,7 @@ export function buildTournamentUxContext(input: BuildTournamentUxContextInput): 
     scoringReadyCount,
     completedMatchCount,
     resultConfirmedMatchCount,
-    hasKnockoutStage: hasKnockoutStage(status, matchCount),
+    hasKnockoutStage: hasKnockoutStage(status),
     currentUserOwnsTeam: Boolean(input.currentUserOwnsTeam),
   };
 }
