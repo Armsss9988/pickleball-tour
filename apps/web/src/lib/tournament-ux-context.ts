@@ -118,8 +118,37 @@ function hasKnockoutStage(status: string): boolean {
   return ['KNOCKOUT_GENERATED', 'KNOCKOUT_RUNNING', 'COMPLETED', 'PUBLISHED'].includes(status);
 }
 
+function hasDependentSetupData(status: string, playerTotal: number, teamCount: number, matchCount: number): boolean {
+  return playerTotal > 0
+    || teamCount > 0
+    || matchCount > 0
+    || [
+      'TEAM_DRAW_COMPLETED',
+      'GROUP_ASSIGNED',
+      'SCHEDULE_GENERATED',
+      'RUNNING',
+      'GROUP_COMPLETED',
+      'KNOCKOUT_GENERATED',
+      'KNOCKOUT_RUNNING',
+      'COMPLETED',
+      'PUBLISHED',
+    ].includes(status);
+}
+
 function areGroupsAssigned(status: string, teamCount: number, matchCount: number): boolean {
-  return teamCount > 0 && (status === 'GROUP_ASSIGNED' || matchCount > 0);
+  return teamCount > 0 && (
+    [
+      'GROUP_ASSIGNED',
+      'SCHEDULE_GENERATED',
+      'RUNNING',
+      'GROUP_COMPLETED',
+      'KNOCKOUT_GENERATED',
+      'KNOCKOUT_RUNNING',
+      'COMPLETED',
+      'PUBLISHED',
+    ].includes(status)
+    || matchCount > 0
+  );
 }
 
 export function buildTournamentUxContext(input: BuildTournamentUxContextInput): TournamentUxContext {
@@ -150,7 +179,7 @@ export function buildTournamentUxContext(input: BuildTournamentUxContextInput): 
       && hasRulesetScoring(ruleset)
       && hasRulesetSegments(ruleset),
     ),
-    hasDependentSetupData: playerTotal > 0 || teamCount > 0 || matchCount > 0,
+    hasDependentSetupData: hasDependentSetupData(status, playerTotal, teamCount, matchCount),
     playerTotal,
     maleCount,
     femaleCount,
