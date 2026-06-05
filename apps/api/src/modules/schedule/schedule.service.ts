@@ -9,6 +9,11 @@ import { ScheduleGeneratorService } from '@golab/domain';
 import { MatchStatus, SegmentStatus } from '@golab/contracts';
 import { TournamentSectionValidatorService } from '../tournament/tournament-section-validator.service';
 
+interface GenerateScheduleOptions {
+  durationMinutes?: number;
+  startTime?: string;
+}
+
 @Injectable()
 export class ScheduleService {
   constructor(
@@ -21,10 +26,37 @@ export class ScheduleService {
     return court.venueName?.trim() ? `${court.venueName.trim()} - ${court.name}` : court.name;
   }
 
+  private getDurationMinutes(value: number | undefined) {
+    const duration = Number(value ?? 30);
+
+    if (!Number.isFinite(duration) || duration < 10 || duration > 240) {
+      throw new BadRequestException('Thời lượng mỗi trận phải nằm trong khoảng 10 đến 240 phút.');
+    }
+
+    return Math.trunc(duration);
+  }
+
+  private getStartDate(value: string | undefined, fallback: Date | null) {
+    if (!value) {
+      return fallback || new Date();
+    }
+
+    const startDate = new Date(value);
+    if (Number.isNaN(startDate.getTime())) {
+      throw new BadRequestException('Giờ bắt đầu sinh lịch không hợp lệ.');
+    }
+
+    return startDate;
+  }
+
   /**
    * Generates the round-robin schedule for the group stage of a tournament.
    */
-  async generateGroupStageSchedule(tournamentId: string, userId: string) {
+  async generateGroupStageSchedule(
+    tournamentId: string,
+    userId: string,
+    options: GenerateScheduleOptions = {},
+  ) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
       include: {
@@ -77,10 +109,13 @@ export class ScheduleService {
         orderBy: { sortOrder: 'asc' },
       });
 
-      const intervalMinutes = 45; // Default match duration slot
-      const startDate = tournament.openingTime || new Date();
+      const intervalMinutes = this.getDurationMinutes(options.durationMinutes);
+      const startDate = this.getStartDate(options.startTime, tournament.openingTime);
+      const fallbackCourts = ['Sân 1', 'Sân 2'];
+      const courtCount = dbCourts.length > 0 ? dbCourts.length : fallbackCourts.length;
 
       let matchNoCounter = 1;
+      let scheduleIndex = 0;
 
       for (const group of tournament.groups) {
         const teamIds = group.groupTeams.map((gt) => gt.teamId);
@@ -97,18 +132,17 @@ export class ScheduleService {
           let courtId: string | null = null;
           let courtName: string | null = null;
 
+          const courtIdx = scheduleIndex % courtCount;
+
           if (dbCourts.length > 0) {
-            const courtIdx = idx % dbCourts.length;
             const court = dbCourts[courtIdx]!;
             courtId = court.id;
             courtName = this.formatCourtLabel(court);
           } else {
-            const courts = ['Sân 1', 'Sân 2'];
-            const courtIdx = idx % courts.length;
-            courtName = courts[courtIdx] || 'Sân 1';
+            courtName = fallbackCourts[courtIdx] || 'Sân 1';
           }
 
-          const timeSlot = Math.floor(idx / (dbCourts.length > 0 ? dbCourts.length : 2));
+          const timeSlot = Math.floor(scheduleIndex / courtCount);
           const scheduledTime = new Date(
             startDate.getTime() + timeSlot * intervalMinutes * 60 * 1000,
           );
@@ -154,6 +188,7 @@ export class ScheduleService {
           }
 
           matchNoCounter++;
+          scheduleIndex++;
         }
       }
 

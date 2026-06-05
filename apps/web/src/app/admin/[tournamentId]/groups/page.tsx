@@ -6,10 +6,9 @@ import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/components/toast';
-import { ConfirmModal } from '@/components/confirm-modal';
 import { EmptyState } from '@/components/empty-state';
 import { PageLoading } from '@/components/loading-skeleton';
-import { Calendar, Shuffle, CalendarDays, AlertTriangle, Users, GitBranch, Save, X } from '@/components/icons';
+import { Calendar, Shuffle, AlertTriangle, Users, GitBranch, Save, X } from '@/components/icons';
 import { getCurrentUser } from '@/lib/current-user';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
 import { getActionAccess } from '@/lib/tournament-ux-policy';
@@ -57,7 +56,6 @@ export default function GroupsPage() {
   const [teams, setTeams] = useState<TeamLike[]>([]);
   const [matchesCount, setMatchesCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [groupAssignments, setGroupAssignments] = useState<Record<string, string>>({});
   const [draggedTeamId, setDraggedTeamId] = useState<string | null>(null);
@@ -112,26 +110,6 @@ export default function GroupsPage() {
     }
   }, [loadGroupsAndTeams, reloadTournament, toast, tournament]);
 
-  const handleGenerateSchedule = useCallback(async () => {
-    if (!tournament) return;
-    setActionLoading(true);
-
-    try {
-      await apiFetch(`/tournaments/${tournament.id}/schedule/generate-group-stage`, {
-        method: 'POST',
-      });
-
-      toast('Đã khởi tạo lịch thi đấu tự động vòng bảng thành công!', 'success');
-      setConfirmModalOpen(false);
-      await loadGroupsAndTeams();
-      await reloadTournament();
-    } catch (error: unknown) {
-      toast(getErrorMessage(error, 'Lỗi tạo lịch thi đấu.'), 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  }, [loadGroupsAndTeams, reloadTournament, toast, tournament]);
-
   const isAssigned = groups.length > 0 && groups.some(g => g.groupTeams.length > 0);
   const uxContext = buildTournamentUxContext({
     tournament,
@@ -142,7 +120,6 @@ export default function GroupsPage() {
     },
   });
   const assignAccess = getActionAccess('assignGroups', currentUser.role, uxContext);
-  const generateAccess = getActionAccess('generateMatches', currentUser.role, uxContext);
   const manualGroupCodes = useMemo(() => ['A', 'B'], []);
   const manualGroups = useMemo(() => manualGroupCodes.map((code) => ({
     code,
@@ -273,14 +250,6 @@ export default function GroupsPage() {
     handleRandomAssign();
   };
 
-  const handleOpenGenerateModal = () => {
-    if (!generateAccess.allowed) {
-      toast(generateAccess.reason || 'Chưa thể sinh lịch thi đấu.', 'error');
-      return;
-    }
-    setConfirmModalOpen(true);
-  };
-
   return (
     <div className="premium-container space-y-6 animate-scale-in">
       <PageHeader
@@ -344,36 +313,11 @@ export default function GroupsPage() {
             </button>
           </div>
 
-          <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-            <div>
-              <h4 className="text-sm font-semibold text-slate-200">Sinh lịch thi đấu</h4>
-              <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                Hệ thống sẽ tạo lịch vòng tròn cho các bảng hiện tại. Chỉ mở khi 8 đội đã được xếp vào bảng.
-              </p>
-              {!generateAccess.allowed && (
-                <p className="mt-2 text-xs leading-relaxed text-amber-300">{generateAccess.reason}</p>
-              )}
-            </div>
-            <button
-              onClick={handleOpenGenerateModal}
-              disabled={!generateAccess.allowed || actionLoading}
-              className="w-full btn btn-secondary py-2.5 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
-            >
-              <CalendarDays className="w-4 h-4 text-amber-500" />
-              Tạo lịch thi đấu tự động
-            </button>
-          </div>
-          
-          {(!assignAccess.allowed || !generateAccess.allowed) && (
+          {!assignAccess.allowed && (
             <div className="p-3 bg-rose-500/5 border border-rose-500/20 rounded-xl text-[11px] text-rose-450 leading-relaxed flex items-start gap-1.5">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <div className="space-y-1">
-                {!assignAccess.allowed && (
-                  <p>{assignAccess.reason || 'Cần hoàn tất dữ liệu bắt buộc trước khi phân bảng.'}</p>
-                )}
-                {!generateAccess.allowed && (
-                  <p>{generateAccess.reason || 'Cần hoàn tất dữ liệu bắt buộc trước khi sinh lịch thi đấu.'}</p>
-                )}
+                <p>{assignAccess.reason || 'Cần hoàn tất dữ liệu bắt buộc trước khi phân bảng.'}</p>
               </div>
             </div>
           )}
@@ -525,19 +469,6 @@ export default function GroupsPage() {
           )}
         </div>
       </div>
-
-      {/* Confirm Generate Schedule Modal */}
-      <ConfirmModal
-        open={confirmModalOpen}
-        title="Tạo lịch thi đấu tự động?"
-        description="Thao tác này sẽ phát sinh lịch đấu vòng tròn cho các bảng đấu hiện tại. Bản lịch đấu cũ (nếu có) sẽ bị ghi đè! Bạn có chắc chắn muốn tiến hành?"
-        confirmLabel="Tạo lịch đấu"
-        cancelLabel="Hủy"
-        variant="warning"
-        loading={actionLoading}
-        onConfirm={handleGenerateSchedule}
-        onCancel={() => setConfirmModalOpen(false)}
-      />
     </div>
   );
 }

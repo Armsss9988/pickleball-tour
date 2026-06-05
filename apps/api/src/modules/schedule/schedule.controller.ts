@@ -11,8 +11,16 @@ export class ScheduleController {
 
   @Post('tournaments/:tournamentId/schedule/generate-group-stage')
   @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
-  async generateGroupStage(@Param('tournamentId') tournamentId: string, @Request() req: any) {
-    return this.scheduleService.generateGroupStageSchedule(tournamentId, req.user.id);
+  async generateGroupStage(
+    @Param('tournamentId') tournamentId: string,
+    @Request() req: any,
+    @Body('durationMinutes') durationMinutes?: number,
+    @Body('startTime') startTime?: string,
+  ) {
+    return this.scheduleService.generateGroupStageSchedule(tournamentId, req.user.id, {
+      durationMinutes,
+      startTime,
+    });
   }
 
   @Patch('matches/:matchId/schedule')

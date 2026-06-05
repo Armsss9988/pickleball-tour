@@ -36,15 +36,60 @@ interface EditFormState {
   matchNo: string;
 }
 
+interface ScheduleGenerateFormState {
+  startTime: string;
+  durationMinutes: string;
+}
+
+function padDatePart(value: number) {
+  return value.toString().padStart(2, '0');
+}
+
 function toDatetimeLocal(value: string | Date | null | undefined): string {
   if (!value) return '';
   try {
     const d = new Date(value);
     if (isNaN(d.getTime())) return '';
-    return d.toISOString().slice(0, 16);
+    return [
+      d.getFullYear(),
+      '-',
+      padDatePart(d.getMonth() + 1),
+      '-',
+      padDatePart(d.getDate()),
+      'T',
+      padDatePart(d.getHours()),
+      ':',
+      padDatePart(d.getMinutes()),
+    ].join('');
   } catch {
     return '';
   }
+}
+
+function getDayPeriod(date: Date) {
+  const hour = date.getHours();
+  if (hour < 12) return 'Sáng';
+  if (hour < 18) return 'Chiều';
+  return 'Tối';
+}
+
+function formatMatchDateTime(value: string | Date | null | undefined) {
+  if (!value) return 'Chưa xếp lịch';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Chưa xếp lịch';
+
+  const dayText = date.toLocaleDateString('vi-VN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+  });
+  const timeText = date.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return `${dayText} · ${timeText} ${getDayPeriod(date)}`;
 }
 
 export default function MatchesPage() {
@@ -70,6 +115,11 @@ export default function MatchesPage() {
     courtName: '',
     matchNo: '',
   });
+  const [scheduleForm, setScheduleForm] = useState<ScheduleGenerateFormState>({
+    startTime: '',
+    durationMinutes: '30',
+  });
+  const [generateModalOpen, setGenerateModalOpen] = useState(false);
 
   const currentUser = getCurrentUser();
   const isBtcAdmin = currentUser.role === 'btc_admin' || currentUser.role === 'super_admin';
@@ -182,6 +232,36 @@ export default function MatchesPage() {
     }
   };
 
+  const handleGenerateGroupSchedule = async () => {
+    if (!tournament) return;
+
+    const durationMinutes = Number(scheduleForm.durationMinutes);
+    const startTime = scheduleForm.startTime || toDatetimeLocal(tournament.openingTime);
+    if (!Number.isFinite(durationMinutes) || durationMinutes < 10 || durationMinutes > 240) {
+      toast('Thời lượng mỗi trận phải nằm trong khoảng 10 đến 240 phút.', 'error');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await apiFetch(`/tournaments/${tournament.id}/schedule/generate-group-stage`, {
+        method: 'POST',
+        body: {
+          durationMinutes,
+          startTime: startTime ? new Date(startTime).toISOString() : undefined,
+        },
+      });
+
+      toast('Đã sinh lịch thi đấu vòng bảng thành công!', 'success');
+      setGenerateModalOpen(false);
+      loadData();
+    } catch (err: any) {
+      toast(err.message || 'Lỗi sinh lịch thi đấu.', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const isConflictMatch = (matchId: string) => {
     return conflicts.some(c => c.matchIds.includes(matchId));
   };
@@ -192,6 +272,7 @@ export default function MatchesPage() {
 
   const groupMatches = matches.filter(m => m.groupId !== null);
   const playoffMatches = matches.filter(m => m.groupId === null);
+  const scheduleStartTime = scheduleForm.startTime || toDatetimeLocal(tournament?.openingTime);
 
   const renderMatchCard = (m: any) => {
     const isEditing = editingMatchId === m.id;
@@ -311,13 +392,7 @@ export default function MatchesPage() {
           <div className="text-[10px] text-slate-500 flex justify-between items-center border-t border-slate-800 pt-2">
             <div className="flex flex-col">
               <span className="font-semibold text-slate-400">Sân: {formatCourtLabel(m.court) || m.courtName || '—'}</span>
-              <span>
-                {m.scheduledTime
-                  ? new Date(m.scheduledTime).toLocaleString('vi-VN', {
-                      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-                    })
-                  : 'Chưa xếp lịch'}
-              </span>
+              <span>{formatMatchDateTime(m.scheduledTime)}</span>
             </div>
 
             <div className="flex items-center gap-1">
@@ -382,6 +457,56 @@ export default function MatchesPage() {
         description="Theo dõi danh sách các trận đấu vòng bảng và các lượt trận trực tiếp knockout playoff."
         icon={Trophy}
       />
+
+      {isBtcAdmin && (
+        <div className="card p-5 space-y-4 shadow-xl">
+          <div className="flex flex-col gap-2 border-b border-slate-800 pb-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="flex items-center gap-2 text-base font-bold text-slate-100">
+                <Calendar className="h-5 w-5 text-amber-500" />
+                Sinh lịch vòng bảng
+              </h3>
+              <p className="mt-1 text-xs text-slate-400">
+                Tạo lịch tự động theo sân hiện có; mỗi sân không bị xếp trùng giờ. Mặc định mỗi trận cách nhau 30 phút.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGenerateModalOpen(true)}
+              disabled={actionLoading}
+              className="btn btn-primary px-4 py-2 text-sm"
+            >
+              Sinh lịch thi đấu
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px]">
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-400">Giờ bắt đầu</label>
+              <input
+                type="datetime-local"
+                value={scheduleStartTime}
+                onChange={(event) => setScheduleForm((current) => ({ ...current, startTime: event.target.value }))}
+                className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2 text-sm text-slate-200 outline-none transition-all focus:border-amber-500/50 [color-scheme:dark]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold text-slate-400">Thời lượng/trận/sân</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={10}
+                  max={240}
+                  value={scheduleForm.durationMinutes}
+                  onChange={(event) => setScheduleForm((current) => ({ ...current, durationMinutes: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2 text-sm text-slate-200 outline-none transition-all focus:border-amber-500/50"
+                />
+                <span className="text-xs font-semibold text-slate-500">phút</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {conflicts.length > 0 && (
         <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/25 bg-rose-500/8 px-4 py-3 text-sm text-rose-350">
@@ -461,6 +586,18 @@ export default function MatchesPage() {
           setDeleteModalOpen(false);
           setMatchToDelete(null);
         }}
+      />
+
+      <ConfirmModal
+        open={generateModalOpen}
+        title="Sinh lịch thi đấu vòng bảng?"
+        description="Thao tác này sẽ tạo lại toàn bộ lịch vòng bảng hiện tại. Lịch vòng bảng cũ nếu có sẽ bị ghi đè."
+        confirmLabel="Sinh lịch"
+        cancelLabel="Hủy"
+        variant="warning"
+        loading={actionLoading}
+        onConfirm={handleGenerateGroupSchedule}
+        onCancel={() => setGenerateModalOpen(false)}
       />
     </div>
   );
