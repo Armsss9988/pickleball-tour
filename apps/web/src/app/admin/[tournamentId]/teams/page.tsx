@@ -45,7 +45,7 @@ export default function TeamsPage() {
       setAllPlayers(players);
 
       const assignedPlayerIds = new Set(
-        teamsData.flatMap((t: any) => t.members.map((m: any) => m.playerId))
+        teamsData.flatMap((t: any) => t.members.map((m: any) => m.playerProfileId ?? m.playerProfile?.id))
       );
       const freeAgents = players.filter((p: any) => !assignedPlayerIds.has(p.id));
       setUnassignedPlayers(freeAgents);
@@ -65,6 +65,12 @@ export default function TeamsPage() {
     setSelectedTeam(team);
     setTeamName(team.name);
     setCaptainId(team.captainPlayerId || '');
+  };
+
+  const handleEditTeamClick = (event: React.MouseEvent, team: any) => {
+    event.stopPropagation();
+    setPlayerToSwap(null);
+    handleSelectTeam(team);
   };
 
   const handleUpdateTeam = async (e: React.FormEvent) => {
@@ -239,10 +245,20 @@ export default function TeamsPage() {
                   >
                     <div>
                       <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                        <div className="font-bold text-base text-slate-100">{t.name}</div>
-                        <span className="text-xs bg-slate-900 border border-slate-850 px-2.5 py-0.5 rounded text-slate-400 font-mono">
-                          {t.code}
-                        </span>
+                        <div className="min-w-0">
+                          <div className="truncate text-base font-bold text-slate-100">{t.name}</div>
+                          <div className="mt-0.5 text-[10px] font-mono text-slate-500">Mã đội: {t.code}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(event) => handleEditTeamClick(event, t)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-750 bg-slate-950/55 px-2.5 py-1.5 text-[10px] font-bold text-amber-400 transition-colors hover:border-amber-500/40 hover:bg-amber-500/10"
+                          title="Đổi tên đội và chỉnh đội trưởng"
+                          disabled={actionLoading || Boolean(playerToSwap)}
+                        >
+                          <Edit3 className="h-3 w-3" />
+                          Đổi tên
+                        </button>
                       </div>
 
                       <div className="text-xs text-slate-400 space-y-1.5 py-3">
@@ -327,12 +343,12 @@ export default function TeamsPage() {
             <div className="card p-6 space-y-5 sticky top-6 shadow-xl border-amber-500/30 animate-scale-in">
               <h3 className="font-bold text-base text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3">
                 <Edit3 className="w-5 h-5 text-amber-500" />
-                Chỉnh sửa đội tuyển
+                Đổi tên & chỉnh đội tuyển
               </h3>
               
               <form onSubmit={handleUpdateTeam} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Tên đội tuyển</label>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Tên đội tuyển mới</label>
                   <input
                     type="text"
                     required

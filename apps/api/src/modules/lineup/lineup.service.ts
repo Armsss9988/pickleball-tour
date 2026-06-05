@@ -39,6 +39,23 @@ export class LineupService {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
       include: {
+        group: true,
+        teamA: {
+          include: {
+            members: {
+              include: { playerProfile: true },
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        },
+        teamB: {
+          include: {
+            members: {
+              include: { playerProfile: true },
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        },
         segments: {
           orderBy: { segmentOrder: 'asc' },
         },

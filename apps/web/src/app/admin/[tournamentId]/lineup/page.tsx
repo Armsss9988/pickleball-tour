@@ -20,6 +20,7 @@ interface MatchListItem {
   status: string;
   teamAId?: string | null;
   teamBId?: string | null;
+  matchNo?: number | null;
   roundNo?: number | null;
   label?: string | null;
   group?: { code: string } | null;
@@ -28,11 +29,13 @@ interface MatchListItem {
 }
 
 interface MatchPlayer {
+  id?: string;
   playerProfile: {
     id: string;
     fullName: string;
+    gender?: string | null;
   };
-  gender: string;
+  gender?: string | null;
 }
 
 interface MatchSegment {
@@ -87,6 +90,22 @@ function filterLineupMatches(data: MatchListItem[]): MatchListItem[] {
     || match.status === 'LINEUP_READY'
     || match.status === 'READY'
   ));
+}
+
+function getMatchLabel(match: MatchListItem | MatchDetails) {
+  const stageLabel = match.group
+    ? `Bảng ${match.group.code} · Lượt ${match.roundNo || '—'}`
+    : match.label || 'Playoff';
+  const matchNo = 'matchNo' in match && match.matchNo ? ` · Trận ${match.matchNo}` : '';
+  return `${stageLabel}${matchNo}`;
+}
+
+function getMatchTeamsLabel(match: MatchListItem | MatchDetails) {
+  return `${match.teamA?.name || 'Chờ xác định'} vs ${match.teamB?.name || 'Chờ xác định'}`;
+}
+
+function getLineupMemberGender(member: MatchPlayer) {
+  return String(member.playerProfile?.gender ?? member.gender ?? '').trim().toUpperCase();
 }
 
 export default function LineupPage() {
@@ -329,10 +348,14 @@ export default function LineupPage() {
                   className={`cursor-pointer rounded-xl border border-slate-800 bg-slate-900/40 p-3.5 shadow transition-all hover:border-amber-500 hover:bg-slate-800/25 ${activeSelectedMatch?.id === match.id ? 'border-amber-500 bg-amber-500/5' : ''}`}
                 >
                   <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-amber-500">
-                    {match.group ? `Bảng ${match.group.code} · Lượt ${match.roundNo}` : match.label || 'Playoff'}
+                    {getMatchLabel(match)}
                   </div>
                   <div className="text-sm font-semibold text-slate-200">
-                    {match.teamA?.name || 'Chờ xác định'} vs {match.teamB?.name || 'Chờ xác định'}
+                    {getMatchTeamsLabel(match)}
+                  </div>
+                  <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-slate-500">
+                    <span className="truncate">Đội A: <strong className="text-sky-300">{match.teamA?.name || '—'}</strong></span>
+                    <span className="truncate">Đội B: <strong className="text-rose-300">{match.teamB?.name || '—'}</strong></span>
                   </div>
                   <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-500">
                     <span>Mã: #{match.id.substring(0, 8)}</span>
@@ -378,6 +401,23 @@ export default function LineupPage() {
                 )}
               </div>
 
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/35 px-4 py-3">
+                <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-500">
+                  {getMatchLabel(activeMatchDetails)}
+                </div>
+                <div className="mt-1 text-base font-bold text-slate-100">
+                  {getMatchTeamsLabel(activeMatchDetails)}
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                  <div className="rounded-xl border border-sky-500/15 bg-sky-500/5 px-3 py-2 text-sky-200">
+                    Đội A: <strong>{activeMatchDetails.teamA?.name || '—'}</strong>
+                  </div>
+                  <div className="rounded-xl border border-rose-500/15 bg-rose-500/5 px-3 py-2 text-rose-200">
+                    Đội B: <strong>{activeMatchDetails.teamB?.name || '—'}</strong>
+                  </div>
+                </div>
+              </div>
+
               {isLineupLocked && (
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">
                   Lineup của trận này đã khóa. Bạn có thể xem lại danh sách thi đấu nhưng không thể chỉnh sửa nữa.
@@ -419,7 +459,7 @@ export default function LineupPage() {
                             <option value="">-- Chọn VĐV --</option>
                             {ownedTeamMembers.map((member) => (
                               <option key={member.playerProfile.id} value={member.playerProfile.id}>
-                                {member.playerProfile.fullName} ({member.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'})
+                                {member.playerProfile.fullName} ({getLineupMemberGender(member) === 'MALE' ? '♂ Nam' : '♀ Nữ'})
                               </option>
                             ))}
                           </select>
@@ -461,7 +501,7 @@ export default function LineupPage() {
                             <option value="">-- Chọn VĐV --</option>
                             {activeMatchDetails.teamA?.members?.map((member) => (
                               <option key={member.playerProfile.id} value={member.playerProfile.id}>
-                                {member.playerProfile.fullName} ({member.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'})
+                                {member.playerProfile.fullName} ({getLineupMemberGender(member) === 'MALE' ? '♂ Nam' : '♀ Nữ'})
                               </option>
                             ))}
                           </select>
@@ -502,7 +542,7 @@ export default function LineupPage() {
                             <option value="">-- Chọn VĐV --</option>
                             {activeMatchDetails.teamB?.members?.map((member) => (
                               <option key={member.playerProfile.id} value={member.playerProfile.id}>
-                                {member.playerProfile.fullName} ({member.gender === 'MALE' ? '♂ Nam' : '♀ Nữ'})
+                                {member.playerProfile.fullName} ({getLineupMemberGender(member) === 'MALE' ? '♂ Nam' : '♀ Nữ'})
                               </option>
                             ))}
                           </select>
