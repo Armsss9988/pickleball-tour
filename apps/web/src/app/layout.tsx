@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Space_Grotesk } from 'next/font/google';
+import Script from 'next/script';
 import './globals.css';
 
 const inter = Inter({
@@ -28,8 +29,21 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi" className={`${inter.variable} ${spaceGrotesk.variable}`} data-scroll-behavior="smooth">
-      <body>{children}</body>
+    <html
+      lang="vi"
+      className={`${inter.variable} ${spaceGrotesk.variable}`}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
+      <body>
+        <Script id="strip-extension-root-attrs" strategy="beforeInteractive">
+          {`
+            document.documentElement.removeAttribute('data-qb-installed');
+            document.documentElement.removeAttribute('suppresshydrationwarning');
+          `}
+        </Script>
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { AdminEntryLink } from '@/components/admin-entry-link';
 import { 
   Trophy, 
   Users, 
@@ -57,13 +58,12 @@ export default function HomePage() {
             >
               Đăng nhập
             </Link>
-            <Link 
-              href="/admin" 
+            <AdminEntryLink 
               className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-sm rounded-xl cursor-pointer shadow-md shadow-amber-500/5 transition-all"
             >
               Vào quản trị
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </AdminEntryLink>
           </div>
         </nav>
       </header>
@@ -93,20 +93,18 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-wrap gap-4 mt-2">
-            <Link 
-              href="/admin" 
+            <AdminEntryLink 
               className="flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold rounded-xl shadow-lg shadow-amber-500/10 cursor-pointer transition-all hover:scale-[1.02]"
             >
               <Play className="w-4 h-4 fill-slate-950" />
               Bắt đầu quản lý ngay
-            </Link>
-            <Link 
-              href="/admin" 
+            </AdminEntryLink>
+            <AdminEntryLink 
               className="flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-900/60 hover:bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 font-bold rounded-xl cursor-pointer transition-all"
             >
               <Activity className="w-4 h-4 text-amber-500" />
               Xem Live Scores
-            </Link>
+            </AdminEntryLink>
           </div>
 
           {/* Stats Bar */}

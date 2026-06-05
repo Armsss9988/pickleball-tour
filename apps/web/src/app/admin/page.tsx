@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api-client';
+import { getCurrentUser, hasUsableAccessToken } from '@/lib/current-user';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { PageLoading } from '@/components/loading-skeleton';
@@ -28,6 +29,8 @@ interface Tournament {
 export default function TournamentListPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -56,8 +59,18 @@ export default function TournamentListPage() {
   };
 
   useEffect(() => {
+    const hasSession = hasUsableAccessToken() && getCurrentUser().authenticated;
+    setAuthorized(hasSession);
+    setAuthChecked(true);
+
+    if (!hasSession) {
+      setLoading(false);
+      router.replace('/login');
+      return;
+    }
+
     loadTournaments();
-  }, []);
+  }, [router]);
 
   // Slug generator from tournament name
   const handleNameChange = (val: string) => {
@@ -117,7 +130,7 @@ export default function TournamentListPage() {
     }
   };
 
-  if (loading) return <PageLoading />;
+  if (!authChecked || !authorized || loading) return <PageLoading />;
 
   return (
     <div className="premium-container max-w-7xl mx-auto px-4 py-8 space-y-8 animate-scale-in">

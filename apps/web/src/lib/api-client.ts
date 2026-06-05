@@ -1,6 +1,7 @@
 /**
  * GOLAB Tournament Platform - Client-side API fetch client
  */
+import { clearStoredAuth } from './current-user';
 
 export interface FetchOptions extends RequestInit {
   body?: any;
@@ -28,9 +29,7 @@ export async function apiFetch<T = any>(endpoint: string, options: FetchOptions 
 
   if (response.status === 401 && typeof window !== 'undefined') {
     // Session expired, redirect to login
-    localStorage.removeItem('golab_access_token');
-    localStorage.removeItem('golab_refresh_token');
-    localStorage.removeItem('golab_user');
+    clearStoredAuth();
     window.location.href = '/login';
     throw new Error('Phiên đăng nhập đã hết hạn.');
   }
