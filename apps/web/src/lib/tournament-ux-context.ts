@@ -37,6 +37,7 @@ export interface TournamentUxStats {
   resultConfirmedMatches?: number;
   lineupReadyCount?: number;
   scoringReadyCount?: number;
+  groupsAssigned?: boolean;
 }
 
 export interface BuildTournamentUxContextInput {
@@ -189,7 +190,7 @@ export function buildTournamentUxContext(input: BuildTournamentUxContextInput): 
     requiredMales: required.requiredMales,
     requiredFemales: required.requiredFemales,
     teamCount,
-    groupsAssigned: areGroupsAssigned(status, teamCount, matchCount),
+    groupsAssigned: stats.groupsAssigned ?? areGroupsAssigned(status, teamCount, matchCount),
     scheduleConfigReady: Boolean(tournament?.openingTime),
     matchCount,
     lineupReadyCount,

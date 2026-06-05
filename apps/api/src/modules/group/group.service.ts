@@ -201,7 +201,10 @@ export class GroupService {
         }
       }
 
-      // Removed status: 'GROUP_ASSIGNED' update
+      await tx.tournament.update({
+        where: { id: tournamentId },
+        data: { status: 'GROUP_ASSIGNED' },
+      });
 
       await this.auditService.log({
         organizationId: tournament.organizationId,

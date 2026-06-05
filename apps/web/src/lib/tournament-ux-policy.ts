@@ -475,8 +475,8 @@ export function getNextRecommendedAction(role: AppRole, context: TournamentUxCon
   if (context.teamCount < 2) {
     return {
       key: 'drawTeams',
-      label: 'Bốc thăm chia đội',
-      description: 'Bốc thăm chia đội ngẫu nhiên dựa trên danh sách VĐV.',
+      label: 'Đội tuyển',
+      description: 'Bốc thăm, tự xếp và kiểm tra danh sách đội chính thức.',
       href: `/admin/${context.tournamentId}/draw`,
     };
   }

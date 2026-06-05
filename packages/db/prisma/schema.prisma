@@ -857,6 +857,7 @@ model Court {
   id             String   @id @default(uuid())
   organizationId String   @map("organization_id")
   tournamentId   String   @map("tournament_id")
+  venueName      String?  @map("venue_name")
   name           String
   description    String?
   isActive       Boolean  @default(true) @map("is_active")
@@ -868,7 +869,7 @@ model Court {
   tournament   Tournament   @relation(fields: [tournamentId], references: [id])
   matches      Match[]
 
-  @@unique([tournamentId, name])
+  @@index([tournamentId, venueName])
   @@map("courts")
 }
 

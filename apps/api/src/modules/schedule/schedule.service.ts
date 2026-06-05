@@ -17,6 +17,10 @@ export class ScheduleService {
     private readonly validatorService: TournamentSectionValidatorService,
   ) {}
 
+  private formatCourtLabel(court: { name: string; venueName?: string | null }) {
+    return court.venueName?.trim() ? `${court.venueName.trim()} - ${court.name}` : court.name;
+  }
+
   /**
    * Generates the round-robin schedule for the group stage of a tournament.
    */
@@ -97,7 +101,7 @@ export class ScheduleService {
             const courtIdx = idx % dbCourts.length;
             const court = dbCourts[courtIdx]!;
             courtId = court.id;
-            courtName = court.name;
+            courtName = this.formatCourtLabel(court);
           } else {
             const courts = ['Sân 1', 'Sân 2'];
             const courtIdx = idx % courts.length;

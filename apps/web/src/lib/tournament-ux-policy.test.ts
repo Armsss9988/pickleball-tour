@@ -7,6 +7,7 @@ import {
   getVisibleAreasForRole,
   type TournamentUxContext,
 } from './tournament-ux-policy';
+import { buildTournamentUxContext } from './tournament-ux-context';
 
 const baseContext: TournamentUxContext = {
   tournamentId: 't1',
@@ -64,6 +65,42 @@ describe('tournament UX policy', () => {
     expect(access.allowed).toBe(false);
     expect(access.reason).toContain('chưa phân bảng');
     expect(access.nextHref).toBe('/admin/t1/groups');
+  });
+
+  it('unlocks match generation from persisted group data even before tournament status reloads', () => {
+    const context = buildTournamentUxContext({
+      tournament: {
+        id: 't1',
+        status: 'TEAM_DRAW_COMPLETED',
+        openingTime: '2026-06-05T08:00:00.000Z',
+      },
+      stats: {
+        teamsCount: 8,
+        groupsAssigned: true,
+      },
+    });
+
+    expect(context.groupsAssigned).toBe(true);
+    expect(getActionAccess('generateMatches', 'btc_admin', context).allowed).toBe(true);
+  });
+
+  it('keeps match generation locked when loaded group data is empty despite stale status', () => {
+    const context = buildTournamentUxContext({
+      tournament: {
+        id: 't1',
+        status: 'GROUP_ASSIGNED',
+        openingTime: '2026-06-05T08:00:00.000Z',
+      },
+      stats: {
+        teamsCount: 8,
+        groupsAssigned: false,
+      },
+    });
+
+    const access = getActionAccess('generateMatches', 'btc_admin', context);
+    expect(context.groupsAssigned).toBe(false);
+    expect(access.allowed).toBe(false);
+    expect(access.reason).toContain('chưa phân bảng');
   });
 
   it('locks team draw until ruleset and player composition are valid', () => {

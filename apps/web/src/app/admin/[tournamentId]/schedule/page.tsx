@@ -16,6 +16,7 @@ interface ScheduleFormState {
 
 interface Court {
   id: string;
+  venueName: string | null;
   name: string;
   description: string | null;
   isActive: boolean;
@@ -24,6 +25,7 @@ interface Court {
 interface Conflict {
   courtId: string | null;
   courtName: string;
+  venueName?: string | null;
   scheduledTime: string;
   matchIds: string[];
   matches: {
@@ -32,6 +34,10 @@ interface Conflict {
     teamAName: string;
     teamBName: string;
   }[];
+}
+
+function formatCourtLabel(court: Pick<Court, 'name' | 'venueName'>) {
+  return court.venueName?.trim() ? `${court.venueName.trim()} - ${court.name}` : court.name;
 }
 
 function toDatetimeLocal(value: string | Date | null | undefined): string {
@@ -58,6 +64,7 @@ export default function ScheduleConfigPage() {
   const [courts, setCourts] = useState<Court[]>([]);
   const [loadingCourts, setLoadingCourts] = useState(false);
   const [newCourtName, setNewCourtName] = useState('');
+  const [newCourtVenueName, setNewCourtVenueName] = useState('');
   const [newCourtDescription, setNewCourtDescription] = useState('');
   const [addingCourt, setAddingCourt] = useState(false);
   const [deletingCourtId, setDeletingCourtId] = useState<string | null>(null);
@@ -139,10 +146,12 @@ export default function ScheduleConfigPage() {
         method: 'POST',
         body: {
           name: newCourtName,
+          venueName: newCourtVenueName || form.venueName || undefined,
           description: newCourtDescription || undefined,
         },
       });
       setNewCourtName('');
+      setNewCourtVenueName('');
       setNewCourtDescription('');
       toast('Đã thêm sân đấu thành công!', 'success');
       fetchCourts();
@@ -329,7 +338,16 @@ export default function ScheduleConfigPage() {
               <div className="space-y-1">
                 <input
                   type="text"
-                  placeholder="Mô tả sân (tùy chọn)"
+                  placeholder="Địa điểm/cụm sân (ví dụ: GOLAB Q.10)"
+                  value={newCourtVenueName}
+                  onChange={(e) => setNewCourtVenueName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2 text-sm text-slate-200 outline-none focus:border-amber-500/50 transition-all"
+                />
+              </div>
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  placeholder="Ghi chú sân (tùy chọn)"
                   value={newCourtDescription}
                   onChange={(e) => setNewCourtDescription(e.target.value)}
                   className="w-full rounded-xl border border-slate-700/60 bg-slate-950/60 px-3.5 py-2 text-sm text-slate-200 outline-none focus:border-amber-500/50 transition-all"
@@ -373,7 +391,10 @@ export default function ScheduleConfigPage() {
                       className="flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-slate-850 hover:border-slate-800 transition-colors"
                     >
                       <div className="min-w-0 pr-2">
-                        <div className="text-xs font-bold text-slate-200 truncate">{court.name}</div>
+                        <div className="text-xs font-bold text-slate-200 truncate">{formatCourtLabel(court)}</div>
+                        {court.venueName && (
+                          <div className="text-[10px] text-amber-500/80 truncate mt-0.5">{court.venueName}</div>
+                        )}
                         {court.description && (
                           <div className="text-[10px] text-slate-550 truncate mt-0.5">{court.description}</div>
                         )}
@@ -411,7 +432,7 @@ export default function ScheduleConfigPage() {
           href={`/admin/${tournament?.id}/draw`}
           className="flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors"
         >
-          Tiến hành bốc thăm chia đội <ArrowRight className="h-3.5 w-3.5" />
+          Mở đội tuyển <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
     </div>

@@ -13,6 +13,7 @@ import { getCurrentUser } from '@/lib/current-user';
 
 interface Court {
   id: string;
+  venueName: string | null;
   name: string;
 }
 
@@ -21,6 +22,11 @@ interface Conflict {
   courtName: string;
   scheduledTime: string;
   matchIds: string[];
+}
+
+function formatCourtLabel(court: Pick<Court, 'name' | 'venueName'> | null | undefined) {
+  if (!court) return '';
+  return court.venueName?.trim() ? `${court.venueName.trim()} - ${court.name}` : court.name;
 }
 
 interface EditFormState {
@@ -154,7 +160,7 @@ export default function MatchesPage() {
     setActionLoading(true);
     try {
       const selectedCourt = courts.find(c => c.id === editForm.courtId);
-      const courtNameVal = selectedCourt ? selectedCourt.name : (editForm.courtId === 'custom' ? editForm.courtName : '');
+      const courtNameVal = selectedCourt ? formatCourtLabel(selectedCourt) : (editForm.courtId === 'custom' ? editForm.courtName : '');
 
       await apiFetch(`/matches/${matchId}/schedule`, {
         method: 'PATCH',
@@ -255,7 +261,7 @@ export default function MatchesPage() {
               >
                 <option value="">-- Chưa gán --</option>
                 {courts.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>{formatCourtLabel(c)}</option>
                 ))}
                 <option value="custom">Gõ tay tên sân</option>
               </select>
@@ -304,7 +310,7 @@ export default function MatchesPage() {
         ) : (
           <div className="text-[10px] text-slate-500 flex justify-between items-center border-t border-slate-800 pt-2">
             <div className="flex flex-col">
-              <span className="font-semibold text-slate-400">Sân: {m.courtName || '—'}</span>
+              <span className="font-semibold text-slate-400">Sân: {formatCourtLabel(m.court) || m.courtName || '—'}</span>
               <span>
                 {m.scheduledTime
                   ? new Date(m.scheduledTime).toLocaleString('vi-VN', {

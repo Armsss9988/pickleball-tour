@@ -28,8 +28,9 @@ export class CourtController {
     @Request() req: any,
     @Body('name') name: string,
     @Body('description') description?: string,
+    @Body('venueName') venueName?: string,
   ) {
-    return this.courtService.create(tournamentId, req.user.orgId, name, description, req.user.id);
+    return this.courtService.create(tournamentId, req.user.orgId, name, description, venueName, req.user.id);
   }
 
   @Patch(':courtId')
@@ -40,8 +41,9 @@ export class CourtController {
     @Body('name') name?: string,
     @Body('description') description?: string,
     @Body('isActive') isActive?: boolean,
+    @Body('venueName') venueName?: string,
   ) {
-    return this.courtService.update(courtId, name, description, isActive, req.user.id);
+    return this.courtService.update(courtId, name, description, isActive, venueName, req.user.id);
   }
 
   @Delete(':courtId')

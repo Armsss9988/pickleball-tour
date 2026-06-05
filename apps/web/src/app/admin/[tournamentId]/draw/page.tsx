@@ -37,6 +37,20 @@ interface TeamLike {
   players: PlayerLike[];
 }
 
+interface OfficialTeamLike {
+  id: string;
+  code: string;
+  name: string;
+  captain?: PlayerLike | null;
+  captainPlayerId?: string | null;
+  members: {
+    id: string;
+    playerId: string;
+    role?: string | null;
+    playerProfile?: PlayerLike | null;
+  }[];
+}
+
 interface DrawRecord {
   id: string;
   status: string;
@@ -100,6 +114,7 @@ export default function DrawPage() {
   const [previewDraw, setPreviewDraw] = useState<DrawRecord | null>(null);
   const [mode, setMode] = useState<DrawMode>('auto');
   const [players, setPlayers] = useState<PlayerLike[]>([]);
+  const [officialTeams, setOfficialTeams] = useState<OfficialTeamLike[]>([]);
   const [manualAssignments, setManualAssignments] = useState<Record<string, string>>({});
   const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStats>(emptyPlayerStats);
@@ -113,12 +128,14 @@ export default function DrawPage() {
     if (!tournament) return;
     try {
       setLoading(true);
-      const [data, playersData] = await Promise.all([
+      const [data, playersData, teamsData] = await Promise.all([
         apiFetch<DrawRecord[]>(`/tournaments/${tournament.id}/team-draws`),
         apiFetch<PlayersResponse>(`/tournaments/${tournament.id}/players`),
+        apiFetch<OfficialTeamLike[]>(`/tournaments/${tournament.id}/teams`).catch(() => []),
       ]);
 
       setDraws(data);
+      setOfficialTeams(Array.isArray(teamsData) ? teamsData : []);
 
       const players = Array.isArray(playersData?.items) ? playersData.items : [];
       setPlayers(players);
@@ -363,10 +380,58 @@ export default function DrawPage() {
   return (
     <div className="premium-container space-y-6 animate-scale-in">
       <PageHeader
-        title="Bốc Thăm Chia Đội"
-        description="Phân chia vận động viên thành các đội tuyển theo ruleset: bốc thăm tự động hoặc BTC tự xếp thủ công."
+        title="Đội Tuyển"
+        description="Bốc thăm, tự xếp và kiểm tra danh sách đội chính thức trong cùng một màn."
         icon={Dices}
       />
+
+      {officialTeams.length > 0 && (
+        <div className="card p-6 space-y-4 shadow-xl">
+          <h3 className="font-bold text-base text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3">
+            <Users className="w-5 h-5 text-amber-500" />
+            Đội chính thức ({officialTeams.length})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            {officialTeams.map((team) => {
+              const males = team.members.filter((member) => normalizeGender(member.playerProfile?.gender) === 'MALE').length;
+              const females = team.members.filter((member) => normalizeGender(member.playerProfile?.gender) === 'FEMALE').length;
+
+              return (
+                <div key={team.id} className="rounded-xl border border-slate-800 bg-slate-950/35 p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-bold text-slate-100">{team.name}</div>
+                      <div className="text-[10px] font-semibold text-slate-500">
+                        {males} Nam · {females} Nữ
+                      </div>
+                    </div>
+                    <span className="rounded border border-slate-800 bg-slate-900 px-2 py-0.5 text-xs font-mono text-slate-400">
+                      {team.code}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {team.members.map((member, index) => {
+                      const player = member.playerProfile;
+                      const gender = normalizeGender(player?.gender);
+
+                      return (
+                        <div key={member.id} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-lg bg-slate-900/50 px-2.5 py-1.5 text-xs">
+                          <span className="truncate font-semibold text-slate-300">
+                            #{index + 1} {player?.fullName ?? member.playerId}
+                          </span>
+                          <span className={`text-[10px] font-bold ${gender === 'MALE' ? 'text-sky-400' : 'text-rose-400'}`}>
+                            {gender === 'MALE' ? 'Nam' : 'Nữ'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="inline-flex rounded-xl border border-slate-800 bg-slate-950/60 p-1">
         <button

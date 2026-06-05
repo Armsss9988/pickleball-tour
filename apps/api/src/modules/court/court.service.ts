@@ -18,26 +18,39 @@ export class CourtService {
     });
   }
 
-  async create(tournamentId: string, orgId: string, name: string, description?: string, userId?: string) {
-    // Check if court name already exists in this tournament
-    const existing = await this.prisma.court.findUnique({
+  private formatCourtLabel(court?: { name: string; venueName?: string | null } | null) {
+    if (!court) return null;
+    return court.venueName?.trim() ? `${court.venueName.trim()} - ${court.name}` : court.name;
+  }
+
+  async create(
+    tournamentId: string,
+    orgId: string,
+    name: string,
+    description?: string,
+    venueName?: string,
+    userId?: string,
+  ) {
+    const normalizedName = name.trim();
+    const normalizedVenueName = venueName?.trim() || null;
+    const existing = await this.prisma.court.findFirst({
       where: {
-        tournamentId_name: {
-          tournamentId,
-          name,
-        },
+        tournamentId,
+        name: normalizedName,
+        venueName: normalizedVenueName,
       },
     });
 
     if (existing) {
-      throw new BadRequestException(`Sân với tên "${name}" đã tồn tại trong giải đấu này.`);
+      throw new BadRequestException(`Sân "${normalizedName}" đã tồn tại tại địa điểm này.`);
     }
 
     const court = await this.prisma.court.create({
       data: {
         organizationId: orgId,
         tournamentId,
-        name,
+        venueName: normalizedVenueName,
+        name: normalizedName,
         description,
       },
     });
@@ -48,29 +61,41 @@ export class CourtService {
     return court;
   }
 
-  async update(id: string, name?: string, description?: string, isActive?: boolean, userId?: string) {
+  async update(
+    id: string,
+    name?: string,
+    description?: string,
+    isActive?: boolean,
+    venueName?: string,
+    userId?: string,
+  ) {
     const court = await this.prisma.court.findUnique({ where: { id } });
     if (!court) {
       throw new NotFoundException(`Không tìm thấy sân đấu.`);
     }
 
-    if (name && name !== court.name) {
+    const normalizedName = name?.trim();
+    const normalizedVenueName = venueName !== undefined ? venueName.trim() || null : court.venueName;
+
+    if ((normalizedName && normalizedName !== court.name) || normalizedVenueName !== court.venueName) {
       const existing = await this.prisma.court.findFirst({
         where: {
           tournamentId: court.tournamentId,
-          name,
+          name: normalizedName ?? court.name,
+          venueName: normalizedVenueName,
           NOT: { id },
         },
       });
       if (existing) {
-        throw new BadRequestException(`Sân với tên "${name}" đã tồn tại.`);
+        throw new BadRequestException(`Sân "${normalizedName ?? court.name}" đã tồn tại tại địa điểm này.`);
       }
     }
 
     const updated = await this.prisma.court.update({
       where: { id },
       data: {
-        name: name !== undefined ? name : undefined,
+        name: normalizedName !== undefined ? normalizedName : undefined,
+        venueName: venueName !== undefined ? normalizedVenueName : undefined,
         description: description !== undefined ? description : undefined,
         isActive: isActive !== undefined ? isActive : undefined,
       },
@@ -143,11 +168,12 @@ export class CourtService {
         if (!timeStr) continue;
 
         const firstMatch = conflictMatches[0]!;
-        const courtName = firstMatch.court?.name || firstMatch.courtName || 'Chưa rõ';
+        const courtName = this.formatCourtLabel(firstMatch.court) || firstMatch.courtName || 'Chưa rõ';
 
         conflicts.push({
           courtId: firstMatch.courtId,
           courtName,
+          venueName: firstMatch.court?.venueName || null,
           scheduledTime: new Date(timeStr),
           matchIds: conflictMatches.map(m => m.id),
           matches: conflictMatches.map(m => ({

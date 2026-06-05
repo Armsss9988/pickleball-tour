@@ -409,7 +409,7 @@ export default function AdminDashboardPage() {
       { key: 'info', label: 'Thông tin giải', status: step1Status },
       { key: 'ruleset', label: 'Luật thi đấu', status: step2Status },
       { key: 'players', label: 'Nhập VĐV', status: step3Status },
-      { key: 'draw', label: 'Bốc thăm đội', status: step4Status },
+      { key: 'draw', label: 'Đội tuyển', status: step4Status },
       { key: 'groups', label: 'Phân bảng', status: step5Status },
       { key: 'matches', label: 'Sinh lịch thi đấu', status: step6Status },
       { key: 'running', label: 'Thi đấu', status: step7Status },
