@@ -16,6 +16,14 @@ function normalizeGender(gender: string | null | undefined) {
     .toUpperCase();
 }
 
+interface ManualTeamAssignmentInput {
+  teams: {
+    code: string;
+    name?: string;
+    playerIds: string[];
+  }[];
+}
+
 @Injectable()
 export class TeamService {
   constructor(
@@ -326,6 +334,194 @@ export class TeamService {
       });
 
       // Re-validate and mark dependents
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['lineup']);
+      await this.validatorService.validateAll(tournamentId);
+
+      return confirmedTeams;
+    });
+  }
+
+  async saveManualAssignment(
+    tournamentId: string,
+    assignment: ManualTeamAssignmentInput,
+    userId: string,
+  ) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      include: {
+        ruleset: {
+          include: {
+            teamCompositionRule: true,
+          },
+        },
+      },
+    });
+
+    if (!tournament) {
+      throw new NotFoundException(`Không tìm thấy giải đấu.`);
+    }
+
+    const ruleset = tournament.ruleset ?? await this.prisma.tournamentRuleset.findUnique({
+      where: { id: DEFAULT_RULESET_ID },
+      include: {
+        teamCompositionRule: true,
+      },
+    });
+
+    if (!ruleset || !ruleset.teamCompositionRule) {
+      throw new BadRequestException(`Giải đấu chưa được cấu hình điều lệ.`);
+    }
+
+    const registrations = await this.prisma.tournamentRegistration.findMany({
+      where: { tournamentId },
+      include: { playerProfile: true },
+    });
+
+    const registeredPlayers = new Map(
+      registrations.map((registration) => [
+        registration.playerProfile.id,
+        registration.playerProfile,
+      ]),
+    );
+
+    const composition = {
+      teamSize: ruleset.teamCompositionRule.teamSize,
+      maleCount: ruleset.teamCompositionRule.maleCount,
+      femaleCount: ruleset.teamCompositionRule.femaleCount,
+    };
+    const expectedTeamCount = registrations.length / composition.teamSize;
+
+    if (!Number.isInteger(expectedTeamCount) || expectedTeamCount <= 0) {
+      throw new BadRequestException(
+        `Số lượng vận động viên không chia hết cho quy mô đội ${composition.teamSize}.`,
+      );
+    }
+
+    if (!Array.isArray(assignment.teams) || assignment.teams.length !== expectedTeamCount) {
+      throw new BadRequestException(
+        `Cần tạo đúng ${expectedTeamCount} đội, mỗi đội ${composition.teamSize} VĐV.`,
+      );
+    }
+
+    const usedPlayerIds = new Set<string>();
+    const normalizedTeams = assignment.teams.map((team, teamIndex) => {
+      const code = String(team.code || String.fromCharCode(65 + teamIndex)).trim().toUpperCase();
+      const name = String(team.name || `Đội ${code}`).trim();
+      const playerIds = Array.isArray(team.playerIds) ? team.playerIds : [];
+
+      if (!code) {
+        throw new BadRequestException(`Mã đội không hợp lệ.`);
+      }
+
+      if (playerIds.length !== composition.teamSize) {
+        throw new BadRequestException(
+          `${name} phải có đúng ${composition.teamSize} VĐV.`,
+        );
+      }
+
+      const players = playerIds.map((playerId) => {
+        if (usedPlayerIds.has(playerId)) {
+          throw new BadRequestException(`Một vận động viên không được xếp vào nhiều đội.`);
+        }
+
+        const player = registeredPlayers.get(playerId);
+        if (!player) {
+          throw new BadRequestException(`VĐV ${playerId} chưa đăng ký giải đấu này.`);
+        }
+
+        usedPlayerIds.add(playerId);
+        return player;
+      });
+
+      const maleCount = players.filter((player) => normalizeGender(player.gender) === 'MALE').length;
+      const femaleCount = players.filter((player) => normalizeGender(player.gender) === 'FEMALE').length;
+
+      if (
+        (composition.maleCount > 0 && maleCount !== composition.maleCount)
+        || (composition.femaleCount > 0 && femaleCount !== composition.femaleCount)
+      ) {
+        throw new BadRequestException(
+          `${name} chưa đúng cơ cấu: cần ${composition.maleCount} Nam, ${composition.femaleCount} Nữ; hiện có ${maleCount} Nam, ${femaleCount} Nữ.`,
+        );
+      }
+
+      return {
+        code,
+        name,
+        teamNo: teamIndex + 1,
+        players,
+      };
+    });
+
+    if (usedPlayerIds.size !== registeredPlayers.size) {
+      throw new BadRequestException(
+        `Cần xếp đủ toàn bộ ${registeredPlayers.size} vận động viên đã đăng ký.`,
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.teamMember.deleteMany({ where: { tournamentId } });
+      await tx.team.deleteMany({ where: { tournamentId } });
+
+      const confirmedTeams = [];
+
+      for (const manualTeam of normalizedTeams) {
+        const team = await tx.team.create({
+          data: {
+            organizationId: tournament.organizationId,
+            tournamentId,
+            name: manualTeam.name,
+            code: manualTeam.code,
+            seedNo: manualTeam.teamNo,
+          },
+        });
+
+        const captainPlayerId = manualTeam.players.find(
+          (player) => normalizeGender(player.gender) === 'MALE',
+        )?.id ?? manualTeam.players[0]?.id ?? null;
+
+        for (const player of manualTeam.players) {
+          await tx.teamMember.create({
+            data: {
+              organizationId: tournament.organizationId,
+              tournamentId,
+              teamId: team.id,
+              playerProfileId: player.id,
+              role: 'MEMBER',
+              joinedMethod: 'manual_assign',
+            },
+          });
+        }
+
+        if (captainPlayerId) {
+          await tx.team.update({
+            where: { id: team.id },
+            data: { captainPlayerId },
+          });
+        }
+
+        confirmedTeams.push(team);
+      }
+
+      await tx.teamDraw.updateMany({
+        where: { tournamentId, status: 'PREVIEW' },
+        data: { status: 'CANCELLED' },
+      });
+
+      await this.auditService.log({
+        organizationId: tournament.organizationId,
+        tournamentId,
+        actorUserId: userId,
+        action: 'TEAM_MANUAL_ASSIGNMENT_CONFIRMED',
+        entityType: 'Team',
+        entityId: tournamentId,
+        afterData: normalizedTeams.map((team) => ({
+          code: team.code,
+          name: team.name,
+          playerIds: team.players.map((player) => player.id),
+        })),
+      });
+
       await this.validatorService.markSectionNeedsReview(tournamentId, ['lineup']);
       await this.validatorService.validateAll(tournamentId);
 

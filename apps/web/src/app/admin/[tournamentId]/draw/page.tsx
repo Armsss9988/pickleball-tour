@@ -28,6 +28,7 @@ interface PlayerLike {
   id: string;
   fullName: string;
   gender: string;
+  note?: string | null;
 }
 
 interface TeamLike {
@@ -51,6 +52,14 @@ interface PlayersResponse {
   items?: PlayerLike[];
 }
 
+type DrawMode = 'auto' | 'manual';
+
+interface TeamCompositionLike {
+  teamSize: number;
+  maleCount: number;
+  femaleCount: number;
+}
+
 function normalizeGender(gender: string | null | undefined) {
   return (gender ?? '').trim().toUpperCase();
 }
@@ -63,11 +72,35 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function getTeamComposition(tournament: any): TeamCompositionLike | null {
+  const composition = tournament?.ruleset?.teamCompositionRule ?? tournament?.ruleset?.teamComposition;
+  if (!composition) return null;
+
+  const teamSize = Number(composition.teamSize);
+  const maleCount = Number(composition.maleCount ?? 0);
+  const femaleCount = Number(composition.femaleCount ?? 0);
+
+  if (!Number.isFinite(teamSize) || teamSize <= 0) return null;
+
+  return {
+    teamSize,
+    maleCount: Number.isFinite(maleCount) ? maleCount : 0,
+    femaleCount: Number.isFinite(femaleCount) ? femaleCount : 0,
+  };
+}
+
+function teamCodeFromIndex(index: number) {
+  return String.fromCharCode(65 + index);
+}
+
 export default function DrawPage() {
   const { tournament, loading: tLoading, reload: reloadTournament } = useActiveTournament();
   const { toast } = useToast();
   const [draws, setDraws] = useState<DrawRecord[]>([]);
   const [previewDraw, setPreviewDraw] = useState<DrawRecord | null>(null);
+  const [mode, setMode] = useState<DrawMode>('auto');
+  const [players, setPlayers] = useState<PlayerLike[]>([]);
+  const [manualAssignments, setManualAssignments] = useState<Record<string, string>>({});
   const [playerStats, setPlayerStats] = useState<PlayerStats>(emptyPlayerStats);
   const [seed, setSeed] = useState('');
   const [loading, setLoading] = useState(false);
@@ -87,6 +120,7 @@ export default function DrawPage() {
       setDraws(data);
 
       const players = Array.isArray(playersData?.items) ? playersData.items : [];
+      setPlayers(players);
       const malesCount = players.filter((player) => normalizeGender(player.gender) === 'MALE').length;
       const femalesCount = players.filter((player) => normalizeGender(player.gender) === 'FEMALE').length;
 
@@ -127,6 +161,110 @@ export default function DrawPage() {
     () => getActionAccess('drawTeams', currentUser.role, uxContext),
     [currentUser.role, uxContext],
   );
+
+  const teamComposition = useMemo(() => getTeamComposition(tournament), [tournament]);
+  const manualTeamCount = useMemo(() => {
+    if (!teamComposition || players.length === 0) return 0;
+    const count = players.length / teamComposition.teamSize;
+    return Number.isInteger(count) ? count : 0;
+  }, [players.length, teamComposition]);
+  const manualTeamCodes = useMemo(
+    () => Array.from({ length: manualTeamCount }, (_, index) => teamCodeFromIndex(index)),
+    [manualTeamCount],
+  );
+
+  const manualTeams = useMemo(() => manualTeamCodes.map((code, index) => {
+    const teamPlayers = players.filter((player) => manualAssignments[player.id] === code);
+    const malesCount = teamPlayers.filter((player) => normalizeGender(player.gender) === 'MALE').length;
+    const femalesCount = teamPlayers.filter((player) => normalizeGender(player.gender) === 'FEMALE').length;
+
+    return {
+      code,
+      name: `Đội ${code}`,
+      index,
+      players: teamPlayers,
+      malesCount,
+      femalesCount,
+    };
+  }), [manualAssignments, manualTeamCodes, players]);
+
+  const manualValidation = useMemo(() => {
+    if (!teamComposition || manualTeamCount === 0) {
+      return {
+        valid: false,
+        errors: ['Chưa có ruleset hợp lệ để tự xếp đội.'],
+      };
+    }
+
+    const assignedCount = Object.values(manualAssignments).filter(Boolean).length;
+    const errors: string[] = [];
+    if (assignedCount !== players.length) {
+      errors.push(`Cần xếp đủ ${players.length} VĐV; hiện đã xếp ${assignedCount}.`);
+    }
+
+    for (const team of manualTeams) {
+      if (team.players.length !== teamComposition.teamSize) {
+        errors.push(`${team.name} cần ${teamComposition.teamSize} VĐV, hiện có ${team.players.length}.`);
+      }
+      if (teamComposition.maleCount > 0 && team.malesCount !== teamComposition.maleCount) {
+        errors.push(`${team.name} cần ${teamComposition.maleCount} Nam, hiện có ${team.malesCount}.`);
+      }
+      if (teamComposition.femaleCount > 0 && team.femalesCount !== teamComposition.femaleCount) {
+        errors.push(`${team.name} cần ${teamComposition.femaleCount} Nữ, hiện có ${team.femalesCount}.`);
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
+  }, [manualAssignments, manualTeamCount, manualTeams, players.length, teamComposition]);
+
+  const handleManualTeamChange = useCallback((playerId: string, code: string) => {
+    setManualAssignments((current) => ({
+      ...current,
+      [playerId]: code,
+    }));
+  }, []);
+
+  const handleClearManualAssignments = useCallback(() => {
+    setManualAssignments({});
+  }, []);
+
+  const handleSubmitManualAssignment = useCallback(async () => {
+    if (!drawAccess.allowed) {
+      toast(drawAccess.reason || 'Chưa thể xếp đội.', 'error');
+      return;
+    }
+
+    if (!manualValidation.valid) {
+      toast(manualValidation.errors[0] || 'Đội hình tự xếp chưa hợp lệ.', 'error');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await apiFetch(`/tournaments/${tournament!.id}/teams/manual-assignment`, {
+        method: 'POST',
+        body: {
+          teams: manualTeams.map((team) => ({
+            code: team.code,
+            name: team.name,
+            playerIds: team.players.map((player) => player.id),
+          })),
+        },
+      });
+
+      toast('Đã lưu đội hình tự xếp thành công!', 'success');
+      setManualAssignments({});
+      await loadDraws();
+      await reloadTournament();
+    } catch (error: unknown) {
+      toast(getErrorMessage(error, 'Lỗi lưu đội hình tự xếp.'), 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  }, [drawAccess.allowed, drawAccess.reason, loadDraws, manualTeams, manualValidation.errors, manualValidation.valid, reloadTournament, toast, tournament]);
 
   const handleCreatePreview = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,9 +326,34 @@ export default function DrawPage() {
     <div className="premium-container space-y-6 animate-scale-in">
       <PageHeader
         title="Bốc Thăm Chia Đội"
-        description="Thuật toán phân chia 40 vận động viên cân bằng thành 8 đội tuyển (mỗi đội gồm 3 Nam + 2 Nữ)."
+        description="Phân chia vận động viên thành các đội tuyển theo ruleset: bốc thăm tự động hoặc BTC tự xếp thủ công."
         icon={Dices}
       />
+
+      <div className="inline-flex rounded-xl border border-slate-800 bg-slate-950/60 p-1">
+        <button
+          type="button"
+          onClick={() => setMode('auto')}
+          className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+            mode === 'auto'
+              ? 'bg-amber-500 text-slate-950'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Bốc thăm tự động
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('manual')}
+          className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+            mode === 'manual'
+              ? 'bg-amber-500 text-slate-950'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Tự xếp đội
+        </button>
+      </div>
 
       {!drawAccess.allowed && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-100">
@@ -201,6 +364,8 @@ export default function DrawPage() {
         </div>
       )}
 
+      {mode === 'auto' ? (
+      <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Draw Trigger form */}
         <div className="card p-6 space-y-5 shadow-xl">
@@ -319,6 +484,117 @@ export default function DrawPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+      </>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_1fr] gap-6">
+          <div className="card p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-base text-slate-100 flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-500" />
+                Gán VĐV vào đội
+              </h3>
+              <button
+                type="button"
+                onClick={handleClearManualAssignments}
+                className="btn btn-secondary px-3 py-1.5 text-xs"
+                disabled={actionLoading}
+              >
+                Xóa chọn
+              </button>
+            </div>
+
+            <div className="max-h-[680px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 gap-2">
+                {players.map((player) => (
+                  <div key={player.id} className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-slate-850 bg-slate-950/35 px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-slate-200">{player.fullName}</div>
+                      <div className={`text-[10px] font-bold ${normalizeGender(player.gender) === 'MALE' ? 'text-sky-400' : 'text-rose-400'}`}>
+                        {normalizeGender(player.gender) === 'MALE' ? 'Nam' : 'Nữ'}
+                        {player.note ? <span className="ml-2 text-slate-500 font-medium">{player.note}</span> : null}
+                      </div>
+                    </div>
+                    <select
+                      value={manualAssignments[player.id] || ''}
+                      onChange={(event) => handleManualTeamChange(player.id, event.target.value)}
+                      className="w-28 rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs font-semibold text-slate-200 outline-none focus:border-amber-500/50"
+                      disabled={!drawAccess.allowed || actionLoading}
+                    >
+                      <option value="">Chưa xếp</option>
+                      {manualTeamCodes.map((code) => (
+                        <option key={code} value={code}>Đội {code}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="card p-6 space-y-4 shadow-xl">
+              <h3 className="font-bold text-base text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3">
+                <CheckCircle2 className="w-5 h-5 text-amber-500" />
+                Kiểm tra đội hình
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {manualTeams.map((team) => {
+                  const composition = teamComposition;
+                  const teamValid = composition !== null
+                    && team.players.length === composition.teamSize
+                    && (composition.maleCount === 0 || team.malesCount === composition.maleCount)
+                    && (composition.femaleCount === 0 || team.femalesCount === composition.femaleCount);
+
+                  return (
+                    <div key={team.code} className={`rounded-xl border p-3 ${teamValid ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/35'}`}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="text-sm font-bold text-slate-100">{team.name}</div>
+                        <div className={`text-[10px] font-bold ${teamValid ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {team.players.length}/{teamComposition?.teamSize ?? 0}
+                        </div>
+                      </div>
+                      <div className="mb-2 text-[11px] text-slate-400">
+                        {team.malesCount}/{teamComposition?.maleCount ?? 0} Nam · {team.femalesCount}/{teamComposition?.femaleCount ?? 0} Nữ
+                      </div>
+                      <div className="space-y-1">
+                        {team.players.length > 0 ? team.players.map((player) => (
+                          <div key={player.id} className="truncate rounded bg-slate-900/60 px-2 py-1 text-[11px] text-slate-300">
+                            {player.fullName}
+                          </div>
+                        )) : (
+                          <div className="text-[11px] italic text-slate-600">Chưa có VĐV</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {!manualValidation.valid && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200">
+                  <div className="font-bold text-amber-300">Chưa thể lưu đội hình</div>
+                  <ul className="mt-2 list-disc space-y-1 pl-4">
+                    {manualValidation.errors.slice(0, 4).map((error) => (
+                      <li key={error}>{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSubmitManualAssignment}
+                disabled={!drawAccess.allowed || !manualValidation.valid || actionLoading}
+                className="w-full btn btn-primary py-2.5 flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {actionLoading ? 'Đang lưu...' : 'Lưu đội hình tự xếp'}
+              </button>
+            </div>
           </div>
         </div>
       )}

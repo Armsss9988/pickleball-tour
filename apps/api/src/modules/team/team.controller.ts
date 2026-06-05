@@ -52,6 +52,16 @@ export class TeamController {
     return this.teamService.confirmDraw(tournamentId, drawId, req.user.id);
   }
 
+  @Post('tournaments/:tournamentId/teams/manual-assignment')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
+  async saveManualAssignment(
+    @Param('tournamentId') tournamentId: string,
+    @Request() req: any,
+    @Body() body: { teams: { code: string; name?: string; playerIds: string[] }[] }
+  ) {
+    return this.teamService.saveManualAssignment(tournamentId, body, req.user.id);
+  }
+
   @Post('tournaments/:tournamentId/teams/:teamId/replace-member')
   @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
   async replaceMember(

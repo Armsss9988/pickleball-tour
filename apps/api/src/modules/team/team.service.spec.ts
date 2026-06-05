@@ -2,6 +2,128 @@ import { BadRequestException } from '@nestjs/common';
 import { TeamService } from './team.service';
 
 describe('TeamService dependency guards', () => {
+  it('creates teams from a valid manual assignment', async () => {
+    const teamCreate = jest.fn()
+      .mockResolvedValueOnce({ id: 'team-a', code: 'A', name: 'Đội A' })
+      .mockResolvedValueOnce({ id: 'team-b', code: 'B', name: 'Đội B' });
+    const teamMemberCreate = jest.fn().mockResolvedValue({});
+    const teamUpdate = jest.fn().mockResolvedValue({});
+    const tx = {
+      teamMember: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: teamMemberCreate,
+      },
+      team: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: teamCreate,
+        update: teamUpdate,
+      },
+      teamDraw: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 't1',
+          organizationId: 'org1',
+          ruleset: {
+            teamCompositionRule: {
+              teamSize: 2,
+              maleCount: 1,
+              femaleCount: 1,
+            },
+          },
+        }),
+      },
+      tournamentRegistration: {
+        findMany: jest.fn().mockResolvedValue([
+          { playerProfile: { id: 'm1', fullName: 'Male 1', gender: 'MALE' } },
+          { playerProfile: { id: 'f1', fullName: 'Female 1', gender: 'FEMALE' } },
+          { playerProfile: { id: 'm2', fullName: 'Male 2', gender: 'MALE' } },
+          { playerProfile: { id: 'f2', fullName: 'Female 2', gender: 'FEMALE' } },
+        ]),
+      },
+      $transaction: jest.fn(async (cb) => cb(tx)),
+    };
+    const auditService = { log: jest.fn() };
+    const validatorService = {
+      markSectionNeedsReview: jest.fn(),
+      validateAll: jest.fn(),
+    };
+    const service = new TeamService(
+      prisma as any,
+      auditService as any,
+      validatorService as any,
+    );
+
+    await expect(service.saveManualAssignment('t1', {
+      teams: [
+        { code: 'A', name: 'Đội A', playerIds: ['m1', 'f1'] },
+        { code: 'B', name: 'Đội B', playerIds: ['m2', 'f2'] },
+      ],
+    }, 'u1')).resolves.toHaveLength(2);
+
+    expect(teamCreate).toHaveBeenCalledTimes(2);
+    expect(teamMemberCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        teamId: 'team-a',
+        playerProfileId: 'm1',
+        joinedMethod: 'manual_assign',
+      }),
+    }));
+    expect(teamUpdate).toHaveBeenCalledWith({
+      where: { id: 'team-a' },
+      data: { captainPlayerId: 'm1' },
+    });
+    expect(auditService.log).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'TEAM_MANUAL_ASSIGNMENT_CONFIRMED',
+      tournamentId: 't1',
+    }));
+    expect(validatorService.markSectionNeedsReview).toHaveBeenCalledWith('t1', ['lineup']);
+    expect(validatorService.validateAll).toHaveBeenCalledWith('t1');
+  });
+
+  it('rejects manual assignment when a player appears in multiple teams', async () => {
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 't1',
+          organizationId: 'org1',
+          ruleset: {
+            teamCompositionRule: {
+              teamSize: 2,
+              maleCount: 1,
+              femaleCount: 1,
+            },
+          },
+        }),
+      },
+      tournamentRegistration: {
+        findMany: jest.fn().mockResolvedValue([
+          { playerProfile: { id: 'm1', fullName: 'Male 1', gender: 'MALE' } },
+          { playerProfile: { id: 'f1', fullName: 'Female 1', gender: 'FEMALE' } },
+          { playerProfile: { id: 'm2', fullName: 'Male 2', gender: 'MALE' } },
+          { playerProfile: { id: 'f2', fullName: 'Female 2', gender: 'FEMALE' } },
+        ]),
+      },
+      $transaction: jest.fn(),
+    };
+    const service = new TeamService(
+      prisma as any,
+      { log: jest.fn() } as any,
+      {} as any,
+    );
+
+    await expect(service.saveManualAssignment('t1', {
+      teams: [
+        { code: 'A', name: 'Đội A', playerIds: ['m1', 'f1'] },
+        { code: 'B', name: 'Đội B', playerIds: ['m1', 'f2'] },
+      ],
+    }, 'u1')).rejects.toThrow('không được xếp vào nhiều đội');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('uses the standard ruleset for draw preview when an old tournament has no ruleset attached', async () => {
     const createTeamDraw = jest.fn().mockResolvedValue({
       id: 'draw1',
