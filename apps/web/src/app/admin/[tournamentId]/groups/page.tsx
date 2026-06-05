@@ -40,6 +40,16 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function buildGroupAssignments(groups: GroupLike[]) {
+  const assignments: Record<string, string> = {};
+  for (const group of groups) {
+    for (const groupTeam of group.groupTeams) {
+      assignments[groupTeam.team.id] = group.code;
+    }
+  }
+  return assignments;
+}
+
 export default function GroupsPage() {
   const { tournament, loading: tLoading, reload: reloadTournament } = useActiveTournament();
   const { toast } = useToast();
@@ -64,6 +74,7 @@ export default function GroupsPage() {
       ]);
 
       setGroups(groupData);
+      setGroupAssignments(buildGroupAssignments(groupData));
       setTeams(teamData);
       setMatchesCount(Array.isArray(matchData) ? matchData.length : 0);
     } catch (error: unknown) {
@@ -81,16 +92,6 @@ export default function GroupsPage() {
 
     return () => window.clearTimeout(timer);
   }, [loadGroupsAndTeams]);
-
-  useEffect(() => {
-    const nextAssignments: Record<string, string> = {};
-    for (const group of groups) {
-      for (const groupTeam of group.groupTeams) {
-        nextAssignments[groupTeam.team.id] = group.code;
-      }
-    }
-    setGroupAssignments(nextAssignments);
-  }, [groups]);
 
   const handleRandomAssign = useCallback(async () => {
     if (!tournament) return;
