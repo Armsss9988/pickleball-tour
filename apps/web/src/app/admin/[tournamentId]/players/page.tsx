@@ -9,6 +9,7 @@ import { ConfirmModal } from '@/components/confirm-modal';
 import { EmptyState } from '@/components/empty-state';
 import { PageLoading, SkeletonTable } from '@/components/loading-skeleton';
 import { Users, Plus, Trash2, Upload, AlertCircle, Download, FileSpreadsheet, FileDown, X } from '@/components/icons';
+import { buildPlayerExportRows, buildPlayerTemplateRows, parsePlayerImportRows } from '@/lib/player-excel';
 import * as XLSX from 'xlsx';
 
 export default function PlayersPage() {
@@ -127,22 +128,7 @@ export default function PlayersPage() {
   };
 
   const downloadTemplate = () => {
-    const templateData = [
-      {
-        'Họ và tên': 'Nguyễn Văn An',
-        'Giới tính': 'Nam',
-        'Số điện thoại': '0901234567',
-        'Ghi chú': 'Đội trưởng tiềm năng',
-      },
-      {
-        'Họ và tên': 'Trần Thị Diệu',
-        'Giới tính': 'Nữ',
-        'Số điện thoại': '0907654321',
-        'Ghi chú': 'Vận động viên chính thức',
-      },
-    ];
-
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const worksheet = XLSX.utils.json_to_sheet(buildPlayerTemplateRows());
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Mẫu Nhập VĐV');
 
@@ -163,15 +149,7 @@ export default function PlayersPage() {
       return;
     }
 
-    const exportData = players.map((p, idx) => ({
-      'STT': idx + 1,
-      'Họ và tên': p.fullName,
-      'Giới tính': p.gender === 'MALE' ? 'Nam' : 'Nữ',
-      'Số điện thoại': p.phone || '',
-      'Ghi chú': p.note || '',
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const worksheet = XLSX.utils.json_to_sheet(buildPlayerExportRows(players));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh sách VĐV');
 
@@ -212,32 +190,7 @@ export default function PlayersPage() {
           return;
         }
 
-        const parsed: any[] = [];
-        const rows = rawRows.slice(1); // Skip header row
-
-        for (const row of rows) {
-          const name = row[0]?.toString()?.trim() || '';
-          const rawGender = row[1]?.toString()?.trim()?.toUpperCase() || '';
-          const phone = row[2]?.toString()?.trim() || '';
-          const note = row[3]?.toString()?.trim() || '';
-
-          if (!name) continue;
-
-          const inferredGender =
-            rawGender.includes('FEMALE') ||
-            rawGender.includes('NỮ') ||
-            rawGender.includes('NU') ||
-            rawGender.includes('F')
-              ? 'FEMALE'
-              : 'MALE';
-
-          parsed.push({
-            fullName: name,
-            gender: inferredGender,
-            phone: phone || undefined,
-            note: note || undefined,
-          });
-        }
+        const parsed = parsePlayerImportRows(rawRows);
 
         if (parsed.length === 0) {
           toast('Không tìm thấy vận động viên hợp lệ nào trong tệp.', 'warning');
