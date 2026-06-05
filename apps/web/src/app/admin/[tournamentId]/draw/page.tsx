@@ -101,6 +101,7 @@ export default function DrawPage() {
   const [mode, setMode] = useState<DrawMode>('auto');
   const [players, setPlayers] = useState<PlayerLike[]>([]);
   const [manualAssignments, setManualAssignments] = useState<Record<string, string>>({});
+  const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStats>(emptyPlayerStats);
   const [seed, setSeed] = useState('');
   const [loading, setLoading] = useState(false);
@@ -188,6 +189,11 @@ export default function DrawPage() {
     };
   }), [manualAssignments, manualTeamCodes, players]);
 
+  const unassignedPlayers = useMemo(
+    () => players.filter((player) => !manualAssignments[player.id]),
+    [manualAssignments, players],
+  );
+
   const manualValidation = useMemo(() => {
     if (!teamComposition || manualTeamCount === 0) {
       return {
@@ -226,6 +232,38 @@ export default function DrawPage() {
       [playerId]: code,
     }));
   }, []);
+
+  const handleRemoveManualAssignment = useCallback((playerId: string) => {
+    setManualAssignments((current) => {
+      const next = { ...current };
+      delete next[playerId];
+      return next;
+    });
+  }, []);
+
+  const handleManualDragStart = useCallback((event: React.DragEvent, playerId: string) => {
+    setDraggedPlayerId(playerId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', playerId);
+  }, []);
+
+  const handleManualDragEnd = useCallback(() => {
+    setDraggedPlayerId(null);
+  }, []);
+
+  const handleManualDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleManualDrop = useCallback((event: React.DragEvent, code: string) => {
+    event.preventDefault();
+    const playerId = event.dataTransfer.getData('text/plain') || draggedPlayerId;
+    if (!playerId) return;
+
+    handleManualTeamChange(playerId, code);
+    setDraggedPlayerId(null);
+  }, [draggedPlayerId, handleManualTeamChange]);
 
   const handleClearManualAssignments = useCallback(() => {
     setManualAssignments({});
@@ -489,12 +527,12 @@ export default function DrawPage() {
       )}
       </>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_1fr] gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.4fr] gap-6">
           <div className="card p-6 space-y-4 shadow-xl">
             <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <h3 className="font-bold text-base text-slate-100 flex items-center gap-2">
                 <Users className="w-5 h-5 text-amber-500" />
-                Gán VĐV vào đội
+                VĐV chưa xếp ({unassignedPlayers.length})
               </h3>
               <button
                 type="button"
@@ -508,28 +546,28 @@ export default function DrawPage() {
 
             <div className="max-h-[680px] overflow-y-auto pr-1">
               <div className="grid grid-cols-1 gap-2">
-                {players.map((player) => (
-                  <div key={player.id} className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-slate-850 bg-slate-950/35 px-3 py-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-200">{player.fullName}</div>
-                      <div className={`text-[10px] font-bold ${normalizeGender(player.gender) === 'MALE' ? 'text-sky-400' : 'text-rose-400'}`}>
-                        {normalizeGender(player.gender) === 'MALE' ? 'Nam' : 'Nữ'}
-                        {player.note ? <span className="ml-2 text-slate-500 font-medium">{player.note}</span> : null}
-                      </div>
+                {unassignedPlayers.length > 0 ? unassignedPlayers.map((player) => (
+                  <div
+                    key={player.id}
+                    draggable={drawAccess.allowed && !actionLoading}
+                    onDragStart={(event) => handleManualDragStart(event, player.id)}
+                    onDragEnd={handleManualDragEnd}
+                    className={`cursor-grab rounded-xl border border-slate-850 bg-slate-950/35 px-3 py-2 active:cursor-grabbing hover:border-amber-500/30 hover:bg-slate-900/40 transition-all ${
+                      draggedPlayerId === player.id ? 'opacity-50 ring-1 ring-amber-500/40' : ''
+                    }`}
+                    title="Kéo VĐV này sang một đội ở bên phải"
+                  >
+                    <div className="truncate text-sm font-semibold text-slate-200">{player.fullName}</div>
+                    <div className={`text-[10px] font-bold ${normalizeGender(player.gender) === 'MALE' ? 'text-sky-400' : 'text-rose-400'}`}>
+                      {normalizeGender(player.gender) === 'MALE' ? 'Nam' : 'Nữ'}
+                      {player.note ? <span className="ml-2 text-slate-500 font-medium">{player.note}</span> : null}
                     </div>
-                    <select
-                      value={manualAssignments[player.id] || ''}
-                      onChange={(event) => handleManualTeamChange(player.id, event.target.value)}
-                      className="w-28 rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs font-semibold text-slate-200 outline-none focus:border-amber-500/50"
-                      disabled={!drawAccess.allowed || actionLoading}
-                    >
-                      <option value="">Chưa xếp</option>
-                      {manualTeamCodes.map((code) => (
-                        <option key={code} value={code}>Đội {code}</option>
-                      ))}
-                    </select>
                   </div>
-                ))}
+                )) : (
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-6 text-center text-xs font-semibold text-emerald-300">
+                    Tất cả VĐV đã được xếp vào đội.
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -541,7 +579,7 @@ export default function DrawPage() {
                 Kiểm tra đội hình
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {manualTeams.map((team) => {
                   const composition = teamComposition;
                   const teamValid = composition !== null
@@ -550,7 +588,18 @@ export default function DrawPage() {
                     && (composition.femaleCount === 0 || team.femalesCount === composition.femaleCount);
 
                   return (
-                    <div key={team.code} className={`rounded-xl border p-3 ${teamValid ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/35'}`}>
+                    <div
+                      key={team.code}
+                      onDragOver={handleManualDragOver}
+                      onDrop={(event) => handleManualDrop(event, team.code)}
+                      className={`min-h-[190px] rounded-xl border p-3 transition-all ${
+                        teamValid
+                          ? 'border-emerald-500/25 bg-emerald-500/5'
+                          : draggedPlayerId
+                          ? 'border-amber-500/35 bg-amber-500/5'
+                          : 'border-slate-800 bg-slate-950/35'
+                      }`}
+                    >
                       <div className="mb-2 flex items-center justify-between">
                         <div className="text-sm font-bold text-slate-100">{team.name}</div>
                         <div className={`text-[10px] font-bold ${teamValid ? 'text-emerald-400' : 'text-amber-400'}`}>
@@ -562,11 +611,30 @@ export default function DrawPage() {
                       </div>
                       <div className="space-y-1">
                         {team.players.length > 0 ? team.players.map((player) => (
-                          <div key={player.id} className="truncate rounded bg-slate-900/60 px-2 py-1 text-[11px] text-slate-300">
-                            {player.fullName}
+                          <div
+                            key={player.id}
+                            draggable={drawAccess.allowed && !actionLoading}
+                            onDragStart={(event) => handleManualDragStart(event, player.id)}
+                            onDragEnd={handleManualDragEnd}
+                            className={`grid grid-cols-[1fr_auto] items-center gap-2 rounded bg-slate-900/60 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-900 transition-colors ${
+                              draggedPlayerId === player.id ? 'opacity-50 ring-1 ring-amber-500/40' : ''
+                            }`}
+                            title="Kéo sang đội khác hoặc bấm Gỡ để trả về danh sách chưa xếp"
+                          >
+                            <span className="truncate">{player.fullName}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveManualAssignment(player.id)}
+                              className="rounded px-1.5 py-0.5 text-[10px] font-bold text-slate-500 hover:bg-slate-800 hover:text-amber-400"
+                              disabled={actionLoading}
+                            >
+                              Gỡ
+                            </button>
                           </div>
                         )) : (
-                          <div className="text-[11px] italic text-slate-600">Chưa có VĐV</div>
+                          <div className="rounded-lg border border-dashed border-slate-800 px-3 py-6 text-center text-[11px] italic text-slate-600">
+                            Thả VĐV vào đây
+                          </div>
                         )}
                       </div>
                     </div>
