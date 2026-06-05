@@ -9,6 +9,14 @@ import { EmptyState } from '@/components/empty-state';
 import { PageLoading } from '@/components/loading-skeleton';
 import { Shield, Award, Users, Edit3, X, Save, AlertCircle, ArrowLeftRight } from '@/components/icons';
 
+function normalizeGender(gender: string | null | undefined) {
+  return (gender ?? '').trim().toUpperCase();
+}
+
+function getMemberGender(member: any) {
+  return normalizeGender(member?.playerProfile?.gender ?? member?.gender);
+}
+
 export default function TeamsPage() {
   const { tournament, loading: tLoading } = useActiveTournament();
   const { toast } = useToast();
@@ -158,7 +166,7 @@ export default function TeamsPage() {
       playerName: m.playerProfile.fullName,
       teamId: t.id,
       teamName: t.name,
-      gender: m.gender,
+      gender: getMemberGender(m),
     });
   };
 
@@ -218,8 +226,8 @@ export default function TeamsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {teams.map(t => {
                 const captainName = t.captain?.fullName || 'Chưa chỉ định';
-                const males = t.members.filter((m: any) => m.gender?.toUpperCase() === 'MALE').length;
-                const females = t.members.filter((m: any) => m.gender?.toUpperCase() === 'FEMALE').length;
+                const males = t.members.filter((m: any) => getMemberGender(m) === 'MALE').length;
+                const females = t.members.filter((m: any) => getMemberGender(m) === 'FEMALE').length;
 
                 return (
                   <div
@@ -277,11 +285,11 @@ export default function TeamsPage() {
                               <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
                                 m.role === 'CAPTAIN'
                                   ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                  : m.gender?.toUpperCase() === 'MALE'
+                                  : getMemberGender(m) === 'MALE'
                                   ? 'bg-sky-500/10 text-sky-400'
                                   : 'bg-rose-500/10 text-rose-400'
                               }`}>
-                                {m.role === 'CAPTAIN' ? 'Đội Trưởng' : m.gender?.toUpperCase() === 'MALE' ? 'Nam' : 'Nữ'}
+                                {m.role === 'CAPTAIN' ? 'Đội Trưởng' : getMemberGender(m) === 'MALE' ? 'Nam' : 'Nữ'}
                               </span>
                               
                               {!playerToSwap && (
@@ -346,7 +354,7 @@ export default function TeamsPage() {
                     <option value="">-- Chưa chỉ định --</option>
                     {selectedTeam.members.map((m: any) => (
                       <option key={m.playerProfile.id} value={m.playerProfile.id}>
-                        {m.playerProfile.fullName} ({m.gender?.toUpperCase() === 'MALE' ? 'Nam' : 'Nữ'})
+                        {m.playerProfile.fullName} ({getMemberGender(m) === 'MALE' ? 'Nam' : 'Nữ'})
                       </option>
                     ))}
                   </select>
@@ -359,18 +367,18 @@ export default function TeamsPage() {
                   </label>
                   {selectedTeam.members.map((m: any) => {
                     const sameGenderFreeAgents = unassignedPlayers.filter(
-                      (p) => p.gender?.toUpperCase() === m.gender?.toUpperCase()
+                      (p) => normalizeGender(p.gender) === getMemberGender(m)
                     );
                     return (
                       <div key={m.id} className="space-y-1.5 p-2.5 bg-slate-950/40 border border-slate-850 rounded-xl">
                         <div className="flex justify-between items-center text-[11px]">
                           <span className="font-semibold text-slate-200 truncate max-w-[130px]">{m.playerProfile.fullName}</span>
                           <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
-                            m.gender?.toUpperCase() === 'MALE'
+                            getMemberGender(m) === 'MALE'
                               ? 'bg-sky-500/10 text-sky-400'
                               : 'bg-rose-500/10 text-rose-400'
                           }`}>
-                            {m.gender?.toUpperCase() === 'MALE' ? 'Nam' : 'Nữ'}
+                            {getMemberGender(m) === 'MALE' ? 'Nam' : 'Nữ'}
                           </span>
                         </div>
                         {sameGenderFreeAgents.length > 0 ? (
@@ -433,4 +441,3 @@ export default function TeamsPage() {
     </div>
   );
 }
-
