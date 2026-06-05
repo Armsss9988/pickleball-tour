@@ -8,12 +8,12 @@ export type LoginDto = z.infer<typeof LoginSchema>;
 
 export const AuthTokensSchema = z.object({
   accessToken: z.string(),
-  refreshToken: z.string(),
+  refreshToken: z.string().optional(),
 });
 export type AuthTokens = z.infer<typeof AuthTokensSchema>;
 
 export const RefreshTokenSchema = z.object({
-  refreshToken: z.string(),
+  refreshToken: z.string().optional(),
 });
 export type RefreshTokenDto = z.infer<typeof RefreshTokenSchema>;
 

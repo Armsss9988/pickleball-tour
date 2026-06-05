@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, type ComponentProps } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, hasUsableAccessToken } from '@/lib/current-user';
+import { getCurrentUser } from '@/lib/current-user';
 
 type AdminEntryLinkProps = Omit<ComponentProps<typeof Link>, 'href'> & {
   adminHref?: string;
@@ -11,7 +11,7 @@ type AdminEntryLinkProps = Omit<ComponentProps<typeof Link>, 'href'> & {
 };
 
 function getAdminEntryHref(adminHref: string, loginHref: string) {
-  return hasUsableAccessToken() && getCurrentUser().authenticated
+  return getCurrentUser().authenticated
     ? adminHref
     : loginHref;
 }

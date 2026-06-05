@@ -164,6 +164,7 @@ model User {
 
   organization       Organization        @relation(fields: [organizationId], references: [id])
   userRoles          UserRole[]
+  refreshSessions    RefreshSession[]
   playerProfile      PlayerProfile?
   createdTournaments Tournament[]        @relation("TournamentCreatedBy")
   createdRulesets    TournamentRuleset[] @relation("RulesetCreatedBy")
@@ -176,6 +177,26 @@ model User {
   createdDraws       TeamDraw[]          @relation("DrawCreatedBy")
 
   @@map("users")
+}
+
+model RefreshSession {
+  id                  String    @id @default(uuid())
+  userId              String    @map("user_id")
+  tokenHash           String    @unique @map("token_hash")
+  userAgent           String?   @map("user_agent")
+  ipAddress           String?   @map("ip_address")
+  expiresAt           DateTime  @map("expires_at")
+  revokedAt           DateTime? @map("revoked_at")
+  replacedBySessionId String?   @map("replaced_by_session_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("refresh_sessions")
 }
 
 model UserRole {

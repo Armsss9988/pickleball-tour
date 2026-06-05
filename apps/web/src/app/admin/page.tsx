@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api-client';
-import { getCurrentUser, hasUsableAccessToken } from '@/lib/current-user';
+import { apiFetch, logout } from '@/lib/api-client';
+import { getCurrentUser } from '@/lib/current-user';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { PageLoading } from '@/components/loading-skeleton';
@@ -59,7 +59,7 @@ export default function TournamentListPage() {
   };
 
   useEffect(() => {
-    const hasSession = hasUsableAccessToken() && getCurrentUser().authenticated;
+    const hasSession = getCurrentUser().authenticated;
     setAuthorized(hasSession);
     setAuthChecked(true);
 
@@ -160,13 +160,14 @@ export default function TournamentListPage() {
               <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Super Admin</div>
             </div>
           </div>
-          <Link
-            href="/login"
+          <button
+            type="button"
+            onClick={() => void logout()}
             className="p-2.5 text-slate-500 hover:text-rose-400 bg-slate-900 border border-slate-850 hover:border-rose-500/20 hover:bg-rose-500/5 transition-all rounded-xl shadow-sm"
             title="Đăng xuất"
           >
             <LogOut className="w-4 h-4" />
-          </Link>
+          </button>
         </div>
       </div>
 

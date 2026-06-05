@@ -3,7 +3,6 @@ import { getPrimaryRole, type AppRole } from './tournament-ux-policy';
 
 const USER_STORAGE_KEY = 'golab_user';
 const ACCESS_TOKEN_STORAGE_KEY = 'golab_access_token';
-const REFRESH_TOKEN_STORAGE_KEY = 'golab_refresh_token';
 const TOKEN_EXPIRY_SKEW_MS = 30_000;
 
 export type StoredUser = UserProfile;
@@ -45,7 +44,7 @@ export function clearStoredAuth() {
 
   try {
     window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
-    window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem('golab_refresh_token');
     window.localStorage.removeItem(USER_STORAGE_KEY);
     cachedRaw = null;
     cachedState = guestState;
@@ -85,16 +84,14 @@ export function hasUsableAccessToken(nowMs = Date.now()): boolean {
 
   try {
     const token = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
-    const usable = isUsableJwtAccessToken(token, nowMs);
-
-    if (!usable) {
-      clearStoredAuth();
-    }
-
-    return usable;
+    return isUsableJwtAccessToken(token, nowMs);
   } catch {
     return false;
   }
+}
+
+export function hasStoredUser(): boolean {
+  return getCurrentUser().authenticated;
 }
 
 export function getCurrentUser(): CurrentUserState {

@@ -35,6 +35,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
@@ -45,7 +46,6 @@ export default function LoginPage() {
 
       const data = await res.json();
       localStorage.setItem('golab_access_token', data.accessToken);
-      localStorage.setItem('golab_refresh_token', data.refreshToken);
       localStorage.setItem('golab_user', JSON.stringify(data.user));
 
       router.push('/admin');

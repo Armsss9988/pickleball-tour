@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
+import { logout } from '@/lib/api-client';
 import {
   getVisibleAreasForRole,
   type AppRole,
@@ -179,13 +180,14 @@ function SidebarContent({
               {roleLabels[role]}
             </div>
           </div>
-          <Link
-            href="/login"
+          <button
+            type="button"
+            onClick={() => void logout()}
             className="p-1.5 text-slate-500 hover:text-rose-400 transition-colors rounded-md hover:bg-rose-500/10"
             title="Đăng xuất"
           >
             <LogOut className="w-4 h-4" />
-          </Link>
+          </button>
         </div>
       </div>
     </div>
