@@ -2,6 +2,60 @@ import { BadRequestException } from '@nestjs/common';
 import { TeamService } from './team.service';
 
 describe('TeamService dependency guards', () => {
+  it('uses the standard ruleset for draw preview when an old tournament has no ruleset attached', async () => {
+    const createTeamDraw = jest.fn().mockResolvedValue({
+      id: 'draw1',
+      status: 'PREVIEW',
+    });
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 't1',
+          organizationId: 'org1',
+          status: 'PLAYERS_READY',
+          ruleset: null,
+        }),
+      },
+      tournamentRuleset: {
+        findUnique: jest.fn().mockResolvedValue({
+          teamCompositionRule: {
+            teamSize: 5,
+            maleCount: 3,
+            femaleCount: 2,
+          },
+        }),
+      },
+      tournamentRegistration: {
+        findMany: jest.fn().mockResolvedValue([
+          { playerProfile: { id: 'm1', fullName: 'Male 1', gender: 'MALE' } },
+          { playerProfile: { id: 'm2', fullName: 'Male 2', gender: 'MALE' } },
+          { playerProfile: { id: 'm3', fullName: 'Male 3', gender: 'MALE' } },
+          { playerProfile: { id: 'f1', fullName: 'Female 1', gender: 'FEMALE' } },
+          { playerProfile: { id: 'f2', fullName: 'Female 2', gender: 'FEMALE' } },
+        ]),
+      },
+      teamDraw: {
+        create: createTeamDraw,
+      },
+    };
+
+    const service = new TeamService(
+      prisma as any,
+      { log: jest.fn() } as any,
+      {} as any,
+    );
+
+    await expect(service.createDrawPreview('t1', 'seed', 'u1')).resolves.toEqual({
+      id: 'draw1',
+      status: 'PREVIEW',
+    });
+    expect(prisma.tournamentRuleset.findUnique).toHaveBeenCalledWith({
+      where: { id: '00000000-0000-0000-0000-000000000010' },
+      include: { teamCompositionRule: true },
+    });
+    expect(createTeamDraw).toHaveBeenCalled();
+  });
+
   it('rejects draw preview when player composition does not match ruleset', async () => {
     const createTeamDraw = jest.fn();
     const prisma = {

@@ -8,6 +8,8 @@ import { AuditService } from '../audit/audit.service';
 import { TeamDrawService, DrawPlayerInput } from '@golab/domain';
 import { TournamentSectionValidatorService } from '../tournament/tournament-section-validator.service';
 
+const DEFAULT_RULESET_ID = '00000000-0000-0000-0000-000000000010';
+
 function normalizeGender(gender: string | null | undefined) {
   return String(gender ?? '')
     .trim()
@@ -131,7 +133,13 @@ export class TeamService {
       throw new NotFoundException(`Không tìm thấy giải đấu.`);
     }
 
-    const ruleset = tournament.ruleset;
+    const ruleset = tournament.ruleset ?? await this.prisma.tournamentRuleset.findUnique({
+      where: { id: DEFAULT_RULESET_ID },
+      include: {
+        teamCompositionRule: true,
+      },
+    });
+
     if (!ruleset || !ruleset.teamCompositionRule) {
       throw new BadRequestException(`Giải đấu chưa được cấu hình điều lệ.`);
     }
