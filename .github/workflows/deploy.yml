@@ -13,14 +13,24 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+      ORACLE_USER: ${{ secrets.ORACLE_USER }}
+      ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
 
     steps:
+      - name: Skip deploy when SSH secrets are missing
+        if: env.ORACLE_HOST == '' || env.ORACLE_USER == '' || env.ORACLE_SSH_KEY == ''
+        run: |
+          echo "::notice::Production deploy skipped because ORACLE_HOST, ORACLE_USER, or ORACLE_SSH_KEY is not configured."
+
       - name: Deploy over SSH
+        if: env.ORACLE_HOST != '' && env.ORACLE_USER != '' && env.ORACLE_SSH_KEY != ''
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }}
-          key: ${{ secrets.ORACLE_SSH_KEY }}
+          host: ${{ env.ORACLE_HOST }}
+          username: ${{ env.ORACLE_USER }}
+          key: ${{ env.ORACLE_SSH_KEY }}
           script_stop: true
           script: |
             cd ~/golab-tournament-pickleball
