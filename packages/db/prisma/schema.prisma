@@ -915,3 +915,9 @@ enum SectionStatusEnum {
   INVALID
   NEEDS_REVIEW
 }
+
+model KeyValuePair {
+  key   String @id
+  value String
+  @@map("key_value_pairs")
+}
