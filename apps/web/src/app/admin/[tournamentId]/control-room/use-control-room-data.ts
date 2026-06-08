@@ -3,15 +3,79 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api-client';
 
+export interface ControlRoomMatch {
+  id: string;
+  status: string;
+  groupId?: string | null;
+  matchNo?: number | null;
+  roundNo?: number | null;
+  label?: string | null;
+  teamA?: { name: string } | null;
+  teamB?: { name: string } | null;
+  group?: { code: string } | null;
+}
+
+export interface ControlRoomTeam {
+  id: string;
+  name?: string | null;
+  code?: string | null;
+  members?: unknown[] | null;
+}
+
+export interface ControlRoomGroupTeam {
+  id: string;
+  teamId: string;
+  seedOrder?: number | null;
+  team?: { name: string } | null;
+}
+
+export interface ControlRoomGroup {
+  id: string;
+  name?: string | null;
+  code?: string | null;
+  groupTeams?: ControlRoomGroupTeam[] | null;
+}
+
+export interface ControlRoomStanding {
+  id?: string;
+  groupId?: string | null;
+  teamId?: string | null;
+  rank?: number | null;
+  wins?: number | null;
+  losses?: number | null;
+  points?: number | null;
+  team?: { name: string } | null;
+}
+
+export interface ControlRoomBracketNode {
+  id: string;
+  roundName?: string | null;
+  nodeKey?: string | null;
+  sourceA?: string | null;
+  sourceB?: string | null;
+  teamAId?: string | null;
+  teamBId?: string | null;
+  teamA?: { name: string } | null;
+  teamB?: { name: string } | null;
+  match?: {
+    status: string;
+  } | null;
+}
+
+export interface ControlRoomDraw {
+  id: string;
+  status: string;
+}
+
 export interface ControlRoomData {
-  teamDraws: any[];
-  teams: any[];
-  groups: any[];
-  matches: any[];
-  courts: any[];
-  conflicts: any[];
-  standings: any[];
-  bracketNodes: any[];
+  teamDraws: ControlRoomDraw[];
+  teams: ControlRoomTeam[];
+  groups: ControlRoomGroup[];
+  matches: ControlRoomMatch[];
+  courts: unknown[];
+  conflicts: unknown[];
+  standings: ControlRoomStanding[];
+  bracketNodes: ControlRoomBracketNode[];
 }
 
 const emptyData: ControlRoomData = {
@@ -25,8 +89,8 @@ const emptyData: ControlRoomData = {
   bracketNodes: [],
 };
 
-function asArray(value: unknown): any[] {
-  return Array.isArray(value) ? value : [];
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
 }
 
 function getErrorMessage(error: unknown): string {
@@ -47,6 +111,12 @@ export function useControlRoomData(
   const [error, setError] = useState<string | null>(null);
   const requestSeq = useRef(0);
 
+  const [prevTournamentId, setPrevTournamentId] = useState(tournamentId);
+  if (tournamentId !== prevTournamentId) {
+    setPrevTournamentId(tournamentId);
+    setLoading(true);
+  }
+
   const refreshAll = useCallback(async () => {
     if (!tournamentId) {
       setData(emptyData);
@@ -57,6 +127,10 @@ export function useControlRoomData(
 
     const requestId = requestSeq.current + 1;
     requestSeq.current = requestId;
+
+    // Defer state updates to avoid synchronous setState inside useEffect warning
+    await Promise.resolve();
+
     setRefreshing(true);
     setError(null);
 
@@ -86,14 +160,14 @@ export function useControlRoomData(
       }
 
       setData({
-        teamDraws: asArray(teamDraws),
-        teams: asArray(teams),
-        groups: asArray(groups),
-        matches: asArray(matches),
-        courts: asArray(courts),
-        conflicts: asArray(conflicts),
-        standings: asArray(standings),
-        bracketNodes: asArray(bracketNodes),
+        teamDraws: asArray<ControlRoomDraw>(teamDraws),
+        teams: asArray<ControlRoomTeam>(teams),
+        groups: asArray<ControlRoomGroup>(groups),
+        matches: asArray<ControlRoomMatch>(matches),
+        courts: asArray<unknown>(courts),
+        conflicts: asArray<unknown>(conflicts),
+        standings: asArray<ControlRoomStanding>(standings),
+        bracketNodes: asArray<ControlRoomBracketNode>(bracketNodes),
       });
 
       await reloadTournament();
@@ -110,8 +184,17 @@ export function useControlRoomData(
   }, [reloadTournament, tournamentId]);
 
   useEffect(() => {
-    setLoading(true);
-    void refreshAll();
+    let active = true;
+    const run = async () => {
+      await Promise.resolve();
+      if (active) {
+        void refreshAll();
+      }
+    };
+    void run();
+    return () => {
+      active = false;
+    };
   }, [refreshAll]);
 
   return {

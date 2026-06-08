@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   BarChart3,
   Calendar,
-  CheckCircle2,
   ClipboardList,
   Dices,
   ExternalLink,
@@ -16,7 +15,6 @@ import {
   Shield,
   Target,
   Trophy,
-  Users,
 } from '@/components/icons';
 import type { LucideIcon } from '@/components/icons';
 import { PageLoading } from '@/components/loading-skeleton';
@@ -41,6 +39,10 @@ import {
   groupStandingsByGroup,
 } from './control-room-utils';
 import { useControlRoomData } from './use-control-room-data';
+import type {
+  ControlRoomGroupTeam,
+  ControlRoomStanding,
+} from './use-control-room-data';
 
 const sections: ControlRoomSectionLink[] = [
   { id: 'overview', label: 'Tổng quan' },
@@ -347,7 +349,7 @@ export default function ControlRoomPage() {
                   <div key={group.id} className="rounded-xl border border-slate-800 bg-slate-950/35 p-4">
                     <div className="text-sm font-bold text-amber-400">{group.name || `Bảng ${group.code || ''}`}</div>
                     <div className="mt-3 space-y-2">
-                      {(group.groupTeams || []).map((groupTeam: any) => (
+                      {(group.groupTeams || []).map((groupTeam: ControlRoomGroupTeam) => (
                         <ListRow
                           key={groupTeam.id}
                           title={groupTeam.team?.name || groupTeam.teamId || groupTeam.id}
@@ -457,7 +459,7 @@ export default function ControlRoomPage() {
                   <div key={group.id} className="rounded-xl border border-slate-800 bg-slate-950/35 p-4">
                     <div className="mb-3 text-sm font-bold text-amber-400">{group.name || `Bảng ${group.code || ''}`}</div>
                     <div className="space-y-2">
-                      {groupStandings.map((standing: any) => (
+                      {groupStandings.map((standing: ControlRoomStanding) => (
                         <ListRow
                           key={standing.id || standing.teamId}
                           title={`${standing.rank || '-'} · ${standing.team?.name || standing.teamId || 'Chưa xác định'}`}
