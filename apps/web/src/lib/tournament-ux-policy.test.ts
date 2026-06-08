@@ -40,15 +40,15 @@ describe('tournament UX policy', () => {
     expect(getVisibleAreasForRole('guest', baseContext)).toEqual(['public']);
   });
 
-  it('shows setup areas to BTC admin', () => {
+  it('shows setup and operations areas to BTC admin', () => {
+    expect(getVisibleAreasForRole('btc_admin', baseContext)).toContain('control-room');
     expect(getVisibleAreasForRole('btc_admin', baseContext)).toContain('players');
     expect(getVisibleAreasForRole('btc_admin', baseContext)).toContain('schedule');
     expect(getVisibleAreasForRole('btc_admin', baseContext)).toContain('publish');
   });
 
-  it('keeps schedule area visible to BTC admin before groups are assigned', () => {
-    expect(baseContext.groupsAssigned).toBe(false);
-    expect(getVisibleAreasForRole('btc_admin', baseContext)).toContain('schedule');
+  it('shows the control room to super admin', () => {
+    expect(getVisibleAreasForRole('super_admin', baseContext)).toContain('control-room');
   });
 
   it('shows only scoring work to scorer', () => {

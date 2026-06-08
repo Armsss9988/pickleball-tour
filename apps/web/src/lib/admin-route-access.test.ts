@@ -9,6 +9,7 @@ describe('admin route access', () => {
   it('maps admin paths to area keys', () => {
     expect(areaFromPath('/admin/t1/scoring')).toBe('scoring');
     expect(areaFromPath('/admin/t1/draw')).toBe('draw');
+    expect(areaFromPath('/admin/t1/control-room')).toBe('control-room');
     expect(areaFromPath('/admin/t1')).toBe('dashboard');
   });
 
@@ -45,7 +46,7 @@ describe('admin route access', () => {
     })).toBe('/login');
   });
 
-  it('redirects scorer away from dashboard and draw pages', () => {
+  it('redirects scorer away from dashboard, draw, and control room pages', () => {
     const visibleAreas = new Set<AreaKey>(['scoring']);
 
     expect(getAdminRouteRedirect({
@@ -69,9 +70,20 @@ describe('admin route access', () => {
         publicEnabled: true,
       },
     })).toBe('/admin/t1/scoring');
+
+    expect(getAdminRouteRedirect({
+      role: 'scorer',
+      currentArea: 'control-room',
+      visibleAreas,
+      tournament: {
+        id: 't1',
+        slug: 'summer-open',
+        publicEnabled: true,
+      },
+    })).toBe('/admin/t1/scoring');
   });
 
-  it('redirects captain away from dashboard and scoring pages', () => {
+  it('redirects captain away from dashboard, scoring, and control room pages', () => {
     const visibleAreas = new Set<AreaKey>(['lineup', 'team-schedule', 'team-results']);
 
     expect(getAdminRouteRedirect({
@@ -95,13 +107,35 @@ describe('admin route access', () => {
         publicEnabled: true,
       },
     })).toBe('/admin/t1/lineup');
+
+    expect(getAdminRouteRedirect({
+      role: 'captain',
+      currentArea: 'control-room',
+      visibleAreas,
+      tournament: {
+        id: 't1',
+        slug: 'summer-open',
+        publicEnabled: true,
+      },
+    })).toBe('/admin/t1/lineup');
   });
 
-  it('allows admins to stay on any admin area', () => {
+  it('allows admins to stay on any admin area including control room', () => {
     expect(getAdminRouteRedirect({
       role: 'btc_admin',
       currentArea: 'draw',
-      visibleAreas: new Set(['dashboard', 'draw']),
+      visibleAreas: new Set(['dashboard', 'draw', 'control-room']),
+      tournament: {
+        id: 't1',
+        slug: 'summer-open',
+        publicEnabled: true,
+      },
+    })).toBeNull();
+
+    expect(getAdminRouteRedirect({
+      role: 'btc_admin',
+      currentArea: 'control-room',
+      visibleAreas: new Set(['dashboard', 'draw', 'control-room']),
       tournament: {
         id: 't1',
         slug: 'summer-open',

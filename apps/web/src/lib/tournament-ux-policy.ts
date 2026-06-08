@@ -17,6 +17,7 @@ export type TournamentStatus =
 export type AreaKey =
   | 'public'
   | 'dashboard'
+  | 'control-room'
   | 'tournament'
   | 'ruleset'
   | 'players'
@@ -107,6 +108,7 @@ export interface DependencyWarning {
 
 const adminAreas: AreaKey[] = [
   'dashboard',
+  'control-room',
   'tournament',
   'ruleset',
   'players',

@@ -21,6 +21,7 @@ export function areaFromPath(pathname: string): AreaKey {
   if (pathname.endsWith('/bracket')) return 'bracket';
   if (pathname.endsWith('/awards')) return 'awards';
   if (pathname.endsWith('/audit')) return 'audit';
+  if (pathname.endsWith('/control-room')) return 'control-room';
   return 'dashboard';
 }
 

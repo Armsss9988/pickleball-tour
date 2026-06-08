@@ -12,7 +12,7 @@ import {
 } from '@/lib/tournament-ux-policy';
 import {
   LayoutDashboard, Trophy, Settings, Users, Dices,
-  Calendar, Target, ClipboardList, Zap,
+  Calendar, Target, ClipboardList, Zap, Shield,
   BarChart3, GitBranch, Award, FileText,
   LogOut, Menu, X, Circle, ArrowLeft,
 } from './icons';
@@ -46,6 +46,7 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   {
     title: 'THI ĐẤU',
     items: [
+      { key: 'control-room', href: '/admin/control-room', icon: Shield, label: 'Bàn điều phối' },
       { key: 'groups', href: '/admin/groups', icon: Target, label: 'Bảng đấu & Lịch' },
       { key: 'matches', href: '/admin/matches', icon: ClipboardList, label: 'Danh sách trận' },
       { key: 'lineup', href: '/admin/lineup', icon: ClipboardList, label: 'Đội hình ra sân (Lineup)' },
