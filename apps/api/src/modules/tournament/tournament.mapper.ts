@@ -1,22 +1,23 @@
 import { Tournament as DomainTournament } from '@golab/domain';
 import { TournamentStatus, EventType } from '@golab/contracts';
 
-// Raw tournament with optional ruleset (from Prisma include)
-interface TournamentWithRuleset {
-  id: string;
-  status: string;
-  ruleset?: { eventType?: string } | null;
-}
-
 export class TournamentMapper {
   /**
-   * Maps Prisma model to pure Domain entity.
+   * Maps Prisma model (with optional ruleset include) to pure Domain entity.
+   * Uses a loose input type so it works with any Prisma Tournament query shape
+   * (with or without ruleset included).
+   *
    * Passes eventType from the tournament's linked ruleset to enable
    * correct status transition branching (TEAM_EVENT vs SINGLES/DOUBLES).
    */
-  public static toDomain(raw: TournamentWithRuleset): DomainTournament {
-    const eventType = (raw.ruleset?.eventType ?? 'TEAM_EVENT') as EventType;
-    return new DomainTournament(raw.id, raw.status as TournamentStatus, eventType);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public static toDomain(raw: any): DomainTournament {
+    const eventType = (raw?.ruleset?.eventType ?? 'TEAM_EVENT') as EventType;
+    return new DomainTournament(
+      raw.id as string,
+      raw.status as TournamentStatus,
+      eventType,
+    );
   }
 
   /**
