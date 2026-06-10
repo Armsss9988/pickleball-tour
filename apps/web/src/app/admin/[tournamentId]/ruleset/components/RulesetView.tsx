@@ -172,9 +172,6 @@ export function RulesetView({
                     </span>
                     <div>
                       <span className="font-semibold text-slate-200">{segment.name}</span>
-                      <span className="text-[10px] text-slate-500 ml-2 font-mono bg-slate-850 px-1.5 py-0.5 rounded border border-slate-800">
-                        {segment.segmentKey}
-                      </span>
                       <span className="text-[10px] text-slate-400 ml-2 bg-slate-800 px-1.5 py-0.5 rounded">
                         {segment.playerCount ?? 2} VĐV · Giới tính:{' '}
                         {segment.genderRule === 'mixed' && 'Đôi Nam Nữ'}

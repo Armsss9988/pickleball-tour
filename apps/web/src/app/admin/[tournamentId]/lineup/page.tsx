@@ -526,7 +526,6 @@ export default function LineupPage() {
                               {idx + 1}
                             </span>
                             <span className="text-xs font-bold text-slate-200">{segment.name}</span>
-                            <span className="text-[9px] text-slate-500 font-mono">({segment.segmentKey})</span>
                             <span 
                               className={`text-[9px] px-1 py-0.2 rounded font-medium ${isDrawable ? 'text-sky-450 bg-sky-500/5' : 'text-slate-500 bg-slate-800'}`}
                               title={isDrawable ? 'Cho phép bốc thăm/thay đổi thứ tự' : 'Thứ tự cố định'}
@@ -609,7 +608,7 @@ export default function LineupPage() {
 
                   {matchDetails.segments.map((segment) => (
                     <div key={segment.id} className="space-y-2 rounded-xl border border-slate-850 bg-slate-900/60 p-3 transition-colors hover:border-slate-800">
-                      <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
+                      <div className="text-xs font-bold text-slate-300">{segment.name}</div>
 
                       <div className="grid grid-cols-2 gap-2">
                         {Array.from({ length: getPlayerCountForSegment(segment.segmentKey) }).map((_, slotIdx) => (
@@ -665,7 +664,7 @@ export default function LineupPage() {
 
                   {activeMatchDetails.segments.map((segment) => (
                     <div key={segment.id} className="space-y-2 rounded-xl border border-slate-850 bg-slate-900/60 p-3 transition-colors hover:border-slate-800">
-                      <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
+                      <div className="text-xs font-bold text-slate-300">{segment.name}</div>
 
                       <div className="grid grid-cols-2 gap-2">
                         {Array.from({ length: getPlayerCountForSegment(segment.segmentKey) }).map((_, slotIdx) => (
@@ -720,7 +719,7 @@ export default function LineupPage() {
 
                   {activeMatchDetails.segments.map((segment) => (
                     <div key={segment.id} className="space-y-2 rounded-xl border border-slate-850 bg-slate-900/60 p-3 transition-colors hover:border-slate-800">
-                      <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
+                      <div className="text-xs font-bold text-slate-300">{segment.name}</div>
 
                       <div className="grid grid-cols-2 gap-2">
                         {Array.from({ length: getPlayerCountForSegment(segment.segmentKey) }).map((_, slotIdx) => (
