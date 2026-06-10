@@ -9,6 +9,7 @@ interface SegmentDefinitionUI {
   targetScore: number;
   playerCount: number;
   genderRule: 'mixed' | 'male_only' | 'female_only' | 'any';
+  isDrawable?: boolean;
 }
 
 interface SegmentsSectionProps {
@@ -134,6 +135,22 @@ export function SegmentsSection({
                   className="w-full premium-input text-xs bg-slate-900/60 text-slate-500 cursor-not-allowed font-mono"
                 />
               </div>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="checkbox"
+                id={`isDrawable-${segment.segmentKey}`}
+                disabled={disabled}
+                checked={segment.isDrawable ?? true}
+                onChange={(e) => onSegmentChange(index, { isDrawable: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-sky-500 cursor-pointer"
+              />
+              <label
+                htmlFor={`isDrawable-${segment.segmentKey}`}
+                className="text-[11px] text-slate-350 font-medium cursor-pointer select-none"
+              >
+                Cho phép bốc thăm / thay đổi thứ tự chặng này
+              </label>
             </div>
           </div>
         ))}

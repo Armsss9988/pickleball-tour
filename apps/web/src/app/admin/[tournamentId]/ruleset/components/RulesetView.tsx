@@ -182,6 +182,9 @@ export function RulesetView({
                         {segment.genderRule === 'female_only' && 'Chỉ Nữ'}
                         {segment.genderRule === 'any' && 'Tự do'}
                       </span>
+                      <span className={`text-[10px] ml-2 px-1.5 py-0.5 rounded font-medium ${segment.isDrawable !== false ? 'bg-sky-500/10 text-sky-450 border border-sky-500/20' : 'bg-slate-800/80 text-slate-500 border border-slate-800'}`}>
+                        {segment.isDrawable !== false ? '🎲 Bốc thăm' : '🔒 Cố định'}
+                      </span>
                     </div>
                   </div>
                   <div className="font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 text-xs">

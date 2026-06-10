@@ -286,6 +286,58 @@ export default function LineupPage() {
     }
   };
 
+  const handleDrawSegmentOrder = async () => {
+    if (!matchDetails) return;
+    setActionLoading(true);
+    try {
+      const seed = `SEG-ORDER-${matchDetails.id}-${Date.now()}`;
+      await apiFetch(`/matches/${matchDetails.id}/segments/draw-order`, {
+        method: 'POST',
+        body: { seed },
+      });
+      toast('Bốc thăm thứ tự chặng thi đấu thành công!', 'success');
+      if (selectedMatch) {
+        await handleSelectMatch(selectedMatch);
+      }
+    } catch (error: unknown) {
+      console.error(error);
+      toast(getErrorMessage(error, 'Lỗi bốc thăm thứ tự chặng.'), 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMoveSegment = async (index: number, direction: 'up' | 'down') => {
+    if (!matchDetails) return;
+    const newSegments = [...matchDetails.segments];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newSegments.length) return;
+
+    // Swap segments
+    const temp = newSegments[index];
+    newSegments[index] = newSegments[targetIndex];
+    newSegments[targetIndex] = temp;
+
+    setActionLoading(true);
+    try {
+      await apiFetch(`/matches/${matchDetails.id}/segments/order`, {
+        method: 'PUT',
+        body: {
+          keys: newSegments.map((s) => s.segmentKey),
+        },
+      });
+      toast('Đã cập nhật thứ tự chặng đấu thành công!', 'success');
+      if (selectedMatch) {
+        await handleSelectMatch(selectedMatch);
+      }
+    } catch (error: unknown) {
+      console.error(error);
+      toast(getErrorMessage(error, 'Lỗi cập nhật thứ tự chặng.'), 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleLockLineups = async () => {
     if (!matchDetails || !canLockLineups || isLineupLocked) return;
     setActionLoading(true);
@@ -433,6 +485,88 @@ export default function LineupPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Cấu hình thứ tự chặng thi đấu cho thể thức relay */}
+              {(tournament as any)?.ruleset?.matchFormat === 'relay' && activeMatchDetails && (
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/10 p-4 space-y-3.5 shadow-inner">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-350 uppercase tracking-wider flex items-center gap-1.5">
+                        🎲 Thứ tự chặng thi đấu
+                      </h4>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        Có thể thay đổi thứ tự thi đấu trước khi khóa đội hình trận đấu.
+                      </p>
+                    </div>
+                    
+                    {canLockLineups && !isLineupLocked && (
+                      <button
+                        onClick={handleDrawSegmentOrder}
+                        disabled={actionLoading}
+                        className="btn btn-xs bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/20 px-2 py-1 flex items-center gap-1 cursor-pointer transition-all font-semibold"
+                      >
+                        🎲 Bốc thăm
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {activeMatchDetails.segments.map((segment, idx) => {
+                      const rulesetSegments = (tournament as any)?.ruleset?.segmentDefinitions || (tournament as any)?.ruleset?.segments || [];
+                      const rSeg = rulesetSegments.find((s: any) => s.segmentKey === segment.segmentKey);
+                      const isDrawable = rSeg?.isDrawable !== false;
+
+                      return (
+                        <div
+                          key={segment.id}
+                          className="flex items-center justify-between px-3.5 py-2 bg-slate-950/25 border border-slate-850 rounded-xl hover:border-slate-800 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-slate-850 text-[10px] font-bold text-slate-400 flex items-center justify-center border border-slate-800">
+                              {idx + 1}
+                            </span>
+                            <span className="text-xs font-bold text-slate-200">{segment.name}</span>
+                            <span className="text-[9px] text-slate-500 font-mono">({segment.segmentKey})</span>
+                            <span 
+                              className={`text-[9px] px-1 py-0.2 rounded font-medium ${isDrawable ? 'text-sky-450 bg-sky-500/5' : 'text-slate-500 bg-slate-800'}`}
+                              title={isDrawable ? 'Cho phép bốc thăm/thay đổi thứ tự' : 'Thứ tự cố định'}
+                            >
+                              {isDrawable ? '🎲' : '🔒'}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-amber-500 bg-amber-500/8 px-2 py-0.5 rounded border border-amber-500/15">
+                              Chạm {segment.targetScore ?? (idx + 1) * 8}đ
+                            </span>
+
+                            {canLockLineups && !isLineupLocked && isDrawable && (
+                              <div className="flex items-center gap-1 ml-1">
+                                <button
+                                  disabled={actionLoading || idx === 0}
+                                  onClick={() => handleMoveSegment(idx, 'up')}
+                                  className="w-5 h-5 flex items-center justify-center rounded border border-slate-800 bg-slate-900/60 text-xs text-slate-400 hover:text-sky-400 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors cursor-pointer"
+                                  title="Di chuyển lên"
+                                >
+                                  ▲
+                                </button>
+                                <button
+                                  disabled={actionLoading || idx === activeMatchDetails.segments.length - 1}
+                                  onClick={() => handleMoveSegment(idx, 'down')}
+                                  className="w-5 h-5 flex items-center justify-center rounded border border-slate-800 bg-slate-900/60 text-xs text-slate-400 hover:text-sky-400 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors cursor-pointer"
+                                  title="Di chuyển xuống"
+                                >
+                                  ▼
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {isLineupLocked && (
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">

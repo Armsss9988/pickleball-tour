@@ -160,6 +160,7 @@ export default function RulesetSettingsPage() {
             targetScore: s.targetScore || 0,
             playerCount: s.playerCount || 2,
             genderRule: s.genderRule || 'any',
+            isDrawable: s.isDrawable ?? true,
           })));
         }
 
@@ -243,6 +244,7 @@ export default function RulesetSettingsPage() {
         targetScore: lastScore + 8,
         playerCount: 2,
         genderRule: 'any',
+        isDrawable: true,
       },
     ]);
   };
@@ -333,7 +335,7 @@ export default function RulesetSettingsPage() {
               playerCount: Number(s.playerCount),
               genderRule: s.genderRule,
               orderIndex: idx,
-              isDrawable: true,
+              isDrawable: s.isDrawable ?? true,
             }))
           : [],
         teamComposition: eventType === 'TEAM_EVENT' ? {
