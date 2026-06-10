@@ -43,11 +43,12 @@ export class ScoringService {
       throw new BadRequestException(`Trận đấu chưa cấu hình luật tính điểm.`);
     }
 
-    // Check if lineups are locked (at least 6 lock lineup records)
+    // Check if lineups are locked
     const lineupCount = await this.prisma.matchLineup.count({
       where: { matchId, status: 'LOCKED' },
     });
-    const expectedLineupCount = match.segments.length * 2;
+    const format = ruleset.matchFormat || 'relay';
+    const expectedLineupCount = format === 'relay' ? match.segments.length * 2 : 2;
 
     return {
       id: match.id,
@@ -74,6 +75,12 @@ export class ScoringService {
         segmentId: e.segmentId,
       })),
       lineupLocked: lineupCount === expectedLineupCount,
+      matchFormat: format,
+      gamePointScore: ruleset.scoringConfig.gamePointScore,
+      setsToWin: ruleset.scoringConfig.setsToWin,
+      lastSetPointScore: ruleset.scoringConfig.lastSetPointScore,
+      deuceMaxScore: ruleset.scoringConfig.deuceMaxScore,
+      noDeuce: ruleset.scoringConfig.noDeuce,
     };
   }
 
@@ -171,6 +178,9 @@ export class ScoringService {
             teamAScore: state.scoreA,
             teamBScore: state.scoreB,
             winnerTeamId: state.winnerTeamId!,
+            setsWonA: state.setsWonA ?? null,
+            setsWonB: state.setsWonB ?? null,
+            setScores: state.setScores ? (state.setScores as any) : null,
           },
           create: {
             organizationId: matchObj.organizationId,
@@ -181,6 +191,9 @@ export class ScoringService {
             teamAScore: state.scoreA,
             teamBScore: state.scoreB,
             winnerTeamId: state.winnerTeamId!,
+            setsWonA: state.setsWonA ?? null,
+            setsWonB: state.setsWonB ?? null,
+            setScores: state.setScores ? (state.setScores as any) : null,
           },
         });
       }
@@ -485,9 +498,11 @@ export class ScoringService {
     userId: string,
     userRoles: string[]
   ) {
-    const isSuperAdmin = userRoles.includes('SUPER_ADMIN') || userRoles.includes('platform_owner');
-    if (!isSuperAdmin) {
-      throw new ForbiddenException('Chỉ Super Admin được phép ghi đè (override) kết quả trận đấu.');
+    const isAuthorized = userRoles.some(role =>
+      ['SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin'].includes(role)
+    );
+    if (!isAuthorized) {
+      throw new ForbiddenException('Bạn không có quyền ghi đè (override) kết quả trận đấu.');
     }
 
     if (!dto.reason || dto.reason.trim() === '') {
@@ -496,11 +511,55 @@ export class ScoringService {
 
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
-      include: { result: true },
+      include: {
+        result: true,
+        stage: true,
+        bracketNode: true,
+        tournament: {
+          include: {
+            ruleset: true,
+          },
+        },
+      },
     });
 
     if (!match) {
       throw new NotFoundException('Không tìm thấy trận đấu.');
+    }
+
+    // Lock check for group stage matches
+    const isGroupMatch = match.groupId !== null || match.stage?.type === 'GROUP';
+    if (isGroupMatch) {
+      const lockedStatuses = ['KNOCKOUT_GENERATED', 'KNOCKOUT_RUNNING', 'COMPLETED'];
+      if (lockedStatuses.includes(match.tournament.status)) {
+        throw new BadRequestException(
+          'Không thể chỉnh sửa kết quả vòng bảng khi giải đấu đã tiến vào vòng Knockout hoặc hoàn thành.'
+        );
+      }
+    }
+
+    // Lock check for playoff/knockout matches (if next match has started/completed)
+    if (match.bracketNode && match.bracketNode.winnerToNodeKey) {
+      const nextNode = await this.prisma.bracketNode.findUnique({
+        where: {
+          tournamentId_nodeKey: {
+            tournamentId: match.tournamentId,
+            nodeKey: match.bracketNode.winnerToNodeKey,
+          },
+        },
+        include: {
+          match: true,
+        },
+      });
+
+      if (nextNode && nextNode.match) {
+        const activeStatuses: MatchStatus[] = ['RUNNING', 'COMPLETED', 'RESULT_CONFIRMED'];
+        if (activeStatuses.includes(nextNode.match.status)) {
+          throw new BadRequestException(
+            `Không thể ghi đè kết quả trận đấu này vì trận đấu tiếp theo ở vòng trong (${nextNode.nodeKey}) đã bắt đầu hoặc hoàn tất.`
+          );
+        }
+      }
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -512,6 +571,8 @@ export class ScoringService {
         },
       });
 
+      const format = match.tournament?.ruleset?.matchFormat || 'relay';
+
       const beforeData = match.result;
       const updatedResult = await tx.matchResult.upsert({
         where: { matchId },
@@ -519,6 +580,8 @@ export class ScoringService {
           teamAScore: dto.teamAScore,
           teamBScore: dto.teamBScore,
           winnerTeamId: dto.winnerTeamId,
+          setsWonA: format === 'best_of' ? dto.teamAScore : null,
+          setsWonB: format === 'best_of' ? dto.teamBScore : null,
           confirmedById: userId,
           confirmedAt: new Date(),
         },
@@ -531,6 +594,8 @@ export class ScoringService {
           teamAScore: dto.teamAScore,
           teamBScore: dto.teamBScore,
           winnerTeamId: dto.winnerTeamId,
+          setsWonA: format === 'best_of' ? dto.teamAScore : null,
+          setsWonB: format === 'best_of' ? dto.teamBScore : null,
           confirmedById: userId,
           confirmedAt: new Date(),
         },

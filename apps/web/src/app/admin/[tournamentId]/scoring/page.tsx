@@ -50,9 +50,10 @@ export default function AdminScoringPage() {
   const { toast } = useToast();
   const currentUser = getCurrentUser();
   const role = currentUser.role;
-  const isSuperAdmin = role === 'super_admin';
+  const isAuthorizedToOverride = role === 'super_admin' || role === 'btc_admin';
 
   const [matches, setMatches] = useState<MatchListItem[]>([]);
+  const [allMatches, setAllMatches] = useState<MatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [matchToConfirm, setMatchToConfirm] = useState<MatchListItem | null>(null);
@@ -72,6 +73,7 @@ export default function AdminScoringPage() {
     try {
       setLoading(true);
       const data = (await apiFetch(`/tournaments/${tournament.id}/matches`)) as MatchListItem[];
+      setAllMatches(data);
       setMatches(filterScoringMatches(data));
     } catch (error: unknown) {
       console.error(error);
@@ -84,6 +86,35 @@ export default function AdminScoringPage() {
   useEffect(() => {
     loadMatches();
   }, [tournament]);
+
+  const getOverrideDisabledReason = (match: MatchListItem): string | null => {
+    if (!tournament) return 'Thiếu dữ liệu giải đấu';
+
+    const isGroupMatch = !!match.group || !!match.groupId;
+    
+    if (isGroupMatch) {
+      const lockedStatuses = ['KNOCKOUT_GENERATED', 'KNOCKOUT_RUNNING', 'COMPLETED'];
+      if (lockedStatuses.includes(tournament.status)) {
+        return 'Giải đấu đã tiến sang vòng Knockout hoặc đã hoàn thành.';
+      }
+    } else {
+      const currentRound = match.roundNo;
+      if (currentRound !== undefined && currentRound !== null) {
+        const hasNextRoundStarted = allMatches.some(m => {
+          const isPlayoff = !m.group && !m.groupId;
+          const isLaterRound = m.roundNo !== null && m.roundNo !== undefined && m.roundNo > currentRound;
+          const isStartedOrDone = ['RUNNING', 'SEGMENT_BREAK', 'COMPLETED', 'RESULT_CONFIRMED'].includes(m.status);
+          return isPlayoff && isLaterRound && isStartedOrDone;
+        });
+
+        if (hasNextRoundStarted) {
+          return 'Đã có trận đấu ở vòng sau bắt đầu hoặc hoàn thành.';
+        }
+      }
+    }
+
+    return null;
+  };
 
   const uxContext = buildTournamentUxContext({
     tournament,
@@ -137,7 +168,7 @@ export default function AdminScoringPage() {
 
   const handleOverrideResult = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!matchToOverride || !isSuperAdmin) return;
+    if (!matchToOverride || !isAuthorizedToOverride) return;
     if (!overrideReason.trim()) {
       toast('Vui lòng nhập lý do ghi đè kết quả.', 'error');
       return;
@@ -266,11 +297,12 @@ export default function AdminScoringPage() {
                         </button>
                       )}
 
-                      {isSuperAdmin && ['COMPLETED', 'RESULT_CONFIRMED'].includes(match.status) && (
+                      {isAuthorizedToOverride && (
                         <button
                           onClick={() => openOverrideModal(match)}
-                          className="inline-flex items-center gap-1 rounded border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-400 transition-colors hover:text-rose-300"
-                          disabled={actionLoading}
+                          className="inline-flex items-center gap-1 rounded border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-400 transition-colors hover:text-rose-350 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={actionLoading || getOverrideDisabledReason(match) !== null}
+                          title={getOverrideDisabledReason(match) ?? undefined}
                         >
                           <AlertCircle className="h-3.5 w-3.5" />
                           Ghi đè KQ
@@ -305,7 +337,7 @@ export default function AdminScoringPage() {
         }}
       />
 
-      {/* Result Override Dialog (Super Admin) */}
+      {/* Result Override Dialog (Ban Tổ Chức) */}
       {overrideModalOpen && matchToOverride && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
           <form
@@ -318,7 +350,7 @@ export default function AdminScoringPage() {
             </div>
 
             <p className="text-xs leading-relaxed text-slate-400">
-              Quyền Super Admin: Cho phép chỉnh sửa trực tiếp điểm số chung cuộc của trận đấu và điều chỉnh bảng xếp hạng. Hành động này sẽ được ghi nhật ký hệ thống.
+              Quyền Ban Tổ Chức: Cho phép chỉnh sửa trực tiếp điểm số chung cuộc của trận đấu và điều chỉnh bảng xếp hạng. Hành động này sẽ được ghi nhật ký hệ thống.
             </p>
 
             <div className="grid grid-cols-2 gap-4">

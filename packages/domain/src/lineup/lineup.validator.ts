@@ -37,6 +37,59 @@ export class LineupValidator {
     const memberMap = new Map<string, LineupPlayerInput>(
       teamMembers.map((m) => [m.id, m])
     );
+    const format = ruleset.matchFormat;
+
+    if (format === 'single_game' || format === 'best_of') {
+      if (teamLineups.length === 0) {
+        errors.push(`Đội ${teamName} chưa nộp đội hình thi đấu.`);
+        return { valid: false, errors };
+      }
+
+      const seg = teamLineups[0];
+      // SINGLES = 1 player, DOUBLES = 2. teamComposition may be undefined for SINGLES/DOUBLES.
+      const eventType = ruleset.eventType;
+      const expectedCount =
+        ruleset.teamComposition?.teamSize ??
+        (eventType === 'SINGLES' ? 1 : eventType === 'DOUBLES' ? 2 : 1);
+
+      if (seg.playerIds.length !== expectedCount) {
+        errors.push(
+          `Đội hình thi đấu của Đội ${teamName} phải có đúng ${expectedCount} VĐV (đang chọn ${seg.playerIds.length}).`
+        );
+      }
+
+      for (const pid of seg.playerIds) {
+        if (!memberIds.includes(pid)) {
+          errors.push(`VĐV ID "${pid}" không thuộc danh sách Đội ${teamName}.`);
+        }
+      }
+
+      const playersInSeg = seg.playerIds
+        .map((id) => memberMap.get(id))
+        .filter((p): p is LineupPlayerInput => !!p);
+
+      const maleCount = playersInSeg.filter((p) => p.gender === 'MALE').length;
+      const femaleCount = playersInSeg.filter((p) => p.gender === 'FEMALE').length;
+
+      const reqMale = ruleset.teamComposition?.maleCount ?? 0;
+      const reqFemale = ruleset.teamComposition?.femaleCount ?? 0;
+
+      if (reqMale > 0 && maleCount !== reqMale) {
+        errors.push(
+          `Đội hình Đội ${teamName} yêu cầu đúng ${reqMale} VĐV Nam (đang chọn ${maleCount}).`
+        );
+      }
+      if (reqFemale > 0 && femaleCount !== reqFemale) {
+        errors.push(
+          `Đội hình Đội ${teamName} yêu cầu đúng ${reqFemale} VĐV Nữ (đang chọn ${femaleCount}).`
+        );
+      }
+
+      return {
+        valid: errors.length === 0,
+        errors,
+      };
+    }
 
     // 1. Validate each segment definition
     for (const seg of teamLineups) {
@@ -70,7 +123,6 @@ export class LineupValidator {
       const femaleCount = playersInSeg.filter((p) => p.gender === 'FEMALE').length;
 
       if (segConfig.genderRule === 'mixed') {
-        const expectedCount = Math.floor(segConfig.playerCount / 2);
         // Standard mixed doubles usually has 1 Male + 1 Female
         if (maleCount < 1 || femaleCount < 1) {
           errors.push(
@@ -112,7 +164,7 @@ export class LineupValidator {
       }
 
       // Invariant: allMustPlay
-      if (ruleset.teamComposition.allMustPlay) {
+      if (ruleset.teamComposition?.allMustPlay) {
         const idlePlayers = teamMembers.filter((m) => (appearances.get(m.id) ?? 0) === 0);
         if (idlePlayers.length > 0) {
           const idleNames = idlePlayers.map((p) => p.fullName).join(', ');

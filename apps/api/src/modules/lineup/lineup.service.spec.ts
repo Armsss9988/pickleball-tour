@@ -95,9 +95,9 @@ describe('LineupService captain ownership guard', () => {
                 },
               ],
               teamCompositionRule: {
-                teamSize: 5,
-                maleCount: 3,
-                femaleCount: 2,
+                teamSize: 2,
+                maleCount: 2,
+                femaleCount: 0,
                 allMustPlay: true,
               },
               playerLimitRules: [],

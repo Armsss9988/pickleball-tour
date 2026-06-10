@@ -57,6 +57,9 @@ export class TournamentSectionValidatorService {
           teamSize: tournament.ruleset.teamCompositionRule?.teamSize ?? 0,
           maleCount: tournament.ruleset.teamCompositionRule?.maleCount ?? 0,
           femaleCount: tournament.ruleset.teamCompositionRule?.femaleCount ?? 0,
+          matchFormat: tournament.ruleset.matchFormat,
+          requireCourtConfig: tournament.ruleset.requireCourtConfig,
+          requireScheduleConfig: tournament.ruleset.requireScheduleConfig,
         }
       : null;
 

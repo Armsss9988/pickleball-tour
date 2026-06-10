@@ -4,12 +4,25 @@ import { useActiveTournament } from '@/lib/use-tournament';
 import { PageHeader } from '@/components/page-header';
 import { PageLoading } from '@/components/loading-skeleton';
 import { apiFetch } from '@/lib/api-client';
-import { ClipboardList, Users, Target, Save, Edit3, X, Lock, Plus, Trash2 } from '@/components/icons';
+import { ClipboardList, Save, Edit3, X, Lock, Trophy } from '@/components/icons';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { getCurrentUser } from '@/lib/current-user';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
 import { getActionAccess } from '@/lib/tournament-ux-policy';
 import { useToast } from '@/components/toast';
+import { MatchFormat, EventType, CompetitionFormat } from '@golab/contracts';
+import { ConfirmModal } from '@/components/confirm-modal';
+
+// Import subcomponents
+import { FormatChooser } from './components/FormatChooser';
+import { EventTypeChooser } from './components/EventTypeChooser';
+import { CompetitionFormatChooser } from './components/CompetitionFormatChooser';
+import { TeamCompositionSection } from './components/TeamCompositionSection';
+import { ScoringConfigSection } from './components/ScoringConfigSection';
+import { SegmentsSection } from './components/SegmentsSection';
+import { OverlapsSection } from './components/OverlapsSection';
+import { ValidationPanel } from './components/ValidationPanel';
+import { RulesetView } from './components/RulesetView';
 
 interface DependencyStats {
   playersCount: number;
@@ -23,48 +36,18 @@ const emptyDependencyStats: DependencyStats = {
   matchesCount: 0,
 };
 
-interface RulesetCompositionLike {
-  teamSize?: number | null;
-  maleCount?: number | null;
-  femaleCount?: number | null;
-  allMustPlay?: boolean | null;
+interface SegmentDefinitionUI {
+  segmentKey: string;
+  name: string;
+  targetScore: number;
+  playerCount: number;
+  genderRule: 'mixed' | 'male_only' | 'female_only' | 'any';
 }
 
-interface RulesetSegmentLike {
-  segmentKey?: string | null;
-  name?: string | null;
-  targetScore?: number | null;
-}
-
-interface RulesetLike {
-  name?: string | null;
-  teamCompositionRule?: RulesetCompositionLike | null;
-  teamComposition?: RulesetCompositionLike | null;
-  scoringConfig?: {
-    winScore?: number | null;
-  } | null;
-  segmentDefinitions?: RulesetSegmentLike[] | null;
-  segments?: RulesetSegmentLike[] | null;
-}
-
-interface PlayersResponse {
-  items?: unknown[];
-}
-
-function getRulesetComposition(ruleset: RulesetLike) {
-  return ruleset?.teamCompositionRule ?? ruleset?.teamComposition ?? null;
-}
-
-function getRulesetSegments(ruleset: RulesetLike) {
-  if (Array.isArray(ruleset?.segmentDefinitions)) {
-    return ruleset.segmentDefinitions;
-  }
-
-  if (Array.isArray(ruleset?.segments)) {
-    return ruleset.segments;
-  }
-
-  return [];
+interface OverlapRuleUI {
+  segmentAKey: string;
+  segmentBKey: string;
+  gender: 'MALE' | 'FEMALE';
 }
 
 export default function RulesetSettingsPage() {
@@ -75,7 +58,11 @@ export default function RulesetSettingsPage() {
   const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isValid, setIsValid] = useState(false);
   const [name, setName] = useState('');
+  const [matchFormat, setMatchFormat] = useState<MatchFormat>('relay');
+  const [eventType, setEventType] = useState<EventType>('TEAM_EVENT');
+  const [competitionFormat, setCompetitionFormat] = useState<CompetitionFormat>('GROUP_STAGE_KNOCKOUT');
   const [genderFormat, setGenderFormat] = useState<'strict' | 'any'>('strict');
   const [teamSize, setTeamSize] = useState(5);
   const [maleCount, setMaleCount] = useState(3);
@@ -86,6 +73,17 @@ export default function RulesetSettingsPage() {
   const [noOverlapAllPlayers, setNoOverlapAllPlayers] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [winScore, setWinScore] = useState(24);
+  const [gamePointScore, setGamePointScore] = useState(11);
+  const [setsToWin, setSetsToWin] = useState(2);
+  const [lastSetPointScore, setLastSetPointScore] = useState<number | null>(null);
+  const [noDeuce, setNoDeuce] = useState(true);
+  const [deuceMaxScore, setDeuceMaxScore] = useState<number | null>(null);
+
+  // Flexibility Toggles
+  const [requireCourtConfig, setRequireCourtConfig] = useState(true);
+  const [requireScheduleConfig, setRequireScheduleConfig] = useState(true);
+
   const [segmentsList, setSegmentsList] = useState<SegmentDefinitionUI[]>([
     { segmentKey: 'mixed_doubles', name: 'Đôi Nam Nữ', targetScore: 8, playerCount: 2, genderRule: 'mixed' },
     { segmentKey: 'mens_doubles', name: 'Đôi Nam', targetScore: 16, playerCount: 2, genderRule: 'male_only' },
@@ -93,21 +91,39 @@ export default function RulesetSettingsPage() {
   ]);
 
   const [overlapsList, setOverlapsList] = useState<OverlapRuleUI[]>([]);
-
   const [rulesetState, setRulesetState] = useState<any>(null);
   const [rulesetLoading, setRulesetLoading] = useState(true);
 
-  const loadDependencyStats = useCallback(async () => {
-    if (!tournament) {
-      return;
-    }
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
+  const handleResetTournament = async () => {
+    try {
+      setResetLoading(true);
+      await apiFetch(`/tournaments/${tournament!.id}/reset`, {
+        method: 'POST',
+      });
+      toast('Đặt lại dữ liệu giải đấu thành công! Cấu hình luật đã được mở khóa.', 'success');
+      setResetModalOpen(false);
+      await loadDependencyStats();
+      await loadRuleset();
+      await reload();
+    } catch (error: any) {
+      console.error(error);
+      toast(error?.message || 'Lỗi khi đặt lại giải đấu.', 'error');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const loadDependencyStats = useCallback(async () => {
+    if (!tournament) return;
     try {
       setStatsLoading(true);
       const [playersData, teamsData, matchesData] = await Promise.all([
-        apiFetch<PlayersResponse>(`/tournaments/${tournament.id}/players`).catch(() => ({ items: [] })),
-        apiFetch<unknown[]>(`/tournaments/${tournament.id}/teams`).catch(() => []),
-        apiFetch<unknown[]>(`/tournaments/${tournament.id}/matches`).catch(() => []),
+        apiFetch<any>(`/tournaments/${tournament.id}/players`).catch(() => ({ items: [] })),
+        apiFetch<any[]>(`/tournaments/${tournament.id}/teams`).catch(() => []),
+        apiFetch<any[]>(`/tournaments/${tournament.id}/matches`).catch(() => []),
       ]);
 
       setDependencyStats({
@@ -115,7 +131,7 @@ export default function RulesetSettingsPage() {
         teamsCount: Array.isArray(teamsData) ? teamsData.length : 0,
         matchesCount: Array.isArray(matchesData) ? matchesData.length : 0,
       });
-    } catch (error: unknown) {
+    } catch (error) {
       console.error(error);
       setDependencyStats(emptyDependencyStats);
     } finally {
@@ -124,10 +140,7 @@ export default function RulesetSettingsPage() {
   }, [tournament]);
 
   const loadRuleset = useCallback(async () => {
-    if (!tournament) {
-      return;
-    }
-
+    if (!tournament) return;
     try {
       setRulesetLoading(true);
       const data = await apiFetch<any>(`/tournaments/${tournament.id}/ruleset`);
@@ -135,6 +148,9 @@ export default function RulesetSettingsPage() {
 
       if (data) {
         setName(data.name || '');
+        setMatchFormat(data.matchFormat || 'relay');
+        setEventType(data.eventType || 'TEAM_EVENT');
+        setCompetitionFormat(data.competitionFormat || 'GROUP_STAGE_KNOCKOUT');
 
         const segs = data.segmentDefinitions || data.segments || [];
         if (segs.length > 0) {
@@ -155,11 +171,7 @@ export default function RulesetSettingsPage() {
           setFemaleCount(fc);
           setTeamSize(comp.teamSize ?? 5);
           setAllMustPlay(comp.allMustPlay ?? true);
-          if (mc > 0 || fc > 0) {
-            setGenderFormat('strict');
-          } else {
-            setGenderFormat('any');
-          }
+          setGenderFormat(mc > 0 || fc > 0 ? 'strict' : 'any');
         }
 
         const limits = data.playerLimitRules || data.playerLimits || [];
@@ -169,11 +181,7 @@ export default function RulesetSettingsPage() {
         const fMax = femaleLim?.maxSegments ?? 2;
         setMaleMaxSegments(mMax);
         setFemaleMaxSegments(fMax);
-        if (mMax === 1 && fMax === 1) {
-          setNoOverlapAllPlayers(true);
-        } else {
-          setNoOverlapAllPlayers(false);
-        }
+        setNoOverlapAllPlayers(mMax === 1 && fMax === 1);
 
         const overlaps = data.overlapRules || [];
         setOverlapsList(overlaps.map((o: any) => ({
@@ -181,6 +189,19 @@ export default function RulesetSettingsPage() {
           segmentBKey: o.segmentBKey,
           gender: o.gender,
         })));
+
+        const sc = data.scoringConfig;
+        if (sc) {
+          setWinScore(sc.winScore ?? 24);
+          setGamePointScore(sc.gamePointScore ?? 11);
+          setSetsToWin(sc.setsToWin ?? 2);
+          setLastSetPointScore(sc.lastSetPointScore ?? null);
+          setNoDeuce(true);
+          setDeuceMaxScore(null);
+        }
+
+        setRequireCourtConfig(data.requireCourtConfig ?? true);
+        setRequireScheduleConfig(data.requireScheduleConfig ?? true);
       }
     } catch (error) {
       console.error('Failed to load ruleset:', error);
@@ -190,24 +211,17 @@ export default function RulesetSettingsPage() {
   }, [tournament]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadDependencyStats();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
+    loadDependencyStats();
   }, [loadDependencyStats]);
 
   useEffect(() => {
-    void loadRuleset();
+    loadRuleset();
   }, [loadRuleset]);
 
   if (tLoading || statsLoading || rulesetLoading || !tournament) {
     return <PageLoading />;
   }
 
-  const ruleset = (rulesetState || {}) as RulesetLike;
-  const composition = getRulesetComposition(ruleset);
-  const segments = getRulesetSegments(ruleset);
   const uxContext = buildTournamentUxContext({
     tournament: {
       ...tournament,
@@ -284,51 +298,21 @@ export default function RulesetSettingsPage() {
       return;
     }
 
-    if (segmentsList.length === 0) {
-      toast('Cần ít nhất 1 chặng thi đấu.', 'error');
+    if (!isValid) {
+      toast('Vui lòng sửa các lỗi cấu hình hiển thị màu đỏ ở bảng kiểm tra.', 'error');
       return;
-    }
-
-    for (let i = 0; i < segmentsList.length; i++) {
-      const currentScore = Number(segmentsList[i].targetScore);
-      if (isNaN(currentScore) || currentScore <= 0) {
-        toast(`Chặng "${segmentsList[i].name}" có số điểm chạm không hợp lệ.`, 'error');
-        return;
-      }
-      if (i > 0) {
-        const prevScore = Number(segmentsList[i - 1].targetScore);
-        if (currentScore <= prevScore) {
-          toast(
-            `Điểm chạm của chặng "${segmentsList[i].name}" (${currentScore}) phải lớn hơn chặng trước "${segmentsList[i - 1].name}" (${prevScore}).`,
-            'error'
-          );
-          return;
-        }
-      }
     }
 
     const mc = genderFormat === 'strict' ? Number(maleCount) : 0;
     const fc = genderFormat === 'strict' ? Number(femaleCount) : 0;
     const tSize = genderFormat === 'strict' ? mc + fc : Number(teamSize);
 
-    if (genderFormat === 'strict' && (mc < 0 || fc < 0)) {
-      toast('Số lượng VĐV nam/nữ không được nhỏ hơn 0.', 'error');
-      return;
-    }
-    if (genderFormat === 'any' && tSize <= 0) {
-      toast('Quy mô đội hình tuyển phải lớn hơn 0.', 'error');
-      return;
-    }
-
     const mMax = noOverlapAllPlayers ? 1 : Number(maleMaxSegments);
     const fMax = noOverlapAllPlayers ? 1 : Number(femaleMaxSegments);
 
-    if (mMax <= 0 || fMax <= 0) {
-      toast('Số chặng thi đấu tối đa của VĐV phải lớn hơn 0.', 'error');
-      return;
-    }
-
-    const finalWinScore = Number(segmentsList[segmentsList.length - 1].targetScore);
+    const finalWinScore = matchFormat === 'relay'
+      ? Number(segmentsList[segmentsList.length - 1].targetScore)
+      : Number(winScore);
 
     try {
       setSaving(true);
@@ -336,34 +320,54 @@ export default function RulesetSettingsPage() {
         name: name.trim(),
         sport: 'pickleball',
         isTemplate: false,
-        segments: segmentsList.map((s, idx) => ({
-          segmentKey: s.segmentKey,
-          name: s.name.trim(),
-          targetScore: Number(s.targetScore),
-          playerCount: Number(s.playerCount),
-          genderRule: s.genderRule,
-          orderIndex: idx,
-          isDrawable: true,
-        })),
-        teamComposition: {
+        matchFormat: matchFormat,
+        eventType: eventType,
+        competitionFormat: competitionFormat,
+        requireCourtConfig,
+        requireScheduleConfig,
+        segments: matchFormat === 'relay'
+          ? segmentsList.map((s, idx) => ({
+              segmentKey: s.segmentKey,
+              name: s.name.trim(),
+              targetScore: Number(s.targetScore),
+              playerCount: Number(s.playerCount),
+              genderRule: s.genderRule,
+              orderIndex: idx,
+              isDrawable: true,
+            }))
+          : [],
+        teamComposition: eventType === 'TEAM_EVENT' ? {
           teamSize: tSize,
           maleCount: mc,
           femaleCount: fc,
           allMustPlay: allMustPlay,
+        } : {
+          teamSize: eventType === 'SINGLES' ? 1 : 2,
+          maleCount: 0,
+          femaleCount: 0,
+          allMustPlay: false,
         },
-        playerLimits: [
-          { gender: 'MALE', minSegments: 1, maxSegments: mMax },
-          { gender: 'FEMALE', minSegments: 1, maxSegments: fMax },
-        ],
-        overlapRules: overlapsList.map((o) => ({
-          segmentAKey: o.segmentAKey,
-          segmentBKey: o.segmentBKey,
-          gender: o.gender,
-          isForbidden: true,
-        })),
+        playerLimits: matchFormat === 'relay'
+          ? [
+              { gender: 'MALE', minSegments: 1, maxSegments: mMax },
+              { gender: 'FEMALE', minSegments: 1, maxSegments: fMax },
+            ]
+          : [],
+        overlapRules: matchFormat === 'relay'
+          ? overlapsList.map((o) => ({
+              segmentAKey: o.segmentAKey,
+              segmentBKey: o.segmentBKey,
+              gender: o.gender,
+              isForbidden: true,
+            }))
+          : [],
         scoringConfig: {
           winScore: finalWinScore,
+          gamePointScore: matchFormat === 'best_of' ? gamePointScore : undefined,
+          setsToWin: matchFormat === 'best_of' ? setsToWin : undefined,
+          lastSetPointScore: matchFormat === 'best_of' && lastSetPointScore ? lastSetPointScore : undefined,
           noDeuce: true,
+          deuceMaxScore: null,
           sideSwitchAfterSegments: 0,
           pointsForWin: 3,
           pointsForLoss: 0,
@@ -400,15 +404,25 @@ export default function RulesetSettingsPage() {
 
         {!editAccess.allowed && (
           editAccess.locked ? (
-            <div className="rounded-xl border border-rose-500/25 bg-rose-500/8 px-4 py-3 text-sm text-rose-350 flex items-start gap-2.5">
-              <Lock className="w-4 h-4 text-rose-500 mt-0.5 flex-shrink-0" />
-              <div>
-                <span className="font-semibold text-rose-200">Luật thi đấu đã bị KHÓA!</span>
-                {' '}{editAccess.reason}
-                {editAccess.required && (
-                  <div className="mt-1 text-xs text-slate-400">{editAccess.required}</div>
-                )}
+            <div className="rounded-xl border border-rose-500/25 bg-rose-500/8 px-4 py-3 text-sm text-rose-350 flex items-start justify-between gap-4">
+              <div className="flex items-start gap-2.5">
+                <Lock className="w-4 h-4 text-rose-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="font-semibold text-rose-200">Luật thi đấu đã bị KHÓA!</span>
+                  {' '}{editAccess.reason}
+                  {editAccess.required && (
+                    <div className="mt-1 text-xs text-slate-400">{editAccess.required}</div>
+                  )}
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setResetModalOpen(true)}
+                disabled={resetLoading}
+                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-550/10 border border-rose-500/25 text-rose-400 hover:bg-rose-550/20 transition-all cursor-pointer"
+              >
+                Mở khóa / Đặt lại
+              </button>
             </div>
           ) : (
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
@@ -424,7 +438,7 @@ export default function RulesetSettingsPage() {
           <div className="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
               <h3 className="font-bold text-lg text-amber-500">
-                {isEditing ? 'Chỉnh sửa Luật thi đấu' : (ruleset.name || 'Thể thức GOLAB Standard')}
+                {isEditing ? 'Chỉnh sửa Luật thi đấu' : (name || 'Thể thức GOLAB Standard')}
               </h3>
               <p className="text-xs text-slate-400 mt-1">Cấu hình luật thi đấu và chạm tiếp sức của giải đấu đang hoạt động.</p>
             </div>
@@ -432,7 +446,10 @@ export default function RulesetSettingsPage() {
             {editAccess.allowed && (
               <button
                 type="button"
-                onClick={() => setIsEditing(!isEditing)}
+                onClick={() => {
+                  setIsEditing(!isEditing);
+                  if (!isEditing) void loadRuleset();
+                }}
                 className={`btn btn-sm flex items-center gap-1.5 ${
                   isEditing
                     ? 'bg-slate-800 hover:bg-slate-700 text-slate-350 border border-slate-700'
@@ -469,338 +486,177 @@ export default function RulesetSettingsPage() {
                 />
               </div>
 
-              <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <Users className="w-4 h-4 text-emerald-400" />
-                  Thể thức Giới tính & Quy mô
-                </h4>
-                
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="genderFormat"
-                      checked={genderFormat === 'strict'}
-                      onChange={() => setGenderFormat('strict')}
-                      className="text-amber-500 focus:ring-amber-500 bg-slate-800 border-slate-700"
-                    />
-                    Ràng buộc giới tính (Ví dụ: Đội có 3 Nam, 2 Nữ)
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="genderFormat"
-                      checked={genderFormat === 'any'}
-                      onChange={() => setGenderFormat('any')}
-                      className="text-amber-500 focus:ring-amber-500 bg-slate-800 border-slate-700"
-                    />
-                    Tự do / Một giới tính (Chỉ yêu cầu tổng số lượng)
-                  </label>
-                </div>
+              {/* Bước 1: Loại nội dung thi đấu */}
+              <EventTypeChooser
+                value={eventType}
+                onChange={(et) => {
+                  setEventType(et);
+                  // Auto-switch away from relay when not TEAM_EVENT
+                  if (et !== 'TEAM_EVENT' && matchFormat === 'relay') {
+                    setMatchFormat('single_game');
+                  }
+                }}
+                disabled={saving || dependencyStats.matchesCount > 0}
+              />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                  {genderFormat === 'strict' ? (
-                    <>
-                      <div className="space-y-1.5">
-                        <label className="block text-[11px] text-slate-455">Số lượng VĐV Nam / đội</label>
-                        <input
-                          type="number"
-                          required
-                          min={0}
-                          value={maleCount}
-                          onChange={(e) => setMaleCount(Number(e.target.value))}
-                          className="w-full premium-input text-sm"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="block text-[11px] text-slate-455">Số lượng VĐV Nữ / đội</label>
-                        <input
-                          type="number"
-                          required
-                          min={0}
-                          value={femaleCount}
-                          onChange={(e) => setFemaleCount(Number(e.target.value))}
-                          className="w-full premium-input text-sm"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="block text-[11px] text-slate-455">Tổng quy mô đội</label>
-                        <input
-                          type="text"
-                          readOnly
-                          value={`${maleCount + femaleCount} người`}
-                          className="w-full premium-input text-sm bg-slate-900/60 text-slate-400 cursor-not-allowed"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="space-y-1.5 col-span-2 md:col-span-1">
-                      <label className="block text-[11px] text-slate-455">Tổng số lượng VĐV / đội</label>
-                      <input
-                        type="number"
-                        required
-                        min={1}
-                        value={teamSize}
-                        onChange={(e) => setTeamSize(Number(e.target.value))}
-                        className="w-full premium-input text-sm"
-                        disabled={saving}
-                      />
-                    </div>
-                  )}
-                </div>
+              {/* Bước 2: Cách tổ chức giải đấu */}
+              <CompetitionFormatChooser
+                value={competitionFormat}
+                onChange={setCompetitionFormat}
+                disabled={saving}
+              />
 
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="allMustPlay"
-                    checked={allMustPlay}
-                    onChange={(e) => setAllMustPlay(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
-                    disabled={saving}
-                  />
-                  <label htmlFor="allMustPlay" className="text-xs font-semibold text-slate-300 cursor-pointer">
-                    Tất cả {currentTeamSize} thành viên bắt buộc phải ra sân thi đấu ít nhất 1 lần
-                  </label>
-                </div>
-              </div>
-
-              <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-emerald-400" />
-                  Giới hạn số chặng thi đấu
-                </h4>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="noOverlapAll"
-                    checked={noOverlapAllPlayers}
-                    onChange={(e) => setNoOverlapAllPlayers(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
-                    disabled={saving}
-                  />
-                  <label htmlFor="noOverlapAll" className="text-xs font-semibold text-slate-300 cursor-pointer text-amber-400">
-                    ⚠️ Mỗi VĐV chỉ được thi đấu tối đa 1 chặng / trận (Không ai được đánh 2 nội dung)
-                  </label>
-                </div>
-
-                {!noOverlapAllPlayers && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div className="space-y-1.5">
-                      <label className="block text-[11px] text-slate-455">Số chặng tối đa VĐV Nam được đánh / trận</label>
-                      <input
-                        type="number"
-                        required
-                        min={1}
-                        value={maleMaxSegments}
-                        onChange={(e) => setMaleMaxSegments(Number(e.target.value))}
-                        className="w-full premium-input text-sm"
-                        disabled={saving}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="block text-[11px] text-slate-455">Số chặng tối đa VĐV Nữ được đánh / trận</label>
-                      <input
-                        type="number"
-                        required
-                        min={1}
-                        value={femaleMaxSegments}
-                        onChange={(e) => setFemaleMaxSegments(Number(e.target.value))}
-                        className="w-full premium-input text-sm"
-                        disabled={saving}
-                      />
-                    </div>
-                  </div>
+              {/* Bước 3: Thể thức tính điểm trận đấu */}
+              {/* relay chỉ hiển thị khi TEAM_EVENT */}
+              <div className="space-y-3">
+                <FormatChooser
+                  value={matchFormat}
+                  onChange={setMatchFormat}
+                  disabled={saving || dependencyStats.matchesCount > 0}
+                />
+                {eventType !== 'TEAM_EVENT' && matchFormat === 'relay' && (
+                  <p className="text-xs text-rose-400 mt-1">
+                    ⚠️ Thể thức Tiếp sức chỉ dùng được với giải Đồng đội. Vui lòng chọn Single Game hoặc Best of Sets.
+                  </p>
                 )}
               </div>
 
-              <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                <div className="flex items-center justify-between border-b border-slate-850 pb-2">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                    <Target className="w-4 h-4 text-sky-400" />
-                    Các chặng thi đấu tiếp sức
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={handleAddSegment}
-                    className="btn btn-xs flex items-center gap-1 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/20 px-2 py-1"
+              {/* Bước 4: Cấu hình chi tiết đội — chỉ TEAM_EVENT */}
+              {eventType === 'TEAM_EVENT' && (
+              <TeamCompositionSection
+                matchFormat={matchFormat}
+                teamSize={teamSize}
+                setTeamSize={setTeamSize}
+                maleCount={maleCount}
+                setMaleCount={setMaleCount}
+                femaleCount={femaleCount}
+                setFemaleCount={setFemaleCount}
+                genderFormat={genderFormat}
+                setGenderFormat={setGenderFormat}
+                allMustPlay={allMustPlay}
+                setAllMustPlay={setAllMustPlay}
+                disabled={saving}
+              />
+              )}
+
+              {/* Scoring Config Section */}
+              <ScoringConfigSection
+                matchFormat={matchFormat}
+                winScore={winScore}
+                setWinScore={setWinScore}
+                gamePointScore={gamePointScore}
+                setGamePointScore={setGamePointScore}
+                setsToWin={setsToWin}
+                setSetsToWin={setSetsToWin}
+                lastSetPointScore={lastSetPointScore}
+                setLastSetPointScore={setLastSetPointScore}
+                noDeuce={noDeuce}
+                setNoDeuce={setNoDeuce}
+                deuceMaxScore={deuceMaxScore}
+                setDeuceMaxScore={setDeuceMaxScore}
+                lastSegmentTargetScore={segmentsList[segmentsList.length - 1]?.targetScore}
+                disabled={saving}
+              />
+
+              {/* Relay segments configuration */}
+              {matchFormat === 'relay' && (
+                <>
+                  <SegmentsSection
+                    segmentsList={segmentsList}
+                    onAddSegment={handleAddSegment}
+                    onRemoveSegment={handleRemoveSegment}
+                    onSegmentChange={handleSegmentChange}
+                    genderFormat={genderFormat}
                     disabled={saving}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Thêm chặng
-                  </button>
-                </div>
+                  />
 
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                  {segmentsList.map((segment, index) => (
-                    <div key={segment.segmentKey} className="flex flex-col gap-3 p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl relative group">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-sky-400">Chặng {index + 1}</span>
-                        {segmentsList.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSegment(index)}
-                            className="text-slate-500 hover:text-rose-400 transition-colors"
-                            title="Xóa chặng này"
-                            disabled={saving}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                  <OverlapsSection
+                    segmentsList={segmentsList}
+                    overlapsList={overlapsList}
+                    onAddOverlap={handleAddOverlap}
+                    onRemoveOverlap={handleRemoveOverlap}
+                    onOverlapChange={handleOverlapChange}
+                    noOverlapAllPlayers={noOverlapAllPlayers}
+                    setNoOverlapAllPlayers={setNoOverlapAllPlayers}
+                    maleMaxSegments={maleMaxSegments}
+                    setMaleMaxSegments={setMaleMaxSegments}
+                    femaleMaxSegments={femaleMaxSegments}
+                    setFemaleMaxSegments={setFemaleMaxSegments}
+                    genderFormat={genderFormat}
+                    disabled={saving}
+                  />
+                </>
+              )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                        <div className="space-y-1 col-span-1 md:col-span-2">
-                          <label className="text-[10px] text-slate-500">Tên chặng</label>
-                          <input
-                            type="text"
-                            required
-                            value={segment.name}
-                            onChange={(e) => handleSegmentChange(index, { name: e.target.value })}
-                            className="w-full premium-input text-xs"
-                            placeholder="Tên chặng thi đấu"
-                            disabled={saving}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500">Điểm chạm</label>
-                          <input
-                            type="number"
-                            required
-                            min={1}
-                            value={segment.targetScore}
-                            onChange={(e) => handleSegmentChange(index, { targetScore: Number(e.target.value) })}
-                            className="w-full premium-input text-xs font-semibold text-amber-400"
-                            disabled={saving}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500">Số VĐV / chặng</label>
-                          <input
-                            type="number"
-                            required
-                            min={1}
-                            value={segment.playerCount}
-                            onChange={(e) => handleSegmentChange(index, { playerCount: Number(e.target.value) })}
-                            className="w-full premium-input text-xs"
-                            disabled={saving}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500">Luật giới tính</label>
-                          <select
-                            value={segment.genderRule}
-                            onChange={(e) => handleSegmentChange(index, { genderRule: e.target.value as any })}
-                            className="w-full premium-input text-xs"
-                            disabled={saving}
-                          >
-                            <option value="any">Tự do / Bất kỳ giới tính nào</option>
-                            {genderFormat === 'strict' && (
-                              <>
-                                <option value="mixed">Đôi Nam Nữ (Ít nhất 1 Nam, 1 Nữ)</option>
-                                <option value="male_only">Chỉ Nam</option>
-                                <option value="female_only">Chỉ Nữ</option>
-                              </>
-                            )}
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500">Mã định danh chặng</label>
-                          <input
-                            type="text"
-                            readOnly
-                            value={segment.segmentKey}
-                            className="w-full premium-input text-xs bg-slate-900/60 text-slate-500 cursor-not-allowed font-mono"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  * Điểm chạm của chặng cuối cùng sẽ tự động làm điểm chạm kết thúc trận đấu.
+              {/* Operations Flexibility Section */}
+              <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-5">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-500" />
+                  Yêu Cầu Vận Hành Linh Hoạt
+                </h4>
+                <p className="text-xs text-slate-400">
+                  Bật/Tắt các ràng buộc khi kiểm tra độ sẵn sàng vận hành của giải đấu. Bỏ tích chọn nếu muốn xếp lịch tự do mà không cần định trước cụ thể.
                 </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <label className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-800/80 bg-slate-950/20 cursor-pointer hover:border-slate-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={requireCourtConfig}
+                      onChange={(e) => setRequireCourtConfig(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500 mt-0.5"
+                      disabled={saving}
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-slate-200 block">Yêu cầu cấu hình sân đấu</span>
+                      <span className="text-[10px] text-slate-455 mt-0.5 block">Kiểm tra việc gán sân đấu và xung đột lịch thi đấu.</span>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-800/80 bg-slate-950/20 cursor-pointer hover:border-slate-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={requireScheduleConfig}
+                      onChange={(e) => setRequireScheduleConfig(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500 mt-0.5"
+                      disabled={saving}
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-slate-200 block">Yêu cầu xếp giờ lịch thi đấu</span>
+                      <span className="text-[10px] text-slate-455 mt-0.5 block">Kiểm tra xem tất cả các trận đã được gán thời gian bắt đầu hay chưa.</span>
+                    </div>
+                  </label>
+                </div>
               </div>
 
-              {genderFormat === 'strict' && !noOverlapAllPlayers && (
-                <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                  <div className="flex items-center justify-between border-b border-slate-850 pb-2">
-                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-emerald-400" />
-                      Quy tắc cấm trùng lặp VĐV giữa các chặng
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={handleAddOverlap}
-                      className="btn btn-xs flex items-center gap-1 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 px-2 py-1"
-                      disabled={saving || segmentsList.length < 2}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Thêm quy định
-                    </button>
-                  </div>
-
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                    {overlapsList.length > 0 ? (
-                      overlapsList.map((overlap, index) => (
-                        <div key={index} className="flex items-center gap-2 p-2 bg-slate-900/40 border border-slate-800/80 rounded-xl">
-                          <span className="text-xs text-slate-400">Cấm VĐV</span>
-                          <select
-                            value={overlap.gender}
-                            onChange={(e) => handleOverlapChange(index, { gender: e.target.value as any })}
-                            className="premium-input text-xs py-1"
-                            disabled={saving}
-                          >
-                            <option value="MALE">Nam</option>
-                            <option value="FEMALE">Nữ</option>
-                          </select>
-                          <span className="text-xs text-slate-400">đánh cả</span>
-                          <select
-                            value={overlap.segmentAKey}
-                            onChange={(e) => handleOverlapChange(index, { segmentAKey: e.target.value })}
-                            className="premium-input text-xs py-1 flex-1"
-                            disabled={saving}
-                          >
-                            {segmentsList.map((s) => (
-                              <option key={s.segmentKey} value={s.segmentKey}>{s.name}</option>
-                            ))}
-                          </select>
-                          <span className="text-xs text-slate-400">và</span>
-                          <select
-                            value={overlap.segmentBKey}
-                            onChange={(e) => handleOverlapChange(index, { segmentBKey: e.target.value })}
-                            className="premium-input text-xs py-1 flex-1"
-                            disabled={saving}
-                          >
-                            {segmentsList.map((s) => (
-                              <option key={s.segmentKey} value={s.segmentKey}>{s.name}</option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveOverlap(index)}
-                            className="text-slate-500 hover:text-rose-455 transition-colors p-1"
-                            disabled={saving}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-slate-500 italic">Chưa thiết lập quy định cấm trùng chặng cụ thể nào.</p>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Validation Panel */}
+              <ValidationPanel
+                tournamentId={tournament.id}
+                name={name}
+                matchFormat={matchFormat}
+                teamSize={currentTeamSize}
+                maleCount={genderFormat === 'strict' ? maleCount : 0}
+                femaleCount={genderFormat === 'strict' ? femaleCount : 0}
+                genderFormat={genderFormat}
+                allMustPlay={allMustPlay}
+                noOverlapAllPlayers={noOverlapAllPlayers}
+                maleMaxSegments={maleMaxSegments}
+                femaleMaxSegments={femaleMaxSegments}
+                segmentsList={segmentsList}
+                overlapsList={overlapsList}
+                winScore={winScore}
+                gamePointScore={gamePointScore}
+                setsToWin={setsToWin}
+                lastSetPointScore={lastSetPointScore}
+                noDeuce={noDeuce}
+                deuceMaxScore={deuceMaxScore}
+                requireCourtConfig={requireCourtConfig}
+                requireScheduleConfig={requireScheduleConfig}
+                onValidationChange={setIsValid}
+              />
 
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || !isValid}
                 className="w-full btn btn-primary py-2.5 flex items-center justify-center gap-2"
               >
                 {saving ? (
@@ -814,119 +670,45 @@ export default function RulesetSettingsPage() {
               </button>
             </form>
           ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl space-y-2 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-wider">
-                    <Target className="w-4 h-4 text-sky-400" />
-                    Điểm chạm thi đấu
-                  </div>
-                  <div className="text-base font-semibold text-slate-200 mt-1">
-                    Điểm thắng chung cuộc: {ruleset.scoringConfig?.winScore || 24}đ
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Không áp dụng luật chạm deuce (first to win). Đổi sân theo cấu hình chặng.
-                  </div>
-                </div>
-
-                <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl space-y-2 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-wider">
-                    <Users className="w-4 h-4 text-emerald-400" />
-                    Quy mô đội hình tuyển
-                  </div>
-                  <div className="text-base font-semibold text-slate-200 mt-1">
-                    {composition?.maleCount || composition?.femaleCount ? (
-                      `Quy mô: ${composition?.teamSize || 5} VĐV (${composition?.maleCount || 0} Nam, ${composition?.femaleCount || 0} Nữ)`
-                    ) : (
-                      `Quy mô: ${composition?.teamSize || 5} VĐV (Tự do/Bất kỳ giới tính nào)`
-                    )}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {composition?.allMustPlay ? 'Tất cả thành viên bắt buộc phải ra sân thi đấu ít nhất 1 lần.' : 'Không bắt buộc tất cả thành viên ra sân.'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-wider">
-                  <Lock className="w-4 h-4 text-emerald-400" />
-                  Giới hạn số chặng thi đấu
-                </div>
-                <div className="text-xs text-slate-300 space-y-1">
-                  {rulesetState?.playerLimits?.map((limit: any) => (
-                    <div key={limit.gender}>
-                      • Giới tính {limit.gender === 'MALE' ? 'Nam' : 'Nữ'}: Thi đấu từ {limit.minSegments} đến {limit.maxSegments} chặng / trận.
-                    </div>
-                  ))}
-                  {rulesetState?.playerLimits?.every((l: any) => l.maxSegments === 1) && (
-                    <div className="text-amber-400 font-semibold mt-1">
-                      ⚠️ Mỗi VĐV chỉ được thi đấu tối đa 1 chặng / trận (Không ai được đánh 2 nội dung).
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Các chặng thi đấu tiếp sức ({segments.length} chặng)</span>
-                <div className="flex flex-col gap-2">
-                  {segments.map((segment, idx: number) => (
-                    <div key={segment.segmentKey || `${segment.name || 'segment'}-${idx}`} className="flex items-center justify-between p-3.5 bg-slate-900/40 border border-slate-800/80 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-full bg-slate-800 text-[11px] font-bold text-slate-350 flex items-center justify-center">
-                          {idx + 1}
-                        </span>
-                        <div>
-                          <span className="font-semibold text-slate-200">{segment.name}</span>
-                          <span className="text-[10px] text-slate-500 ml-2 font-mono bg-slate-800 px-1.5 py-0.5 rounded">
-                            {segment.segmentKey}
-                          </span>
-                          <span className="text-[10px] text-slate-400 ml-2 bg-slate-850 px-1.5 py-0.5 rounded">
-                            {(segment as any).playerCount ?? 2} VĐV · Giới tính: {(segment as any).genderRule === 'mixed' ? 'Mixed' : (segment as any).genderRule === 'male_only' ? 'Nam' : (segment as any).genderRule === 'female_only' ? 'Nữ' : 'Tự do'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 text-xs">
-                        Target chạm: {segment.targetScore}đ
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {rulesetState?.overlapRules && rulesetState.overlapRules.length > 0 && (
-                <div className="space-y-3 pt-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quy tắc cấm trùng chặng</span>
-                  <div className="flex flex-col gap-2">
-                    {rulesetState.overlapRules.map((rule: any, idx: number) => {
-                      const segA = segments.find(s => s.segmentKey === rule.segmentAKey)?.name || rule.segmentAKey;
-                      const segB = segments.find(s => s.segmentKey === rule.segmentBKey)?.name || rule.segmentBKey;
-                      return (
-                        <div key={idx} className="p-3 bg-slate-900/20 border border-slate-800 rounded-xl text-xs text-slate-350 font-medium">
-                          • Cấm VĐV <span className="text-amber-400 font-bold">{rule.gender === 'MALE' ? 'Nam' : 'Nữ'}</span> thi đấu đồng thời ở cả hai chặng <span className="font-semibold">{segA}</span> và <span className="font-semibold">{segB}</span>.
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
+            <RulesetView
+              name={name}
+              matchFormat={matchFormat}
+              eventType={eventType}
+              competitionFormat={competitionFormat}
+              teamComposition={eventType === 'TEAM_EVENT' ? {
+                teamSize: currentTeamSize,
+                maleCount: genderFormat === 'strict' ? maleCount : 0,
+                femaleCount: genderFormat === 'strict' ? femaleCount : 0,
+                allMustPlay,
+              } : undefined}
+              scoringConfig={{
+                winScore: matchFormat === 'relay' ? (segmentsList[segmentsList.length - 1]?.targetScore || 24) : winScore,
+                gamePointScore,
+                setsToWin,
+                lastSetPointScore,
+                noDeuce,
+                deuceMaxScore,
+              }}
+              segments={segmentsList}
+              overlapRules={overlapsList}
+              requireCourtConfig={requireCourtConfig}
+              requireScheduleConfig={requireScheduleConfig}
+            />
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={resetModalOpen}
+        title="Mở khóa Luật thi đấu & Đặt lại giải đấu?"
+        description="Thao tác này sẽ xóa vĩnh viễn toàn bộ Đội bóng, Trận đấu, Chặng đấu, Đội hình thi đấu, bảng xếp hạng và điểm số hiện tại để bạn có thể chỉnh sửa lại Luật thi đấu. Danh sách Vận động viên đã đăng ký sẽ được giữ nguyên. Bạn có chắc chắn muốn tiến hành?"
+        confirmLabel="Đặt lại & Mở khóa"
+        cancelLabel="Hủy"
+        variant="danger"
+        loading={resetLoading}
+        onConfirm={handleResetTournament}
+        onCancel={() => setResetModalOpen(false)}
+      />
     </div>
   );
-}
-
-interface SegmentDefinitionUI {
-  id?: string;
-  segmentKey: string;
-  name: string;
-  targetScore: number;
-  playerCount: number;
-  genderRule: 'mixed' | 'male_only' | 'female_only' | 'any';
-}
-
-interface OverlapRuleUI {
-  segmentAKey: string;
-  segmentBKey: string;
-  gender: 'MALE' | 'FEMALE';
 }

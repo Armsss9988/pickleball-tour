@@ -9,6 +9,36 @@ describe('TeamService dependency guards', () => {
     const teamMemberCreate = jest.fn().mockResolvedValue({});
     const teamUpdate = jest.fn().mockResolvedValue({});
     const tx = {
+      awardRecipient: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      bracketNode: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      standing: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      matchResult: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      scoreEvent: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      matchLineupPlayer: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      matchLineup: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      matchSegment: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      match: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      groupTeam: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
       teamMember: {
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
         create: teamMemberCreate,
@@ -20,6 +50,9 @@ describe('TeamService dependency guards', () => {
       },
       teamDraw: {
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      tournament: {
+        update: jest.fn().mockResolvedValue({}),
       },
     };
     const prisma = {

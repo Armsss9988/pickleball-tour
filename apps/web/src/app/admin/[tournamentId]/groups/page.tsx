@@ -253,8 +253,8 @@ export default function GroupsPage() {
   return (
     <div className="premium-container space-y-6 animate-scale-in">
       <PageHeader
-        title="Phân Bảng & Lịch Đấu"
-        description="Phát sinh bảng đấu và lên lịch thi đấu vòng tròn 3 lượt trận cho 8 đội tuyển."
+        title="Phân Bảng"
+        description="Phân chia các đội tuyển vào Bảng A và Bảng B để bắt đầu thi đấu vòng bảng."
         icon={Calendar}
       />
 
@@ -265,27 +265,6 @@ export default function GroupsPage() {
             <GitBranch className="w-5 h-5 text-amber-500" />
             Điều khiển vòng bảng
           </h3>
-
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-2">
-            <h4 className="text-sm font-semibold text-slate-200">Cấu hình lịch</h4>
-            <p className="text-xs leading-relaxed text-slate-400">
-              Bạn có thể chuẩn bị sân, khung giờ và thời lượng thi đấu ngay từ đầu. Phần sinh trận sẽ chỉ mở khi đã có bảng đấu.
-            </p>
-            <div className="text-[11px] text-slate-500">
-              {tournament?.openingTime
-                ? 'Giờ khai mạc đã có, có thể dùng làm mốc lên lịch.'
-                : 'Nên bổ sung giờ khai mạc ở thông tin giải để việc sinh lịch sát thực tế hơn.'}
-            </div>
-            {tournament && (
-              <Link
-                href={`/admin/${tournament.id}/schedule`}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-amber-500/30 hover:text-amber-300"
-              >
-                <Calendar className="w-3.5 h-3.5 text-amber-500" />
-                Mở cấu hình lịch & sân
-              </Link>
-            )}
-          </div>
 
           <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
             <div>
@@ -443,30 +422,7 @@ export default function GroupsPage() {
             </div>
           )}
 
-          {isAssigned && (
-            <div className="rounded-xl border border-slate-800 bg-slate-950/35 p-4">
-              <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                Phân bảng đã lưu
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {groups.map((group) => (
-                  <div key={group.id} className="rounded-xl border border-slate-800 bg-slate-900/45 p-3">
-                    <div className="mb-2 text-xs font-bold text-amber-500">
-                      {group.name} (Bảng {group.code})
-                    </div>
-                    <div className="space-y-1.5">
-                      {group.groupTeams.map((groupTeam) => (
-                        <div key={groupTeam.id} className="flex justify-between items-center rounded-lg bg-slate-950/40 px-2.5 py-2 text-xs">
-                          <span className="font-semibold text-slate-200">{groupTeam.team.name}</span>
-                          <span className="text-[10px] text-slate-500">#{groupTeam.seedOrder}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
     </div>

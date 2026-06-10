@@ -60,6 +60,12 @@ export class TournamentController {
     return this.validatorService.validateAll(tournamentId);
   }
 
+  @Post(':tournamentId/reset')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
+  async resetTournament(@Param('tournamentId') tournamentId: string, @Request() req: any) {
+    return this.tournamentService.resetTournamentData(tournamentId, req.user.id);
+  }
+
   @Post(':tournamentId/status')
   @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
   async transitionTournamentStatus(

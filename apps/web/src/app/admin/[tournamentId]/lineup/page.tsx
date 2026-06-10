@@ -48,6 +48,11 @@ interface MatchLineup {
   segmentId: string;
   teamId: string;
   players: { playerProfileId: string }[];
+  status?: string;
+  validationResult?: {
+    valid: boolean;
+    errors: string[];
+  } | null;
 }
 
 interface MatchDetails extends MatchListItem {
@@ -171,6 +176,17 @@ export default function LineupPage() {
   const ownedTeamMembers = matchDetails && ownedTeamKey
     ? (ownedTeamKey === 'teamA' ? matchDetails.teamA?.members : matchDetails.teamB?.members)
     : null;
+
+  const getTeamValidationErrors = (teamId: string | null | undefined): string[] => {
+    if (!matchDetails || !teamId) return [];
+    const lineups = matchDetails.lineups.filter((l) => l.teamId === teamId);
+    const invalidLineup = lineups.find((l) => l.status === 'INVALID');
+    return invalidLineup?.validationResult?.errors || [];
+  };
+
+  const teamAErrors = matchDetails ? getTeamValidationErrors(matchDetails.teamAId) : [];
+  const teamBErrors = matchDetails ? getTeamValidationErrors(matchDetails.teamBId) : [];
+  const ownedTeamErrors = matchDetails && ownedTeamKey ? (ownedTeamKey === 'teamA' ? teamAErrors : teamBErrors) : [];
 
   const uxContext = buildTournamentUxContext({
     tournament,
@@ -443,6 +459,20 @@ export default function LineupPage() {
                     <span className="text-[10px] font-normal text-slate-500">Đội của bạn</span>
                   </h4>
 
+                  {ownedTeamErrors.length > 0 && (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3.5 text-xs text-red-400 space-y-2">
+                      <div className="font-bold flex items-center gap-1.5 text-red-400">
+                        <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                        Đội hình chưa hợp lệ theo điều lệ giải:
+                      </div>
+                      <ul className="list-disc pl-4 space-y-1 text-red-300/90 font-medium">
+                        {ownedTeamErrors.map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {matchDetails.segments.map((segment) => (
                     <div key={segment.id} className="space-y-2 rounded-xl border border-slate-850 bg-slate-900/60 p-3 transition-colors hover:border-slate-800">
                       <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
@@ -485,6 +515,20 @@ export default function LineupPage() {
                     <span className="text-[10px] font-normal text-slate-500">Đội A</span>
                   </h4>
 
+                  {teamAErrors.length > 0 && (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3.5 text-xs text-red-400 space-y-2">
+                      <div className="font-bold flex items-center gap-1.5 text-red-400">
+                        <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                        Đội hình chưa hợp lệ theo điều lệ giải:
+                      </div>
+                      <ul className="list-disc pl-4 space-y-1 text-red-300/90 font-medium">
+                        {teamAErrors.map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {activeMatchDetails.segments.map((segment) => (
                     <div key={segment.id} className="space-y-2 rounded-xl border border-slate-850 bg-slate-900/60 p-3 transition-colors hover:border-slate-800">
                       <div className="text-xs font-bold text-slate-300">{segment.name} ({segment.segmentKey})</div>
@@ -525,6 +569,20 @@ export default function LineupPage() {
                     <span>{activeMatchDetails.teamB?.name}</span>
                     <span className="text-[10px] font-normal text-slate-500">Đội B</span>
                   </h4>
+
+                  {teamBErrors.length > 0 && (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3.5 text-xs text-red-400 space-y-2">
+                      <div className="font-bold flex items-center gap-1.5 text-red-400">
+                        <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                        Đội hình chưa hợp lệ theo điều lệ giải:
+                      </div>
+                      <ul className="list-disc pl-4 space-y-1 text-red-300/90 font-medium">
+                        {teamBErrors.map((err, idx) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   {activeMatchDetails.segments.map((segment) => (
                     <div key={segment.id} className="space-y-2 rounded-xl border border-slate-850 bg-slate-900/60 p-3 transition-colors hover:border-slate-800">

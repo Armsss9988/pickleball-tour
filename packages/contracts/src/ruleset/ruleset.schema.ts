@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GenderEnum } from '../enums';
+import { GenderEnum, MatchFormatEnum, EventTypeEnum, CompetitionFormatEnum } from '../enums';
 
 export const SegmentDefinitionSchema = z.object({
   segmentKey: z.string().min(1),
@@ -41,17 +41,55 @@ export const ScoringConfigSchema = z.object({
   sideSwitchAfterSegments: z.number().int().min(0).default(0),
   pointsForWin: z.number().int().min(0).default(3),
   pointsForLoss: z.number().int().min(0).default(0),
+  gamePointScore: z.number().int().positive().optional().nullable(),
+  setsToWin: z.number().int().positive().default(2),
+  lastSetPointScore: z.number().int().positive().optional().nullable(),
+  deuceMaxScore: z.number().int().positive().optional().nullable(),
 });
 export type ScoringConfigDto = z.infer<typeof ScoringConfigSchema>;
 
+/**
+ * Schema dùng để tạo hoặc cập nhật ruleset.
+ *
+ * Constraints:
+ * - matchFormat='relay' chỉ hợp lệ với eventType='TEAM_EVENT'
+ * - eventType='SINGLES' → teamComposition.teamSize phải = 1
+ * - eventType='DOUBLES' → teamComposition.teamSize phải = 2
+ * - teamComposition optional khi SINGLES/DOUBLES (auto-derived)
+ */
 export const CreateRulesetSchema = z.object({
   name: z.string().min(1).max(200),
   sport: z.string().default('pickleball'),
   isTemplate: z.boolean().default(false),
-  segments: z.array(SegmentDefinitionSchema).min(1),
-  teamComposition: TeamCompositionRuleSchema,
-  playerLimits: z.array(PlayerLimitRuleSchema),
+  matchFormat: MatchFormatEnum.default('relay'),
+  eventType: EventTypeEnum.default('TEAM_EVENT'),
+  competitionFormat: CompetitionFormatEnum.default('GROUP_STAGE_KNOCKOUT'),
+  requireCourtConfig: z.boolean().default(true),
+  requireScheduleConfig: z.boolean().default(true),
+  segments: z.array(SegmentDefinitionSchema).default([]),
+  // teamComposition optional — auto-set for SINGLES (1) / DOUBLES (2)
+  teamComposition: TeamCompositionRuleSchema.optional(),
+  playerLimits: z.array(PlayerLimitRuleSchema).default([]),
   overlapRules: z.array(OverlapRuleSchema).default([]),
   scoringConfig: ScoringConfigSchema,
-});
+}).refine(
+  (data) => {
+    // relay chỉ hợp lệ với TEAM_EVENT
+    if (data.matchFormat === 'relay' && data.eventType !== 'TEAM_EVENT') {
+      return false;
+    }
+    return true;
+  },
+  { message: "Thể thức 'Tiếp sức' chỉ dùng được với giải Đồng đội (TEAM_EVENT)" }
+).refine(
+  (data) => {
+    // TEAM_EVENT phải có teamComposition
+    if (data.eventType === 'TEAM_EVENT' && !data.teamComposition) {
+      return false;
+    }
+    return true;
+  },
+  { message: "Giải đồng đội (TEAM_EVENT) phải có cấu hình thành phần đội (teamComposition)" }
+);
+
 export type CreateRulesetDto = z.infer<typeof CreateRulesetSchema>;

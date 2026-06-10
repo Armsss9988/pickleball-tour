@@ -27,7 +27,10 @@ export class BracketService {
       where: { id: tournamentId },
       include: {
         ruleset: {
-          include: { segmentDefinitions: true },
+          include: {
+            segmentDefinitions: true,
+            scoringConfig: true,
+          },
         },
         stages: true,
       },
@@ -38,8 +41,11 @@ export class BracketService {
     }
 
     const ruleset = tournament.ruleset;
-    if (!ruleset || ruleset.segmentDefinitions.length === 0) {
+    if (!ruleset) {
       throw new BadRequestException(`Giải đấu chưa cấu hình luật.`);
+    }
+    if (ruleset.matchFormat === 'relay' && ruleset.segmentDefinitions.length === 0) {
+      throw new BadRequestException('Giải đấu theo thể thức tiếp sức yêu cầu chặng thi đấu.');
     }
 
     // 1. Fetch group standings
@@ -156,23 +162,60 @@ export class BracketService {
           matchId = match.id;
 
           // Create segments for this match
-          const sortedRulesetSegs = [...ruleset.segmentDefinitions].sort(
-            (a, b) => a.orderIndex - b.orderIndex
-          );
-
-          for (const [segIdx, rSeg] of sortedRulesetSegs.entries()) {
+          const format = ruleset.matchFormat || 'relay';
+          if (format === 'relay') {
+            const sortedRulesetSegs = [...ruleset.segmentDefinitions].sort(
+              (a, b) => a.orderIndex - b.orderIndex
+            );
+            for (const [segIdx, rSeg] of sortedRulesetSegs.entries()) {
+              await tx.matchSegment.create({
+                data: {
+                  organizationId: tournament.organizationId,
+                  tournamentId,
+                  matchId: match.id,
+                  segmentOrder: segIdx,
+                  segmentKey: rSeg.segmentKey,
+                  name: rSeg.name,
+                  targetScore: rSeg.targetScore,
+                  status: 'PENDING' as SegmentStatus,
+                },
+              });
+            }
+          } else if (format === 'single_game') {
             await tx.matchSegment.create({
               data: {
                 organizationId: tournament.organizationId,
                 tournamentId,
                 matchId: match.id,
-                segmentOrder: segIdx,
-                segmentKey: rSeg.segmentKey,
-                name: rSeg.name,
-                targetScore: rSeg.targetScore,
+                segmentOrder: 0,
+                segmentKey: 'game',
+                name: 'Trận đấu',
+                targetScore: ruleset.scoringConfig?.winScore ?? 11,
                 status: 'PENDING' as SegmentStatus,
               },
             });
+          } else if (format === 'best_of') {
+            const setsToWin = ruleset.scoringConfig?.setsToWin ?? 2;
+            const maxSets = setsToWin * 2 - 1;
+            const gamePointScore = ruleset.scoringConfig?.gamePointScore ?? 11;
+            const lastSetPointScore = ruleset.scoringConfig?.lastSetPointScore ?? gamePointScore;
+
+            for (let segIdx = 0; segIdx < maxSets; segIdx++) {
+              const isLastSet = segIdx === maxSets - 1;
+              const targetScore = isLastSet ? lastSetPointScore : gamePointScore;
+              await tx.matchSegment.create({
+                data: {
+                  organizationId: tournament.organizationId,
+                  tournamentId,
+                  matchId: match.id,
+                  segmentOrder: segIdx,
+                  segmentKey: `set_${segIdx + 1}`,
+                  name: `Set ${segIdx + 1}`,
+                  targetScore,
+                  status: 'PENDING' as SegmentStatus,
+                },
+              });
+            }
           }
         }
 
@@ -295,11 +338,29 @@ export class BracketService {
       },
     });
 
+    // Sync match team IDs if the match is already created
+    if (targetNode.matchId) {
+      await prisma.match.update({
+        where: { id: targetNode.matchId },
+        data: {
+          teamAId: advanceResult.teamAId,
+          teamBId: advanceResult.teamBId,
+        },
+      });
+    }
+
     // 3. If both team slots are now filled on the target node, initialize its match!
     if (advanceResult.teamAId && advanceResult.teamBId && !targetNode.matchId) {
       const tournament = await prisma.tournament.findUnique({
         where: { id: node.tournamentId },
-        include: { ruleset: { include: { segmentDefinitions: true } } },
+        include: {
+          ruleset: {
+            include: {
+              segmentDefinitions: true,
+              scoringConfig: true,
+            },
+          },
+        },
       });
 
       const ruleset = tournament?.ruleset;
@@ -327,23 +388,60 @@ export class BracketService {
         });
 
         // Create segments for the match
-        const sortedRulesetSegs = [...ruleset.segmentDefinitions].sort(
-          (a, b) => a.orderIndex - b.orderIndex
-        );
-
-        for (const [segIdx, rSeg] of sortedRulesetSegs.entries()) {
+        const format = ruleset.matchFormat || 'relay';
+        if (format === 'relay') {
+          const sortedRulesetSegs = [...ruleset.segmentDefinitions].sort(
+            (a, b) => a.orderIndex - b.orderIndex
+          );
+          for (const [segIdx, rSeg] of sortedRulesetSegs.entries()) {
+            await prisma.matchSegment.create({
+              data: {
+                organizationId: node.organizationId,
+                tournamentId: node.tournamentId,
+                matchId: match.id,
+                segmentOrder: segIdx,
+                segmentKey: rSeg.segmentKey,
+                name: rSeg.name,
+                targetScore: rSeg.targetScore,
+                status: 'PENDING' as SegmentStatus,
+              },
+            });
+          }
+        } else if (format === 'single_game') {
           await prisma.matchSegment.create({
             data: {
               organizationId: node.organizationId,
               tournamentId: node.tournamentId,
               matchId: match.id,
-              segmentOrder: segIdx,
-              segmentKey: rSeg.segmentKey,
-              name: rSeg.name,
-              targetScore: rSeg.targetScore,
+              segmentOrder: 0,
+              segmentKey: 'game',
+              name: 'Trận đấu',
+              targetScore: ruleset.scoringConfig?.winScore ?? 11,
               status: 'PENDING' as SegmentStatus,
             },
           });
+        } else if (format === 'best_of') {
+          const setsToWin = ruleset.scoringConfig?.setsToWin ?? 2;
+          const maxSets = setsToWin * 2 - 1;
+          const gamePointScore = ruleset.scoringConfig?.gamePointScore ?? 11;
+          const lastSetPointScore = ruleset.scoringConfig?.lastSetPointScore ?? gamePointScore;
+
+          for (let segIdx = 0; segIdx < maxSets; segIdx++) {
+            const isLastSet = segIdx === maxSets - 1;
+            const targetScore = isLastSet ? lastSetPointScore : gamePointScore;
+            await prisma.matchSegment.create({
+              data: {
+                organizationId: node.organizationId,
+                tournamentId: node.tournamentId,
+                matchId: match.id,
+                segmentOrder: segIdx,
+                segmentKey: `set_${segIdx + 1}`,
+                name: `Set ${segIdx + 1}`,
+                targetScore,
+                status: 'PENDING' as SegmentStatus,
+              },
+            });
+          }
         }
       }
     }

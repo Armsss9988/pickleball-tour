@@ -72,3 +72,18 @@ export type SegmentStatus = z.infer<typeof SegmentStatusEnum>;
 
 export const LineupStatusEnum = z.enum(['DRAFT', 'SUBMITTED', 'VALID', 'INVALID', 'LOCKED']);
 export type LineupStatus = z.infer<typeof LineupStatusEnum>;
+
+export const MatchFormatEnum = z.enum(['relay', 'single_game', 'best_of']);
+export type MatchFormat = z.infer<typeof MatchFormatEnum>;
+
+export const EventTypeEnum = z.enum(['SINGLES', 'DOUBLES', 'TEAM_EVENT']);
+export type EventType = z.infer<typeof EventTypeEnum>;
+
+export const CompetitionFormatEnum = z.enum([
+  'ROUND_ROBIN',
+  'KNOCKOUT',
+  'GROUP_STAGE_KNOCKOUT',
+  'SWISS',
+]);
+export type CompetitionFormat = z.infer<typeof CompetitionFormatEnum>;
+

@@ -83,12 +83,15 @@ async function main() {
   // ============================================================
   const ruleset = await prisma.tournamentRuleset.upsert({
     where: { id: '00000000-0000-0000-0000-000000000010' },
-    update: {},
+    update: {
+      matchFormat: 'relay',
+    },
     create: {
       id: '00000000-0000-0000-0000-000000000010',
       organizationId: org.id,
       name: 'Thể thức Tiếp sức 24 (GOLAB Standard)',
       sport: 'pickleball',
+      matchFormat: 'relay',
       isTemplate: true,
       createdById: adminUser.id,
     },
@@ -178,7 +181,98 @@ async function main() {
     },
   });
 
-  console.log(`✅ Ruleset template: ${ruleset.name}`);
+  // ============================================================
+  // 4b. Create Single Game Template
+  // ============================================================
+  const singleRuleset = await prisma.tournamentRuleset.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000011' },
+    update: {
+      matchFormat: 'single_game',
+    },
+    create: {
+      id: '00000000-0000-0000-0000-000000000011',
+      organizationId: org.id,
+      name: 'Thể thức Đơn 11 điểm (Standard)',
+      sport: 'pickleball',
+      matchFormat: 'single_game',
+      isTemplate: true,
+      createdById: adminUser.id,
+    },
+  });
+
+  await prisma.teamCompositionRule.upsert({
+    where: { rulesetId: singleRuleset.id },
+    update: {},
+    create: {
+      rulesetId: singleRuleset.id,
+      teamSize: 1,
+      maleCount: 0,
+      femaleCount: 0,
+      allMustPlay: true,
+    },
+  });
+
+  await prisma.scoringConfig.upsert({
+    where: { rulesetId: singleRuleset.id },
+    update: {},
+    create: {
+      rulesetId: singleRuleset.id,
+      winScore: 11,
+      noDeuce: false,
+      sideSwitchAfterSegments: 0,
+      pointsForWin: 3,
+      pointsForLoss: 0,
+      gamePointScore: 11,
+    },
+  });
+
+  // ============================================================
+  // 4c. Create Best Of 3 Sets Template
+  // ============================================================
+  const bo3Ruleset = await prisma.tournamentRuleset.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000012' },
+    update: {
+      matchFormat: 'best_of',
+    },
+    create: {
+      id: '00000000-0000-0000-0000-000000000012',
+      organizationId: org.id,
+      name: 'Thể thức Best of 3 Sets (11đ/set)',
+      sport: 'pickleball',
+      matchFormat: 'best_of',
+      isTemplate: true,
+      createdById: adminUser.id,
+    },
+  });
+
+  await prisma.teamCompositionRule.upsert({
+    where: { rulesetId: bo3Ruleset.id },
+    update: {},
+    create: {
+      rulesetId: bo3Ruleset.id,
+      teamSize: 2,
+      maleCount: 0,
+      femaleCount: 0,
+      allMustPlay: true,
+    },
+  });
+
+  await prisma.scoringConfig.upsert({
+    where: { rulesetId: bo3Ruleset.id },
+    update: {},
+    create: {
+      rulesetId: bo3Ruleset.id,
+      winScore: 2,
+      noDeuce: false,
+      sideSwitchAfterSegments: 0,
+      pointsForWin: 3,
+      pointsForLoss: 0,
+      gamePointScore: 11,
+      setsToWin: 2,
+    },
+  });
+
+  console.log(`✅ Ruleset templates seeded.`);
 
   // ============================================================
   // 5. Create 40 Player Profiles (from 14_SEED_DATA.md)

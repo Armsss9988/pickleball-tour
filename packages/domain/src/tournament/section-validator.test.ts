@@ -63,6 +63,28 @@ describe('section-validator', () => {
     expect(res.errors).toContain('Tên giải đấu không được để trống');
   });
 
+  it('fails validateTournamentInfo when missing openingTime and requireScheduleConfig is true', () => {
+    const data = {
+      ...mockValidData,
+      ruleset: { ...mockValidData.ruleset!, requireScheduleConfig: true },
+      tournamentInfo: { ...mockValidData.tournamentInfo, openingTime: null },
+    };
+    const res = validateTournamentInfo(data);
+    expect(res.valid).toBe(false);
+    expect(res.errors).toContain('Thời gian khai mạc/bắt đầu giải đấu không được để trống');
+  });
+
+  it('passes validateTournamentInfo when missing openingTime and requireScheduleConfig is false', () => {
+    const data = {
+      ...mockValidData,
+      ruleset: { ...mockValidData.ruleset!, requireScheduleConfig: false },
+      tournamentInfo: { ...mockValidData.tournamentInfo, openingTime: null },
+    };
+    const res = validateTournamentInfo(data);
+    expect(res.valid).toBe(true);
+    expect(res.errors).toHaveLength(0);
+  });
+
   it('passes validateRuleset when ruleset is complete', () => {
     const res = validateRuleset(mockValidData);
     expect(res.valid).toBe(true);
@@ -124,6 +146,54 @@ describe('section-validator', () => {
     const res = validateSchedule(data);
     expect(res.valid).toBe(false);
     expect(res.errors).toContain('Có xung đột trùng lịch thi đấu trên cùng một sân');
+  });
+
+  it('passes validateRuleset when matchFormat is single_game and hasSegments is false', () => {
+    const data: TournamentSectionData = {
+      ...mockValidData,
+      ruleset: {
+        ...mockValidData.ruleset!,
+        matchFormat: 'single_game',
+        hasSegments: false,
+      },
+    };
+    const res = validateRuleset(data);
+    expect(res.valid).toBe(true);
+  });
+
+  it('passes validateSchedule when requireCourtConfig is false and matches lack courts or have conflicts', () => {
+    const data: TournamentSectionData = {
+      ...mockValidData,
+      ruleset: {
+        ...mockValidData.ruleset!,
+        requireCourtConfig: false,
+        requireScheduleConfig: true,
+      },
+      schedule: {
+        ...mockValidData.schedule,
+        allMatchesHaveCourt: false,
+        hasCourtConflicts: true,
+      },
+    };
+    const res = validateSchedule(data);
+    expect(res.valid).toBe(true);
+  });
+
+  it('passes validateSchedule when requireScheduleConfig is false and matches lack time', () => {
+    const data: TournamentSectionData = {
+      ...mockValidData,
+      ruleset: {
+        ...mockValidData.ruleset!,
+        requireCourtConfig: true,
+        requireScheduleConfig: false,
+      },
+      schedule: {
+        ...mockValidData.schedule,
+        allMatchesHaveTime: false,
+      },
+    };
+    const res = validateSchedule(data);
+    expect(res.valid).toBe(true);
   });
 
   it('calculates getPublishReadiness and getOperationalReadiness correctly', () => {

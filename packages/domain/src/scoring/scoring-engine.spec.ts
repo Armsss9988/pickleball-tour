@@ -156,4 +156,136 @@ describe('ScoringEngine', () => {
     expect(state.scoreA).toBe(1);
     expect(state.scoreB).toBe(1);
   });
+
+  describe('Single Game Format', () => {
+    const createMockSingleMatch = (overrides?: Partial<MatchDomainInput>): MatchDomainInput => {
+      return {
+        id: 'match-2',
+        teamAId: 'team-a',
+        teamBId: 'team-b',
+        status: 'READY',
+        winnerTeamId: null,
+        winScore: 11,
+        segments: [{ id: 'seg-game', segmentOrder: 0, segmentKey: 'game', name: 'Trận đấu', targetScore: 11, status: 'PENDING' }],
+        scoreEvents: [],
+        lineupLocked: true,
+        matchFormat: 'single_game',
+        noDeuce: false,
+        deuceMaxScore: 15,
+        ...overrides,
+      };
+    };
+
+    it('should handle deuce logic and require 2 points lead', () => {
+      const match = createMockSingleMatch();
+      const events: ScoreEventDomainInput[] = [
+        { id: 'e1', scoringTeamId: 'team-a', scoreAAfter: 10, scoreBAfter: 10, eventNo: 1, isUndone: false, segmentId: 'seg-game' },
+        { id: 'e2', scoringTeamId: 'team-a', scoreAAfter: 11, scoreBAfter: 10, eventNo: 2, isUndone: false, segmentId: 'seg-game' },
+      ];
+      match.scoreEvents = events;
+      let state = ScoringEngine.replayState(match);
+      expect(state.status).toBe('RUNNING');
+      expect(state.segments[0].status).toBe('RUNNING');
+
+      events.push({ id: 'e3', scoringTeamId: 'team-a', scoreAAfter: 12, scoreBAfter: 10, eventNo: 3, isUndone: false, segmentId: 'seg-game' });
+      state = ScoringEngine.replayState(match);
+      expect(state.status).toBe('COMPLETED');
+      expect(state.winnerTeamId).toBe('team-a');
+      expect(state.segments[0].status).toBe('COMPLETED');
+    });
+
+    it('should end the game at max cap regardless of 2 points lead', () => {
+      const match = createMockSingleMatch();
+      const events: ScoreEventDomainInput[] = [
+        { id: 'e1', scoringTeamId: 'team-a', scoreAAfter: 14, scoreBAfter: 14, eventNo: 1, isUndone: false, segmentId: 'seg-game' },
+        { id: 'e2', scoringTeamId: 'team-a', scoreAAfter: 15, scoreBAfter: 14, eventNo: 2, isUndone: false, segmentId: 'seg-game' },
+      ];
+      match.scoreEvents = events;
+      const state = ScoringEngine.replayState(match);
+      expect(state.status).toBe('COMPLETED');
+      expect(state.winnerTeamId).toBe('team-a');
+    });
+  });
+
+  describe('Best Of Sets Format', () => {
+    const createMockBestOfMatch = (overrides?: Partial<MatchDomainInput>): MatchDomainInput => {
+      const segments: MatchSegmentDomainInput[] = [
+        { id: 'set-1', segmentOrder: 0, segmentKey: 'set_1', name: 'Set 1', targetScore: 11, status: 'PENDING' },
+        { id: 'set-2', segmentOrder: 1, segmentKey: 'set_2', name: 'Set 2', targetScore: 11, status: 'PENDING' },
+        { id: 'set-3', segmentOrder: 2, segmentKey: 'set_3', name: 'Set 3', targetScore: 11, status: 'PENDING' },
+      ];
+      return {
+        id: 'match-3',
+        teamAId: 'team-a',
+        teamBId: 'team-b',
+        status: 'READY',
+        winnerTeamId: null,
+        winScore: 2,
+        segments,
+        scoreEvents: [],
+        lineupLocked: true,
+        matchFormat: 'best_of',
+        gamePointScore: 11,
+        setsToWin: 2,
+        lastSetPointScore: 15,
+        noDeuce: true,
+        ...overrides,
+      };
+    };
+
+    it('should track set wins and transition to SEGMENT_BREAK after set 1', () => {
+      const match = createMockBestOfMatch();
+      const events: ScoreEventDomainInput[] = [
+        { id: 'e1', scoringTeamId: 'team-a', scoreAAfter: 11, scoreBAfter: 5, eventNo: 1, isUndone: false, segmentId: 'set-1' },
+      ];
+      match.scoreEvents = events;
+      const state = ScoringEngine.replayState(match);
+      expect(state.scoreA).toBe(1);
+      expect(state.scoreB).toBe(0);
+      expect(state.setsWonA).toBe(1);
+      expect(state.status).toBe('SEGMENT_BREAK');
+      expect(state.segments[0].status).toBe('COMPLETED');
+      expect(state.segments[1].status).toBe('PENDING');
+      expect(state.setScores).toEqual([{ a: 11, b: 5 }]);
+    });
+
+    it('should complete the match when a team wins 2 sets', () => {
+      const match = createMockBestOfMatch();
+      const events: ScoreEventDomainInput[] = [
+        { id: 'e1', scoringTeamId: 'team-a', scoreAAfter: 11, scoreBAfter: 5, eventNo: 1, isUndone: false, segmentId: 'set-1' },
+        { id: 'e2', scoringTeamId: 'team-a', scoreAAfter: 11, scoreBAfter: 8, eventNo: 2, isUndone: false, segmentId: 'set-2' },
+      ];
+      match.scoreEvents = events;
+      const state = ScoringEngine.replayState(match);
+      expect(state.setsWonA).toBe(2);
+      expect(state.status).toBe('COMPLETED');
+      expect(state.winnerTeamId).toBe('team-a');
+      expect(state.setScores).toEqual([
+        { a: 11, b: 5 },
+        { a: 11, b: 8 },
+      ]);
+    });
+
+    it('should apply deciding set target score (lastSetPointScore) for set 3', () => {
+      const match = createMockBestOfMatch();
+      const events: ScoreEventDomainInput[] = [
+        { id: 'e1', scoringTeamId: 'team-a', scoreAAfter: 11, scoreBAfter: 5, eventNo: 1, isUndone: false, segmentId: 'set-1' },
+        { id: 'e2', scoringTeamId: 'team-b', scoreAAfter: 5, scoreBAfter: 11, eventNo: 2, isUndone: false, segmentId: 'set-2' },
+        { id: 'e3', scoringTeamId: 'team-a', scoreAAfter: 11, scoreBAfter: 10, eventNo: 3, isUndone: false, segmentId: 'set-3' },
+      ];
+      match.scoreEvents = events;
+      let state = ScoringEngine.replayState(match);
+      expect(state.status).toBe('RUNNING');
+
+      events.push({ id: 'e4', scoringTeamId: 'team-a', scoreAAfter: 15, scoreBAfter: 10, eventNo: 4, isUndone: false, segmentId: 'set-3' });
+      state = ScoringEngine.replayState(match);
+      expect(state.status).toBe('COMPLETED');
+      expect(state.winnerTeamId).toBe('team-a');
+      expect(state.setScores).toEqual([
+        { a: 11, b: 5 },
+        { a: 5, b: 11 },
+        { a: 15, b: 10 },
+      ]);
+    });
+  });
 });

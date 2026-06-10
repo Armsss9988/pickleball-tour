@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/components/toast';
 import { ConfirmModal } from '@/components/confirm-modal';
 import { PageLoading } from '@/components/loading-skeleton';
-import { Dices, History, Shuffle, Users, CheckCircle2, AlertTriangle } from '@/components/icons';
+import { Dices, History, Shuffle, Users, CheckCircle2, AlertTriangle, Edit3, Save, X } from '@/components/icons';
 import { getCurrentUser } from '@/lib/current-user';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
 import { getActionAccess } from '@/lib/tournament-ux-policy';
@@ -122,7 +122,47 @@ export default function DrawPage() {
   const [loading, setLoading] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editingTeamName, setEditingTeamName] = useState<string>('');
   const currentUser = useMemo(() => getCurrentUser(), []);
+
+  const handleStartEditTeam = (teamId: string, currentName: string) => {
+    setEditingTeamId(teamId);
+    setEditingTeamName(currentName);
+  };
+
+  const handleCancelEditTeam = () => {
+    setEditingTeamId(null);
+    setEditingTeamName('');
+  };
+
+  const handleUpdateTeamName = async (teamId: string) => {
+    const trimmedName = editingTeamName.trim();
+    if (!trimmedName) {
+      toast('Tên đội không được để trống.', 'error');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await apiFetch(`/teams/${teamId}`, {
+        method: 'PATCH',
+        body: {
+          name: trimmedName,
+        },
+      });
+
+      toast('Cập nhật tên đội thành công!', 'success');
+      setEditingTeamId(null);
+      setEditingTeamName('');
+      await loadDraws();
+      await reloadTournament();
+    } catch (error: unknown) {
+      toast(getErrorMessage(error, 'Lỗi cập nhật tên đội.'), 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const loadDraws = useCallback(async () => {
     if (!tournament) return;
@@ -395,17 +435,65 @@ export default function DrawPage() {
             {officialTeams.map((team) => {
               const males = team.members.filter((member) => normalizeGender(member.playerProfile?.gender) === 'MALE').length;
               const females = team.members.filter((member) => normalizeGender(member.playerProfile?.gender) === 'FEMALE').length;
+              const isEditing = editingTeamId === team.id;
 
               return (
                 <div key={team.id} className="rounded-xl border border-slate-800 bg-slate-950/35 p-4 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-bold text-slate-100">{team.name}</div>
-                      <div className="text-[10px] font-semibold text-slate-500">
-                        {males} Nam · {females} Nữ
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2 gap-2">
+                    {isEditing ? (
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <input
+                          type="text"
+                          value={editingTeamName}
+                          onChange={(e) => setEditingTeamName(e.target.value)}
+                          className="premium-input text-xs py-1 px-2 flex-1 min-w-0 bg-slate-900 border-slate-700 text-slate-100 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              void handleUpdateTeamName(team.id);
+                            } else if (e.key === 'Escape') {
+                              handleCancelEditTeam();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateTeamName(team.id)}
+                          disabled={actionLoading}
+                          className="p-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 transition-all"
+                          title="Lưu"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditTeam}
+                          disabled={actionLoading}
+                          className="p-1 rounded bg-slate-800 border border-slate-700 text-slate-450 hover:bg-slate-700 transition-all"
+                          title="Hủy"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                    </div>
-                    <span className="rounded border border-slate-800 bg-slate-900 px-2 py-0.5 text-xs font-mono text-slate-400">
+                    ) : (
+                      <div className="min-w-0 flex-1 group/team">
+                        <div className="flex items-center gap-1.5">
+                          <div className="truncate text-sm font-bold text-slate-100">{team.name}</div>
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditTeam(team.id, team.name)}
+                            className="opacity-0 group-hover/team:opacity-100 transition-opacity p-0.5 rounded text-slate-500 hover:text-amber-500 hover:bg-slate-900"
+                            title="Đổi tên đội"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="text-[10px] font-semibold text-slate-500">
+                          {males} Nam · {females} Nữ
+                        </div>
+                      </div>
+                    )}
+                    <span className="rounded border border-slate-800 bg-slate-900 px-2 py-0.5 text-xs font-mono text-slate-400 flex-shrink-0">
                       {team.code}
                     </span>
                   </div>

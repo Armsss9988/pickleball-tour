@@ -460,8 +460,11 @@ describe('Pickleball Tournament Platform - Full E2E Flow', () => {
       .send({ scoringTeamId: match.teamBId })
       .expect(HttpStatus.CREATED);
 
-     updatedMatch = await prisma.match.findUnique({ where: { id: match.id } });
-     expect(updatedMatch.status).toBe('COMPLETED');
+     updatedMatch = await prisma.match.findUnique({
+       where: { id: match.id },
+       include: { segments: true }
+     });
+     expect(updatedMatch?.status).toBe('COMPLETED');
  
      // 4.5 Undo the winning point at segment boundary to revert status to ONGOING
      await request(app.getHttpServer())
@@ -469,8 +472,11 @@ describe('Pickleball Tournament Platform - Full E2E Flow', () => {
        .set('Authorization', `Bearer ${adminToken}`)
        .send({ reason: 'Bấm nhầm điểm cuối cùng' })
        .expect(HttpStatus.CREATED);
-      updatedMatch = await prisma.match.findUnique({ where: { id: match.id } });
-      expect(updatedMatch.status).toBe('RUNNING');
+      updatedMatch = await prisma.match.findUnique({
+        where: { id: match.id },
+        include: { segments: true }
+      });
+      expect(updatedMatch?.status).toBe('RUNNING');
  
      // Score final point for Team B again
      await request(app.getHttpServer())
@@ -485,9 +491,12 @@ describe('Pickleball Tournament Platform - Full E2E Flow', () => {
        .set('Authorization', `Bearer ${adminToken}`)
        .expect(HttpStatus.CREATED);
  
-     updatedMatch = await prisma.match.findUnique({ where: { id: match.id } });
-     expect(updatedMatch.status).toBe('RESULT_CONFIRMED');
-     expect(updatedMatch.winnerTeamId).toBe(match.teamBId);
+      updatedMatch = await prisma.match.findUnique({
+        where: { id: match.id },
+        include: { segments: true, result: true }
+      });
+      expect(updatedMatch?.status).toBe('RESULT_CONFIRMED');
+      expect(updatedMatch?.winnerTeamId).toBe(match.teamBId);
 
     // 5.2 Admin Override result to Team A winning 21-19 with audit log
     await request(app.getHttpServer())
@@ -504,11 +513,11 @@ describe('Pickleball Tournament Platform - Full E2E Flow', () => {
     // Verify overriden status in DB
     updatedMatch = await prisma.match.findUnique({
       where: { id: match.id },
-      include: { result: true },
+      include: { segments: true, result: true },
     });
-    expect(updatedMatch.winnerTeamId).toBe(match.teamAId);
-    expect(updatedMatch.result?.teamAScore).toBe(21);
-    expect(updatedMatch.result?.teamBScore).toBe(19);
+    expect(updatedMatch?.winnerTeamId).toBe(match.teamAId);
+    expect(updatedMatch?.result?.teamAScore).toBe(21);
+    expect(updatedMatch?.result?.teamBScore).toBe(19);
 
     // Verify audit log exists
     const logs = await prisma.auditLog.findMany({

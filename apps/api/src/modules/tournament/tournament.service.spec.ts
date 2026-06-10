@@ -214,3 +214,124 @@ describe('TournamentService publish guard', () => {
     expect(log).not.toHaveBeenCalled();
   });
 });
+
+describe('TournamentService.resetTournamentData', () => {
+  it('deletes downstream data and sets status to PLAYERS_READY when players exist', async () => {
+    const tx = {
+      awardRecipient: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      bracketNode: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      standing: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      matchResult: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      scoreEvent: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      matchLineupPlayer: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      matchLineup: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      matchSegment: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      match: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      groupTeam: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      teamMember: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      team: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      teamDraw: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      group: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      stage: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      tournamentRegistration: { count: jest.fn().mockResolvedValue(40) },
+      tournament: { update: jest.fn().mockResolvedValue({}) },
+    };
+
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 't1',
+          organizationId: 'org1',
+          name: 'Test Cup',
+          status: 'ONGOING',
+        }),
+      },
+      $transaction: jest.fn(async (cb) => cb(tx)),
+    };
+
+    const auditService = { log: jest.fn() };
+    const validatorService = {
+      markSectionNeedsReview: jest.fn(),
+      validateAll: jest.fn(),
+    };
+
+    const service = new TournamentService(
+      prisma as any,
+      auditService as any,
+      validatorService as any,
+    );
+
+    const result = await service.resetTournamentData('t1', 'u1');
+
+    expect(result).toEqual({ success: true, status: 'PLAYERS_READY' });
+    expect(tx.awardRecipient.deleteMany).toHaveBeenCalledWith({ where: { tournamentId: 't1' } });
+    expect(tx.tournament.update).toHaveBeenCalledWith({
+      where: { id: 't1' },
+      data: { status: 'PLAYERS_READY' },
+    });
+    expect(auditService.log).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'TOURNAMENT_RESET',
+      tournamentId: 't1',
+    }));
+    expect(validatorService.markSectionNeedsReview).toHaveBeenCalledWith('t1', [
+      'ruleset',
+      'players',
+      'teams',
+      'schedule',
+    ]);
+  });
+
+  it('deletes downstream data and sets status to DRAFT when no players exist', async () => {
+    const tx = {
+      awardRecipient: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      bracketNode: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      standing: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      matchResult: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      scoreEvent: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      matchLineupPlayer: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      matchLineup: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      matchSegment: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      match: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      groupTeam: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      teamMember: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      team: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      teamDraw: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      group: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      stage: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      tournamentRegistration: { count: jest.fn().mockResolvedValue(0) },
+      tournament: { update: jest.fn().mockResolvedValue({}) },
+    };
+
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 't1',
+          organizationId: 'org1',
+          name: 'Test Cup',
+          status: 'ONGOING',
+        }),
+      },
+      $transaction: jest.fn(async (cb) => cb(tx)),
+    };
+
+    const auditService = { log: jest.fn() };
+    const validatorService = {
+      markSectionNeedsReview: jest.fn(),
+      validateAll: jest.fn(),
+    };
+
+    const service = new TournamentService(
+      prisma as any,
+      auditService as any,
+      validatorService as any,
+    );
+
+    const result = await service.resetTournamentData('t1', 'u1');
+
+    expect(result).toEqual({ success: true, status: 'DRAFT' });
+    expect(tx.tournament.update).toHaveBeenCalledWith({
+      where: { id: 't1' },
+      data: { status: 'DRAFT' },
+    });
+  });
+});

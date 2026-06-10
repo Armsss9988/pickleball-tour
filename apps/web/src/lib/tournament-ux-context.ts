@@ -82,11 +82,12 @@ function hasRulesetSegments(ruleset?: TournamentRulesetLike | null): boolean {
   return Array.isArray(segments) && segments.length > 0;
 }
 
-function hasTournamentInfo(tournament?: TournamentLike | null): boolean {
+function hasTournamentInfo(tournament?: TournamentLike | null, ruleset?: TournamentRulesetLike | null): boolean {
+  const requireSchedule = (ruleset as any)?.requireScheduleConfig ?? true;
   return isNonEmptyString(tournament?.name)
     && isNonEmptyString(tournament?.slug)
     && isNonEmptyString(tournament?.venueName)
-    && Boolean(tournament?.openingTime);
+    && (!requireSchedule || Boolean(tournament?.openingTime));
 }
 
 function getRequiredCounts(
@@ -120,12 +121,9 @@ function hasKnockoutStage(status: string): boolean {
 }
 
 function hasDependentSetupData(status: string, playerTotal: number, teamCount: number, matchCount: number): boolean {
-  return playerTotal > 0
-    || teamCount > 0
+  return teamCount > 0
     || matchCount > 0
     || [
-      'PLAYER_IMPORT',
-      'PLAYERS_READY',
       'TEAM_DRAW_COMPLETED',
       'GROUP_ASSIGNED',
       'SCHEDULE_GENERATED',
@@ -176,11 +174,11 @@ export function buildTournamentUxContext(input: BuildTournamentUxContextInput): 
     tournamentSlug: tournament?.slug ?? null,
     status,
     publicEnabled: Boolean(tournament?.publicEnabled),
-    hasTournamentInfo: hasTournamentInfo(tournament),
+    hasTournamentInfo: hasTournamentInfo(tournament, ruleset),
     hasValidRuleset: Boolean(
       getComposition(ruleset)
       && hasRulesetScoring(ruleset)
-      && hasRulesetSegments(ruleset),
+      && ((ruleset as any)?.matchFormat !== 'relay' || hasRulesetSegments(ruleset)),
     ),
     hasDependentSetupData: hasDependentSetupData(status, playerTotal, teamCount, matchCount),
     playerTotal,
@@ -199,5 +197,7 @@ export function buildTournamentUxContext(input: BuildTournamentUxContextInput): 
     resultConfirmedMatchCount,
     hasKnockoutStage: hasKnockoutStage(status),
     currentUserOwnsTeam: Boolean(input.currentUserOwnsTeam),
+    requireCourtConfig: (ruleset as any)?.requireCourtConfig ?? true,
+    requireScheduleConfig: (ruleset as any)?.requireScheduleConfig ?? true,
   };
 }

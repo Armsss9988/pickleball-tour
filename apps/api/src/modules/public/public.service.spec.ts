@@ -157,7 +157,6 @@ describe('PublicService', () => {
         where: {
           slug: 'summer-open',
           publicEnabled: true,
-          status: { in: ['COMPLETED', 'PUBLISHED'] },
         },
       }),
     );
@@ -171,19 +170,25 @@ describe('PublicService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('throws when a tournament is public but not finished', async () => {
-    prisma.tournament.findMany.mockResolvedValue([]);
+  it('allows viewing a public tournament even when it is not finished (e.g. running)', async () => {
+    prisma.tournament.findMany.mockResolvedValue([
+      { ...tournament, status: 'RUNNING' }
+    ]);
+    prisma.match.findMany.mockResolvedValue([]);
+    prisma.group.findMany.mockResolvedValue([]);
+    prisma.standing.findMany.mockResolvedValue([]);
+    prisma.team.findMany.mockResolvedValue([]);
+    prisma.bracketNode.findMany.mockResolvedValue([]);
 
     await expect(
-      service.getTournamentCenter('summer-open'),
-    ).rejects.toBeInstanceOf(NotFoundException);
+      service.getTournamentCenter('summer-open')
+    ).resolves.toBeDefined();
 
     expect(prisma.tournament.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           slug: 'summer-open',
           publicEnabled: true,
-          status: { in: ['COMPLETED', 'PUBLISHED'] },
         },
       }),
     );
@@ -221,7 +226,6 @@ describe('PublicService', () => {
         where: {
           id: 't-1',
           publicEnabled: true,
-          status: { in: ['COMPLETED', 'PUBLISHED'] },
         },
       }),
     );

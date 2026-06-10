@@ -261,9 +261,25 @@ export class TeamService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. Delete existing teams and memberships for this tournament
+      // 1. Clean up all downstream dependencies transactionally in order to prevent foreign key violations
+      await tx.awardRecipient.deleteMany({ where: { tournamentId } });
+      await tx.bracketNode.deleteMany({ where: { tournamentId } });
+      await tx.standing.deleteMany({ where: { tournamentId } });
+      await tx.matchResult.deleteMany({ where: { tournamentId } });
+      await tx.scoreEvent.deleteMany({ where: { tournamentId } });
+      await tx.matchLineupPlayer.deleteMany({ where: { tournamentId } });
+      await tx.matchLineup.deleteMany({ where: { tournamentId } });
+      await tx.matchSegment.deleteMany({ where: { tournamentId } });
+      await tx.match.deleteMany({ where: { tournamentId } });
+      await tx.groupTeam.deleteMany({ where: { tournamentId } });
       await tx.teamMember.deleteMany({ where: { tournamentId } });
       await tx.team.deleteMany({ where: { tournamentId } });
+
+      // Revert the tournament status to TEAM_DRAW_COMPLETED because team configuration has been reset/re-created
+      await tx.tournament.update({
+        where: { id: tournamentId },
+        data: { status: 'TEAM_DRAW_COMPLETED' },
+      });
 
       const confirmedTeams = [];
 
@@ -460,8 +476,25 @@ export class TeamService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // Clean up all downstream dependencies transactionally in order to prevent foreign key violations
+      await tx.awardRecipient.deleteMany({ where: { tournamentId } });
+      await tx.bracketNode.deleteMany({ where: { tournamentId } });
+      await tx.standing.deleteMany({ where: { tournamentId } });
+      await tx.matchResult.deleteMany({ where: { tournamentId } });
+      await tx.scoreEvent.deleteMany({ where: { tournamentId } });
+      await tx.matchLineupPlayer.deleteMany({ where: { tournamentId } });
+      await tx.matchLineup.deleteMany({ where: { tournamentId } });
+      await tx.matchSegment.deleteMany({ where: { tournamentId } });
+      await tx.match.deleteMany({ where: { tournamentId } });
+      await tx.groupTeam.deleteMany({ where: { tournamentId } });
       await tx.teamMember.deleteMany({ where: { tournamentId } });
       await tx.team.deleteMany({ where: { tournamentId } });
+
+      // Revert the tournament status to TEAM_DRAW_COMPLETED because team configuration has been reset/re-created
+      await tx.tournament.update({
+        where: { id: tournamentId },
+        data: { status: 'TEAM_DRAW_COMPLETED' },
+      });
 
       const confirmedTeams = [];
 

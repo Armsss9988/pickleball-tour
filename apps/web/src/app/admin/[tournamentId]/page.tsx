@@ -439,8 +439,8 @@ export default function AdminDashboardPage() {
   const captainAction = tournament
     ? {
         access: getActionAccess('submitLineup', 'captain', { ...uxContext, currentUserOwnsTeam: true }),
-        href: `/admin/${tournament.id}/lineup`,
-        label: uxContext.matchCount > 0 ? 'Vào khu lineup đội' : 'Chưa có trận để nhập lineup',
+        href: `/admin/${tournament.id}/matches`,
+        label: uxContext.matchCount > 0 ? 'Xem danh sách trận đội' : 'Chưa có trận để nhập lineup',
         description: uxContext.matchCount > 0
           ? 'Kiểm tra các trận đội của bạn cần khai báo hoặc đã khóa lineup.'
           : 'BTC cần sinh lịch thi đấu trước khi HLV/Captain có thể thao tác.',
@@ -782,8 +782,8 @@ export default function AdminDashboardPage() {
             trend={role === 'scorer'
               ? { value: `${stats.completedMatches} đã xong`, type: stats.completedMatches > 0 ? 'success' as const : 'info' as const }
               : { value: `${uxContext.lineupReadyCount} đã sẵn sàng`, type: uxContext.lineupReadyCount > 0 ? 'success' as const : 'info' as const }}
-            href={getAreaAccess(role === 'scorer' ? 'scoring' : 'lineup', role, uxContext).allowed
-              ? (role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/lineup`)
+            href={getAreaAccess(role === 'scorer' ? 'scoring' : 'matches', role, uxContext).allowed
+              ? (role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/matches`)
               : undefined}
           />
         )}
@@ -803,8 +803,8 @@ export default function AdminDashboardPage() {
             value={role === 'scorer' ? stats.completedMatches : uxContext.lineupReadyCount}
             color="violet"
             trend={{ value: 'Chi tiết', type: 'info' as const }}
-            href={getAreaAccess(role === 'scorer' ? 'scoring' : 'lineup', role, uxContext).allowed
-              ? (role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/lineup`)
+            href={getAreaAccess(role === 'scorer' ? 'scoring' : 'matches', role, uxContext).allowed
+              ? (role === 'scorer' ? `/admin/${tournament.id}/scoring` : `/admin/${tournament.id}/matches`)
               : undefined}
           />
         )}
@@ -1010,8 +1010,8 @@ export default function AdminDashboardPage() {
               )) : (
                 <ActionGate
                   access={captainAction?.access ?? { allowed: false }}
-                  href={captainAction?.href ?? `/admin/${tournament.id}/lineup`}
-                  label={captainAction?.label ?? 'Vào khu lineup đội'}
+                  href={captainAction?.href ?? `/admin/${tournament.id}/matches`}
+                  label={captainAction?.label ?? 'Xem danh sách trận đội'}
                   description={captainAction?.description ?? 'Theo dõi các trận của đội.'}
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">

@@ -86,6 +86,11 @@ export class MatchService {
         },
         result: true,
         court: true,
+        tournament: {
+          include: {
+            ruleset: true,
+          },
+        },
       },
     });
 
@@ -109,12 +114,13 @@ export class MatchService {
       where: { matchId },
     });
 
-    const expectedLineupCount = match.segments.length * 2;
+    const format = match.tournament?.ruleset?.matchFormat || 'relay';
+    const expectedLineupCount = format === 'relay' ? match.segments.length * 2 : 2;
     const allLocked = lineups.length === expectedLineupCount && lineups.every((l) => l.status === 'LOCKED');
 
     if (!allLocked) {
       throw new BadRequestException(
-        `Đội hình (lineup) chưa sẵn sàng. Cần phải khóa (lock) đội hình cho tất cả các chặng đấu của cả 2 đội.`
+        `Đội hình (lineup) chưa sẵn sàng. Cần phải khóa (lock) đội hình của cả 2 đội.`
       );
     }
 

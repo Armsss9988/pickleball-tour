@@ -369,6 +369,63 @@ export class TournamentService {
   }
 
   /**
+   * Resets all downstream tournament data (teams, matches, brackets, standings, draws, stages, groups)
+   * to allow editing ruleset again.
+   */
+  async resetTournamentData(id: string, userId: string) {
+    const t = await this.findOne(id);
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Delete all downstream data transactionally
+      await tx.awardRecipient.deleteMany({ where: { tournamentId: id } });
+      await tx.bracketNode.deleteMany({ where: { tournamentId: id } });
+      await tx.standing.deleteMany({ where: { tournamentId: id } });
+      await tx.matchResult.deleteMany({ where: { tournamentId: id } });
+      await tx.scoreEvent.deleteMany({ where: { tournamentId: id } });
+      await tx.matchLineupPlayer.deleteMany({ where: { tournamentId: id } });
+      await tx.matchLineup.deleteMany({ where: { tournamentId: id } });
+      await tx.matchSegment.deleteMany({ where: { tournamentId: id } });
+      await tx.match.deleteMany({ where: { tournamentId: id } });
+      await tx.groupTeam.deleteMany({ where: { tournamentId: id } });
+      await tx.teamMember.deleteMany({ where: { tournamentId: id } });
+      await tx.team.deleteMany({ where: { tournamentId: id } });
+      await tx.teamDraw.deleteMany({ where: { tournamentId: id } });
+      await tx.group.deleteMany({ where: { tournamentId: id } });
+      await tx.stage.deleteMany({ where: { tournamentId: id } });
+
+      // 2. Count registered players
+      const registrationsCount = await tx.tournamentRegistration.count({
+        where: { tournamentId: id },
+      });
+
+      // 3. Revert status back to PLAYERS_READY if players exist, otherwise DRAFT
+      const resetStatus: TournamentStatus = registrationsCount > 0 ? 'PLAYERS_READY' : 'DRAFT';
+
+      await tx.tournament.update({
+        where: { id: id },
+        data: { status: resetStatus as any },
+      });
+
+      // 4. Log audit event
+      await this.auditService.log({
+        organizationId: t.organizationId,
+        tournamentId: id,
+        actorUserId: userId,
+        action: 'TOURNAMENT_RESET',
+        entityType: 'Tournament',
+        entityId: id,
+        beforeData: { status: t.status },
+        afterData: { status: resetStatus },
+      });
+
+      // 5. Trigger section validations (ruleset, players, teams, schedule)
+      await this.validatorService.markSectionNeedsReview(id, ['ruleset', 'players', 'teams', 'schedule']);
+      
+      return { success: true, status: resetStatus };
+    });
+  }
+
+  /**
    * Transitions the status of a tournament using the pure Domain rules.
    */
   async transitionStatus(

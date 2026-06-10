@@ -9,14 +9,29 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 export class PublicService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getPublicTournamentSummaryById(tournamentId: string) {
-    const publicStatuses = ['COMPLETED', 'PUBLISHED'] as const;
+  async getPublicTournaments() {
+    return this.prisma.tournament.findMany({
+      where: {
+        publicEnabled: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        venueName: true,
+        openingTime: true,
+        status: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
 
+  async getPublicTournamentSummaryById(tournamentId: string) {
     const tournaments = await this.prisma.tournament.findMany({
       where: {
         id: tournamentId,
         publicEnabled: true,
-        status: { in: [...publicStatuses] },
       },
       select: {
         id: true,
@@ -64,13 +79,10 @@ export class PublicService {
   }
 
   async getTournamentCenter(slug: string) {
-    const publicStatuses = ['COMPLETED', 'PUBLISHED'] as const;
-
     const tournaments = await this.prisma.tournament.findMany({
       where: {
         slug,
         publicEnabled: true,
-        status: { in: [...publicStatuses] },
       },
       select: {
         id: true,

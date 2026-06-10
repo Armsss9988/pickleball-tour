@@ -46,7 +46,7 @@ export class ScoringController {
   }
 
   @Post('matches/:matchId/override-result')
-  @Roles('SUPER_ADMIN', 'platform_owner')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
   async overrideResult(
     @Param('matchId') matchId: string,
     @Request() req: any,

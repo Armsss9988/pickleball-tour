@@ -74,6 +74,8 @@ export interface TournamentUxContext {
   resultConfirmedMatchCount: number;
   hasKnockoutStage: boolean;
   currentUserOwnsTeam: boolean;
+  requireCourtConfig?: boolean;
+  requireScheduleConfig?: boolean;
 }
 
 export interface AccessResult {
@@ -386,15 +388,18 @@ export function getDependencyWarnings(context: TournamentUxContext): DependencyW
     });
   }
 
-  if (!context.groupsAssigned || !context.scheduleConfigReady || context.matchCount === 0) {
+  const needsScheduleConfig = context.requireScheduleConfig ?? true;
+  const isScheduleConfigured = !needsScheduleConfig || context.scheduleConfigReady;
+
+  if (!context.groupsAssigned || !isScheduleConfigured || context.matchCount === 0) {
     warnings.push({
       area: 'schedule',
       severity: 'warning',
       label: 'Lịch thi đấu chưa sẵn sàng',
       reason: !context.groupsAssigned
         ? 'Cần phân bảng trước khi cấu hình lịch và sinh trận đấu.'
-        : !context.scheduleConfigReady
-          ? 'Cần cấu hình sân hoặc khung giờ trước khi sinh lịch thi đấu.'
+        : !isScheduleConfigured
+          ? 'Cần cấu hình thời gian khai mạc giải đấu trước khi tiếp tục.'
           : 'Chưa có trận đấu nào được sinh từ cấu hình hiện tại.',
       actionLabel: 'Quản lý lịch & sân',
       actionHref: `/admin/${context.tournamentId}/schedule`,

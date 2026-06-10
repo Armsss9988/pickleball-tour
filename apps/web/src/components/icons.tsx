@@ -59,6 +59,11 @@ export {
   FileDown,
   FileSpreadsheet,
   ArrowLeftRight,
+  User,
+  UsersRound,
+  RotateCcw,
+  Layers,
+  Swords,
 } from 'lucide-react';
 
 export type { LucideIcon } from 'lucide-react';

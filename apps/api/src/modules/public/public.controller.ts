@@ -5,6 +5,11 @@ import { PublicService } from './public.service';
 export class PublicController {
   constructor(private readonly publicService: PublicService) {}
 
+  @Get()
+  async getPublicTournaments() {
+    return this.publicService.getPublicTournaments();
+  }
+
   @Get('by-id/:tournamentId')
   async getTournamentSummaryById(@Param('tournamentId') tournamentId: string) {
     return this.publicService.getPublicTournamentSummaryById(tournamentId);

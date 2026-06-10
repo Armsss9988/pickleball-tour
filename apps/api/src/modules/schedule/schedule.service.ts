@@ -63,6 +63,7 @@ export class ScheduleService {
         ruleset: {
           include: {
             segmentDefinitions: true,
+            scoringConfig: true,
           },
         },
         groups: {
@@ -78,10 +79,11 @@ export class ScheduleService {
     }
 
     const ruleset = tournament.ruleset;
-    if (!ruleset || ruleset.segmentDefinitions.length === 0) {
-      throw new BadRequestException(
-        `Giải đấu chưa có cấu hình luật hoặc chặng thi đấu.`,
-      );
+    if (!ruleset) {
+      throw new BadRequestException('Giải đấu chưa có cấu hình luật.');
+    }
+    if (ruleset.matchFormat === 'relay' && ruleset.segmentDefinitions.length === 0) {
+      throw new BadRequestException('Giải đấu theo thể thức tiếp sức yêu cầu chặng thi đấu.');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -166,25 +168,62 @@ export class ScheduleService {
           });
 
           // Create segments for this match
-          const sortedRulesetSegs = [...ruleset.segmentDefinitions].sort(
-            (a, b) => a.orderIndex - b.orderIndex,
-          );
-
-          for (let segIdx = 0; segIdx < sortedRulesetSegs.length; segIdx++) {
-            const rSeg = sortedRulesetSegs[segIdx];
-            if (!rSeg) continue;
+          const format = ruleset.matchFormat || 'relay';
+          if (format === 'relay') {
+            const sortedRulesetSegs = [...ruleset.segmentDefinitions].sort(
+              (a, b) => a.orderIndex - b.orderIndex,
+            );
+            for (let segIdx = 0; segIdx < sortedRulesetSegs.length; segIdx++) {
+              const rSeg = sortedRulesetSegs[segIdx];
+              if (!rSeg) continue;
+              await tx.matchSegment.create({
+                data: {
+                  organizationId: tournament.organizationId,
+                  tournamentId,
+                  matchId: match.id,
+                  segmentOrder: segIdx,
+                  segmentKey: rSeg.segmentKey,
+                  name: rSeg.name,
+                  targetScore: rSeg.targetScore,
+                  status: 'PENDING' as SegmentStatus,
+                },
+              });
+            }
+          } else if (format === 'single_game') {
             await tx.matchSegment.create({
               data: {
                 organizationId: tournament.organizationId,
                 tournamentId,
                 matchId: match.id,
-                segmentOrder: segIdx,
-                segmentKey: rSeg.segmentKey,
-                name: rSeg.name,
-                targetScore: rSeg.targetScore,
+                segmentOrder: 0,
+                segmentKey: 'game',
+                name: 'Trận đấu',
+                targetScore: ruleset.scoringConfig?.winScore ?? 11,
                 status: 'PENDING' as SegmentStatus,
               },
             });
+          } else if (format === 'best_of') {
+            const setsToWin = ruleset.scoringConfig?.setsToWin ?? 2;
+            const maxSets = setsToWin * 2 - 1;
+            const gamePointScore = ruleset.scoringConfig?.gamePointScore ?? 11;
+            const lastSetPointScore = ruleset.scoringConfig?.lastSetPointScore ?? gamePointScore;
+
+            for (let segIdx = 0; segIdx < maxSets; segIdx++) {
+              const isLastSet = segIdx === maxSets - 1;
+              const targetScore = isLastSet ? lastSetPointScore : gamePointScore;
+              await tx.matchSegment.create({
+                data: {
+                  organizationId: tournament.organizationId,
+                  tournamentId,
+                  matchId: match.id,
+                  segmentOrder: segIdx,
+                  segmentKey: `set_${segIdx + 1}`,
+                  name: `Set ${segIdx + 1}`,
+                  targetScore,
+                  status: 'PENDING' as SegmentStatus,
+                },
+              });
+            }
           }
 
           matchNoCounter++;

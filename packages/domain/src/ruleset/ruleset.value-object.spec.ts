@@ -31,9 +31,9 @@ describe('Ruleset Value Object', () => {
       },
     };
     const ruleset = new Ruleset(neutralRuleset as any);
-    expect(ruleset.teamComposition.teamSize).toBe(6);
-    expect(ruleset.teamComposition.maleCount).toBe(0);
-    expect(ruleset.teamComposition.femaleCount).toBe(0);
+    expect(ruleset.teamComposition!.teamSize).toBe(6);
+    expect(ruleset.teamComposition!.maleCount).toBe(0);
+    expect(ruleset.teamComposition!.femaleCount).toBe(0);
   });
 
   it('should throw validation error for non-sequential segment orderIndex', () => {
@@ -62,4 +62,114 @@ describe('Ruleset Value Object', () => {
     };
     expect(() => new Ruleset(invalidScoresRuleset as any)).toThrow('phải lớn hơn chặng trước đó');
   });
+
+  it('should validate single_game ruleset successfully', () => {
+    const validSingle = {
+      name: 'Trận đơn 11đ',
+      sport: 'pickleball',
+      matchFormat: 'single_game',
+      segments: [],
+      teamComposition: {
+        teamSize: 1,
+        maleCount: 0,
+        femaleCount: 0,
+        allMustPlay: true,
+      },
+      playerLimits: [],
+      overlapRules: [],
+      scoringConfig: {
+        winScore: 11,
+        noDeuce: false,
+        deuceMaxScore: 15,
+        pointsForWin: 3,
+        pointsForLoss: 0,
+      },
+    };
+    const ruleset = new Ruleset(validSingle as any);
+    expect(ruleset.matchFormat).toBe('single_game');
+    expect(ruleset.scoringConfig.winScore).toBe(11);
+  });
+
+  it('should throw validation error for single_game ruleset with segments', () => {
+    const invalidSingle = {
+      name: 'Trận đơn lỗi',
+      sport: 'pickleball',
+      matchFormat: 'single_game',
+      segments: [
+        { segmentKey: 'seg_1', name: 'Chặng 1', targetScore: 8, playerCount: 2, genderRule: 'any', orderIndex: 0 },
+      ],
+      teamComposition: {
+        teamSize: 1,
+        maleCount: 0,
+        femaleCount: 0,
+        allMustPlay: true,
+      },
+      playerLimits: [],
+      overlapRules: [],
+      scoringConfig: {
+        winScore: 11,
+        noDeuce: false,
+        pointsForWin: 3,
+        pointsForLoss: 0,
+      },
+    };
+    expect(() => new Ruleset(invalidSingle as any)).toThrow('Thể thức trận đơn không được cấu hình các chặng thi đấu.');
+  });
+
+  it('should validate best_of ruleset successfully', () => {
+    const validBestOf = {
+      name: 'BO3 Sets 11đ',
+      sport: 'pickleball',
+      matchFormat: 'best_of',
+      segments: [],
+      teamComposition: {
+        teamSize: 2,
+        maleCount: 0,
+        femaleCount: 0,
+        allMustPlay: true,
+      },
+      playerLimits: [],
+      overlapRules: [],
+      scoringConfig: {
+        winScore: 2,
+        noDeuce: false,
+        gamePointScore: 11,
+        setsToWin: 2,
+        lastSetPointScore: 15,
+        deuceMaxScore: 17,
+        pointsForWin: 3,
+        pointsForLoss: 0,
+      },
+    };
+    const ruleset = new Ruleset(validBestOf as any);
+    expect(ruleset.matchFormat).toBe('best_of');
+    expect(ruleset.scoringConfig.setsToWin).toBe(2);
+  });
+
+  it('should throw validation error for best_of ruleset with invalid setsToWin', () => {
+    const invalidBestOf = {
+      name: 'BO3 Sets lỗi',
+      sport: 'pickleball',
+      matchFormat: 'best_of',
+      segments: [],
+      teamComposition: {
+        teamSize: 2,
+        maleCount: 0,
+        femaleCount: 0,
+        allMustPlay: true,
+      },
+      playerLimits: [],
+      overlapRules: [],
+      scoringConfig: {
+        winScore: 2,
+        noDeuce: false,
+        gamePointScore: 11,
+        setsToWin: 10,
+        pointsForWin: 3,
+        pointsForLoss: 0,
+      },
+    };
+    expect(() => new Ruleset(invalidBestOf as any)).toThrow('Số set cần thắng để thắng trận đấu phải từ 1 đến 5.');
+  });
 });
+

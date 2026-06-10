@@ -84,10 +84,10 @@ export class RulesetService {
       throw new NotFoundException(`Không tìm thấy giải đấu.`);
     }
 
-    // Lock check: Only allow updates in DRAFT status
-    if (tournament.status !== 'DRAFT') {
+    // Lock check: Allow updates in DRAFT, PLAYER_IMPORT, and PLAYERS_READY statuses
+    if (!['DRAFT', 'PLAYER_IMPORT', 'PLAYERS_READY'].includes(tournament.status)) {
       throw new BadRequestException(
-        `Không thể sửa đổi cấu hình luật khi giải đấu đã vượt qua trạng thái nháp (Draft).`
+        `Không thể sửa đổi cấu hình luật khi giải đấu đã vượt qua trạng thái chuẩn bị (đã bốc thăm hoặc xếp lịch).`
       );
     }
 
@@ -121,6 +121,11 @@ export class RulesetService {
             organizationId: tournament.organizationId,
             name: dto.name,
             sport: dto.sport || 'pickleball',
+            matchFormat: dto.matchFormat || 'relay',
+            eventType: (dto.eventType || 'TEAM_EVENT') as any,
+            competitionFormat: (dto.competitionFormat || 'GROUP_STAGE_KNOCKOUT') as any,
+            requireCourtConfig: dto.requireCourtConfig ?? true,
+            requireScheduleConfig: dto.requireScheduleConfig ?? true,
             isTemplate: false,
             createdById: userId,
           },
@@ -133,10 +138,17 @@ export class RulesetService {
           data: { rulesetId },
         });
       } else if (rulesetId) {
-        // Update ruleset name
+        // Update ruleset name and format fields
         await tx.tournamentRuleset.update({
           where: { id: rulesetId },
-          data: { name: dto.name },
+          data: {
+            name: dto.name,
+            matchFormat: dto.matchFormat || 'relay',
+            eventType: (dto.eventType || 'TEAM_EVENT') as any,
+            competitionFormat: (dto.competitionFormat || 'GROUP_STAGE_KNOCKOUT') as any,
+            requireCourtConfig: dto.requireCourtConfig ?? true,
+            requireScheduleConfig: dto.requireScheduleConfig ?? true,
+          },
         });
 
         // Delete existing nested configurations to clean and re-insert
@@ -165,16 +177,18 @@ export class RulesetService {
         });
       }
 
-      // Insert Team Composition
-      await tx.teamCompositionRule.create({
-        data: {
-          rulesetId: activeRulesetId,
-          teamSize: dto.teamComposition.teamSize,
-          maleCount: dto.teamComposition.maleCount,
-          femaleCount: dto.teamComposition.femaleCount,
-          allMustPlay: dto.teamComposition.allMustPlay ?? true,
-        },
-      });
+      // Insert Team Composition (only for TEAM_EVENT)
+      if (dto.teamComposition) {
+        await tx.teamCompositionRule.create({
+          data: {
+            rulesetId: activeRulesetId,
+            teamSize: dto.teamComposition.teamSize,
+            maleCount: dto.teamComposition.maleCount,
+            femaleCount: dto.teamComposition.femaleCount,
+            allMustPlay: dto.teamComposition.allMustPlay ?? true,
+          },
+        });
+      }
 
       // Insert Player Limits
       for (const limit of dto.playerLimits) {
@@ -210,6 +224,10 @@ export class RulesetService {
           sideSwitchAfterSegments: dto.scoringConfig.sideSwitchAfterSegments ?? 0,
           pointsForWin: dto.scoringConfig.pointsForWin ?? 3,
           pointsForLoss: dto.scoringConfig.pointsForLoss ?? 0,
+          gamePointScore: dto.scoringConfig.gamePointScore,
+          setsToWin: dto.scoringConfig.setsToWin ?? 2,
+          lastSetPointScore: dto.scoringConfig.lastSetPointScore,
+          deuceMaxScore: dto.scoringConfig.deuceMaxScore,
         },
       });
 

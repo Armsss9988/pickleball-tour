@@ -10,7 +10,12 @@ export class RulesetMapper {
       name: raw.name,
       sport: raw.sport || 'pickleball',
       isTemplate: raw.isTemplate ?? false,
-      segments: raw.segmentDefinitions.map((s: any) => ({
+      matchFormat: raw.matchFormat || 'relay',
+      eventType: raw.eventType || 'TEAM_EVENT',
+      competitionFormat: raw.competitionFormat || 'GROUP_STAGE_KNOCKOUT',
+      requireCourtConfig: raw.requireCourtConfig ?? true,
+      requireScheduleConfig: raw.requireScheduleConfig ?? true,
+      segments: (raw.segmentDefinitions || []).map((s: any) => ({
         segmentKey: s.segmentKey,
         name: s.name,
         targetScore: s.targetScore,
@@ -19,18 +24,21 @@ export class RulesetMapper {
         orderIndex: s.orderIndex,
         isDrawable: s.isDrawable ?? true,
       })),
-      teamComposition: {
-        teamSize: raw.teamCompositionRule.teamSize,
-        maleCount: raw.teamCompositionRule.maleCount,
-        femaleCount: raw.teamCompositionRule.femaleCount,
-        allMustPlay: raw.teamCompositionRule.allMustPlay ?? true,
-      },
-      playerLimits: raw.playerLimitRules.map((l: any) => ({
+      // teamComposition optional for SINGLES/DOUBLES
+      teamComposition: raw.teamCompositionRule
+        ? {
+            teamSize: raw.teamCompositionRule.teamSize,
+            maleCount: raw.teamCompositionRule.maleCount,
+            femaleCount: raw.teamCompositionRule.femaleCount,
+            allMustPlay: raw.teamCompositionRule.allMustPlay ?? true,
+          }
+        : undefined,
+      playerLimits: (raw.playerLimitRules || []).map((l: any) => ({
         gender: l.gender,
         minSegments: l.minSegments,
         maxSegments: l.maxSegments,
       })),
-      overlapRules: raw.overlapRules.map((o: any) => ({
+      overlapRules: (raw.overlapRules || []).map((o: any) => ({
         segmentAKey: o.segmentAKey,
         segmentBKey: o.segmentBKey,
         gender: o.gender,
@@ -42,6 +50,10 @@ export class RulesetMapper {
         sideSwitchAfterSegments: raw.scoringConfig.sideSwitchAfterSegments ?? 0,
         pointsForWin: raw.scoringConfig.pointsForWin ?? 3,
         pointsForLoss: raw.scoringConfig.pointsForLoss ?? 0,
+        gamePointScore: raw.scoringConfig.gamePointScore,
+        setsToWin: raw.scoringConfig.setsToWin ?? 2,
+        lastSetPointScore: raw.scoringConfig.lastSetPointScore,
+        deuceMaxScore: raw.scoringConfig.deuceMaxScore,
       },
     };
     return new DomainRuleset(dto);

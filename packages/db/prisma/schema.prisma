@@ -110,6 +110,19 @@ enum LineupStatus {
   LOCKED
 }
 
+enum EventType {
+  SINGLES
+  DOUBLES
+  TEAM_EVENT
+}
+
+enum CompetitionFormat {
+  ROUND_ROBIN
+  KNOCKOUT
+  GROUP_STAGE_KNOCKOUT
+  SWISS
+}
+
 // ============================================================
 // IDENTITY TABLES
 // ============================================================
@@ -272,9 +285,14 @@ model TournamentRuleset {
   version        Int      @default(1)
   sport          String   @default("pickleball")
   isTemplate     Boolean  @default(false) @map("is_template")
-  createdById    String?  @map("created_by")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  matchFormat            String            @default("relay") @map("match_format")
+  eventType              EventType         @default(TEAM_EVENT) @map("event_type")
+  competitionFormat      CompetitionFormat @default(GROUP_STAGE_KNOCKOUT) @map("competition_format")
+  requireCourtConfig     Boolean           @default(true) @map("require_court_config")
+  requireScheduleConfig  Boolean           @default(true) @map("require_schedule_config")
+  createdById            String?           @map("created_by")
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
 
   organization        Organization         @relation(fields: [organizationId], references: [id])
   createdBy           User?                @relation("RulesetCreatedBy", fields: [createdById], references: [id])
@@ -358,6 +376,10 @@ model ScoringConfig {
   sideSwitchAfterSegments Int     @default(0) @map("side_switch_after_segments") // Switch sides after N segments
   pointsForWin            Int     @default(3) @map("points_for_win") // Standing points for win
   pointsForLoss           Int     @default(0) @map("points_for_loss") // Standing points for loss
+  gamePointScore          Int?    @map("game_point_score")
+  setsToWin               Int?    @default(2) @map("sets_to_win")
+  lastSetPointScore       Int?    @map("last_set_point_score")
+  deuceMaxScore           Int?    @map("deuce_max_score")
 
   ruleset TournamentRuleset @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
 
@@ -726,6 +748,9 @@ model MatchResult {
   winnerTeamId   String    @map("winner_team_id")
   teamAScore     Int       @map("team_a_score")
   teamBScore     Int       @map("team_b_score")
+  setsWonA       Int?      @map("sets_won_a")
+  setsWonB       Int?      @map("sets_won_b")
+  setScores      Json?     @map("set_scores")
   confirmedById  String?   @map("confirmed_by")
   confirmedAt    DateTime? @map("confirmed_at")
   metadata       Json      @default("{}")

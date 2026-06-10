@@ -17,6 +17,9 @@ export interface TournamentSectionData {
     teamSize: number;
     maleCount: number;
     femaleCount: number;
+    matchFormat?: string;
+    requireCourtConfig?: boolean;
+    requireScheduleConfig?: boolean;
   } | null;
   players: {
     total: number;
@@ -39,10 +42,13 @@ export interface TournamentSectionData {
 export function validateTournamentInfo(data: TournamentSectionData): SectionValidationResult {
   const errors: string[] = [];
   const info = data.tournamentInfo;
+  const ruleset = data.ruleset;
+  const requireSchedule = ruleset?.requireScheduleConfig ?? true;
+
   if (!info.name || info.name.trim() === '') {
     errors.push('Tên giải đấu không được để trống');
   }
-  if (!info.openingTime) {
+  if (requireSchedule && !info.openingTime) {
     errors.push('Thời gian khai mạc/bắt đầu giải đấu không được để trống');
   }
   if (!info.venueName || info.venueName.trim() === '') {
@@ -62,7 +68,8 @@ export function validateRuleset(data: TournamentSectionData): SectionValidationR
   if (!ruleset || !ruleset.exists) {
     errors.push('Chưa cấu hình luật thi đấu (ruleset)');
   } else {
-    if (!ruleset.hasSegments) {
+    const format = ruleset.matchFormat ?? 'relay';
+    if (format === 'relay' && !ruleset.hasSegments) {
       errors.push('Luật thi đấu chưa cấu hình các chặng thi đấu');
     }
     if (!ruleset.hasScoringConfig) {
@@ -141,17 +148,21 @@ export function validateTeams(data: TournamentSectionData): SectionValidationRes
 export function validateSchedule(data: TournamentSectionData): SectionValidationResult {
   const errors: string[] = [];
   const schedule = data.schedule;
+  const ruleset = data.ruleset;
+
+  const reqCourt = ruleset?.requireCourtConfig ?? true;
+  const reqSchedule = ruleset?.requireScheduleConfig ?? true;
 
   if (schedule.matchCount === 0) {
     errors.push('Chưa tạo lịch thi đấu (chưa sinh các trận đấu)');
   } else {
-    if (!schedule.allMatchesHaveTime) {
+    if (reqSchedule && !schedule.allMatchesHaveTime) {
       errors.push('Có trận đấu chưa được xếp giờ thi đấu');
     }
-    if (!schedule.allMatchesHaveCourt) {
+    if (reqCourt && !schedule.allMatchesHaveCourt) {
       errors.push('Có trận đấu chưa được xếp sân thi đấu');
     }
-    if (schedule.hasCourtConflicts) {
+    if (reqCourt && schedule.hasCourtConflicts) {
       errors.push('Có xung đột trùng lịch thi đấu trên cùng một sân');
     }
   }
