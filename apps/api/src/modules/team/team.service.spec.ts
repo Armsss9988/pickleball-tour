@@ -113,8 +113,8 @@ describe('TeamService dependency guards', () => {
       action: 'TEAM_MANUAL_ASSIGNMENT_CONFIRMED',
       tournamentId: 't1',
     }));
-    expect(validatorService.markSectionNeedsReview).toHaveBeenCalledWith('t1', ['lineup']);
-    expect(validatorService.validateAll).toHaveBeenCalledWith('t1');
+    expect(validatorService.markSectionNeedsReview).toHaveBeenCalledWith('t1', ['lineup'], expect.anything());
+    expect(validatorService.validateAll).toHaveBeenCalledWith('t1', expect.anything());
   });
 
   it('rejects manual assignment when a player appears in multiple teams', async () => {

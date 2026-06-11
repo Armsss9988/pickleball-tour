@@ -11,7 +11,7 @@ describe('GroupService dependency guards', () => {
         }),
       },
       team: {
-        count: jest.fn().mockResolvedValue(2),
+        count: jest.fn().mockResolvedValue(1),
       },
     };
 
@@ -23,7 +23,7 @@ describe('GroupService dependency guards', () => {
     const assignTeams = () => service.assignTeams('t1', [], 'u1');
 
     await expect(assignTeams()).rejects.toBeInstanceOf(BadRequestException);
-    await expect(assignTeams()).rejects.toThrow('Phân bảng đang khóa');
+    await expect(assignTeams()).rejects.toThrow('Phân bảng yêu cầu ít nhất 2 đội/entry');
   });
 
   it('marks tournament as group assigned when assignment is saved', async () => {
@@ -83,6 +83,6 @@ describe('GroupService dependency guards', () => {
       where: { id: 't1' },
       data: { status: 'GROUP_ASSIGNED' },
     });
-    expect(validatorService.validateAll).toHaveBeenCalledWith('t1');
+    expect(validatorService.validateAll).toHaveBeenCalledWith('t1', expect.anything());
   });
 });

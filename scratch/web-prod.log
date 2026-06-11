@@ -1,0 +1,7 @@
+▲ Next.js 16.2.6
+- Local:         http://localhost:3100
+- Network:       http://100.77.247.71:3100
+✓ Ready in 152ms
+undefined
+D:\AMWork\ai\golab-tournament-pickleball\apps\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "next" not found

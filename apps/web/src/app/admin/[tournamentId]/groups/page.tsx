@@ -100,7 +100,8 @@ export default function GroupsPage() {
         method: 'POST',
       });
 
-      toast('Phân bảng ngẫu nhiên thành công! Bảng A và Bảng B đã được lập.', 'success');
+      const count = tournament.ruleset?.groupCount ?? 2;
+      toast(`Phân bảng ngẫu nhiên thành công! Đã lập ${count} bảng đấu.`, 'success');
       await loadGroupsAndTeams();
       await reloadTournament();
     } catch (error: unknown) {
@@ -120,7 +121,10 @@ export default function GroupsPage() {
     },
   });
   const assignAccess = getActionAccess('assignGroups', currentUser.role, uxContext);
-  const manualGroupCodes = useMemo(() => ['A', 'B'], []);
+  const groupCount = useMemo(() => tournament?.ruleset?.groupCount ?? 2, [tournament]);
+  const manualGroupCodes = useMemo(() => {
+    return Array.from({ length: groupCount }, (_, i) => String.fromCharCode(65 + i));
+  }, [groupCount]);
   const manualGroups = useMemo(() => manualGroupCodes.map((code) => ({
     code,
     name: `Bảng ${code}`,
@@ -134,17 +138,24 @@ export default function GroupsPage() {
     const assignedCount = Object.values(groupAssignments).filter(Boolean).length;
     const errors: string[] = [];
 
-    if (teams.length !== 8) {
-      errors.push(`Cần đúng 8 đội để phân bảng, hiện có ${teams.length}.`);
+    if (teams.length < 2) {
+      errors.push(`Cần tối thiểu 2 đội để phân bảng, hiện có ${teams.length}.`);
     }
 
     if (assignedCount !== teams.length) {
       errors.push(`Cần xếp đủ ${teams.length} đội, hiện đã xếp ${assignedCount}.`);
     }
 
+    const minExpectedSize = Math.floor(teams.length / groupCount);
+    const maxExpectedSize = Math.ceil(teams.length / groupCount);
+
     for (const group of manualGroups) {
-      if (group.teams.length !== 4) {
-        errors.push(`${group.name} cần đúng 4 đội, hiện có ${group.teams.length}.`);
+      if (group.teams.length < minExpectedSize || group.teams.length > maxExpectedSize) {
+        if (minExpectedSize === maxExpectedSize) {
+          errors.push(`${group.name} cần đúng ${minExpectedSize} đội, hiện có ${group.teams.length}.`);
+        } else {
+          errors.push(`${group.name} cần có từ ${minExpectedSize} đến ${maxExpectedSize} đội, hiện có ${group.teams.length}.`);
+        }
       }
     }
 
@@ -152,7 +163,7 @@ export default function GroupsPage() {
       valid: errors.length === 0,
       errors,
     };
-  }, [groupAssignments, manualGroups, teams.length]);
+  }, [groupAssignments, manualGroups, teams.length, groupCount]);
 
   const handleGroupDragStart = useCallback((event: React.DragEvent, teamId: string) => {
     setDraggedTeamId(teamId);
@@ -254,7 +265,7 @@ export default function GroupsPage() {
     <div className="premium-container space-y-6 animate-scale-in">
       <PageHeader
         title="Phân Bảng"
-        description="Phân chia các đội tuyển vào Bảng A và Bảng B để bắt đầu thi đấu vòng bảng."
+        description={`Phân chia các đội tuyển vào ${groupCount} bảng đấu để bắt đầu thi đấu vòng bảng.`}
         icon={Calendar}
       />
 
@@ -279,7 +290,7 @@ export default function GroupsPage() {
               className="w-full btn btn-primary py-2.5 flex items-center justify-center gap-2"
             >
               <Shuffle className="w-4 h-4" />
-              Phân bảng ngẫu nhiên (8 đội)
+              Phân bảng ngẫu nhiên ({teams.length} đội)
             </button>
             <button
               type="button"
@@ -347,60 +358,66 @@ export default function GroupsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {manualGroups.map((group) => (
-                  <div
-                    key={group.code}
-                    onDragOver={handleGroupDragOver}
-                    onDrop={(event) => handleGroupDrop(event, group.code)}
-                    className={`min-h-[280px] rounded-2xl border p-4 transition-all ${
-                      group.teams.length === 4
-                        ? 'border-emerald-500/25 bg-emerald-500/5'
-                        : draggedTeamId
-                        ? 'border-amber-500/35 bg-amber-500/5'
-                        : 'border-slate-800 bg-slate-900/50'
-                    }`}
-                  >
-                    <div className="mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
-                      <div className="font-bold text-sm text-amber-500">{group.name}</div>
-                      <span className={`text-[10px] font-bold ${group.teams.length === 4 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {group.teams.length}/4 đội
-                      </span>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {manualGroups.map((group) => {
+                  const expectedMin = Math.floor(teams.length / groupCount);
+                  const expectedMax = Math.ceil(teams.length / groupCount);
+                  const isExpectedSize = group.teams.length >= expectedMin && group.teams.length <= expectedMax;
 
-                    <div className="space-y-2">
-                      {group.teams.length > 0 ? group.teams.map((team, index) => (
-                        <div
-                          key={team.id}
-                          draggable={assignAccess.allowed && !actionLoading}
-                          onDragStart={(event) => handleGroupDragStart(event, team.id)}
-                          onDragEnd={handleGroupDragEnd}
-                          className={`grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border border-slate-850 bg-slate-950/45 px-3 py-2 text-xs transition-all hover:bg-slate-900 ${
-                            draggedTeamId === team.id ? 'opacity-50 ring-1 ring-amber-500/40' : ''
-                          }`}
-                          title="Kéo sang bảng khác hoặc bấm gỡ"
-                        >
-                          <span className="truncate font-semibold text-slate-200">
-                            #{index + 1} {team.name}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveGroupAssignment(team.id)}
-                            disabled={actionLoading}
-                            className="rounded-lg p-1 text-slate-500 hover:bg-slate-800 hover:text-amber-400"
-                            title="Gỡ khỏi bảng"
+                  return (
+                    <div
+                      key={group.code}
+                      onDragOver={handleGroupDragOver}
+                      onDrop={(event) => handleGroupDrop(event, group.code)}
+                      className={`min-h-[280px] rounded-2xl border p-4 transition-all ${
+                        isExpectedSize
+                          ? 'border-emerald-500/25 bg-emerald-500/5'
+                          : draggedTeamId
+                          ? 'border-amber-500/35 bg-amber-500/5'
+                          : 'border-slate-800 bg-slate-900/50'
+                      }`}
+                    >
+                      <div className="mb-3 flex items-center justify-between border-b border-slate-800 pb-2">
+                        <div className="font-bold text-sm text-amber-500">{group.name}</div>
+                        <span className={`text-[10px] font-bold ${isExpectedSize ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {group.teams.length}/{expectedMax === expectedMin ? expectedMin : `${expectedMin}-${expectedMax}`} đội
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {group.teams.length > 0 ? group.teams.map((team, index) => (
+                          <div
+                            key={team.id}
+                            draggable={assignAccess.allowed && !actionLoading}
+                            onDragStart={(event) => handleGroupDragStart(event, team.id)}
+                            onDragEnd={handleGroupDragEnd}
+                            className={`grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border border-slate-850 bg-slate-950/45 px-3 py-2 text-xs transition-all hover:bg-slate-900 ${
+                              draggedTeamId === team.id ? 'opacity-50 ring-1 ring-amber-500/40' : ''
+                            }`}
+                            title="Kéo sang bảng khác hoặc bấm gỡ"
                           >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )) : (
-                        <div className="rounded-xl border border-dashed border-slate-800 px-3 py-12 text-center text-xs italic text-slate-600">
-                          Thả đội vào đây
-                        </div>
-                      )}
+                            <span className="truncate font-semibold text-slate-200">
+                              #{index + 1} {team.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveGroupAssignment(team.id)}
+                              disabled={actionLoading}
+                              className="rounded-lg p-1 text-slate-500 hover:bg-slate-800 hover:text-amber-400"
+                              title="Gỡ khỏi bảng"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )) : (
+                          <div className="rounded-xl border border-dashed border-slate-800 px-3 py-12 text-center text-xs italic text-slate-600">
+                            Thả đội vào đây
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : (

@@ -23,6 +23,7 @@ export class GroupService {
   async initGroups(tournamentId: string, userId: string) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
+      include: { ruleset: true },
     });
 
     if (!tournament) {
@@ -48,36 +49,35 @@ export class GroupService {
         });
       }
 
-      // Create Group A
-      let groupA = await tx.group.findFirst({
-        where: { tournamentId, stageId: stage.id, code: 'A' },
-      });
-      if (!groupA) {
-        groupA = await tx.group.create({
-          data: {
-            organizationId: tournament.organizationId,
-            tournamentId,
-            stageId: stage.id,
-            name: 'Bảng A',
-            code: 'A',
-          },
-        });
-      }
+      const groupCount = tournament.ruleset?.groupCount ?? 2;
+      const groupCodes = Array.from({ length: groupCount }, (_, i) => String.fromCharCode(65 + i));
 
-      // Create Group B
-      let groupB = await tx.group.findFirst({
-        where: { tournamentId, stageId: stage.id, code: 'B' },
+      // Delete extra groups if groupCount was reduced
+      await tx.group.deleteMany({
+        where: {
+          tournamentId,
+          stageId: stage.id,
+          code: { notIn: groupCodes },
+        },
       });
-      if (!groupB) {
-        groupB = await tx.group.create({
-          data: {
-            organizationId: tournament.organizationId,
-            tournamentId,
-            stageId: stage.id,
-            name: 'Bảng B',
-            code: 'B',
-          },
+
+      const groups = [];
+      for (const code of groupCodes) {
+        let group = await tx.group.findFirst({
+          where: { tournamentId, stageId: stage.id, code },
         });
+        if (!group) {
+          group = await tx.group.create({
+            data: {
+              organizationId: tournament.organizationId,
+              tournamentId,
+              stageId: stage.id,
+              name: `Bảng ${code}`,
+              code,
+            },
+          });
+        }
+        groups.push(group);
       }
 
       await this.auditService.log({
@@ -89,7 +89,7 @@ export class GroupService {
         entityId: stage.id,
       });
 
-      return { stage, groups: [groupA, groupB] };
+      return { stage, groups };
     });
   }
 
@@ -217,7 +217,7 @@ export class GroupService {
       });
 
       // Trigger section validations
-      await this.validatorService.validateAll(tournamentId);
+      await this.validatorService.validateAll(tournamentId, tx);
 
       return this.getGroupsWithTeams(tournamentId);
     });
@@ -242,17 +242,15 @@ export class GroupService {
     // Shuffle entries
     const shuffled = [...teams].sort(() => Math.random() - 0.5);
 
-    // Determine number of groups: default 2 groups, min 2 entries per group
-    // For 2-7 entries: 1 group; 8+: ceil(N/4) groups up to max 8 groups
-    const n = shuffled.length;
-    let numGroups: number;
-    if (n <= 7) {
-      numGroups = 1;
-    } else {
-      numGroups = Math.min(8, Math.ceil(n / 4));
-    }
+    // Get group count from ruleset
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      include: { ruleset: true },
+    });
+    const ruleset = tournament?.ruleset;
+    const numGroups = Math.min(ruleset?.groupCount ?? 2, teams.length);
 
-    const groupCodes = 'ABCDEFGH'.split('').slice(0, numGroups);
+    const groupCodes = Array.from({ length: numGroups }, (_, i) => String.fromCharCode(65 + i));
     const assignment = groupCodes.map((code, i) => ({
       code,
       teamIds: shuffled

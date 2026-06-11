@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Trophy, 
@@ -25,6 +25,29 @@ export default function LoginPage() {
   const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('golab_access_token');
+      if (token) {
+        router.replace('/admin');
+        return; // Stay in checkingAuth to prevent flash
+      }
+    }
+    setCheckingAuth(false);
+  }, [router]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-200">
+        <Loader2 className="animate-spin text-amber-500 mb-4" size={48} />
+        <p className="text-xs font-semibold tracking-widest text-slate-500 uppercase">
+          Đang xác thực thông tin...
+        </p>
+      </div>
+    );
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

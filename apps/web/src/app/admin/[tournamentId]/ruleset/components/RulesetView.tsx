@@ -39,6 +39,8 @@ interface RulesetViewProps {
   overlapRules: any[];
   requireCourtConfig?: boolean;
   requireScheduleConfig?: boolean;
+  groupCount?: number;
+  advancePerGroup?: number;
 }
 
 export function RulesetView({
@@ -52,6 +54,8 @@ export function RulesetView({
   overlapRules = [],
   requireCourtConfig = true,
   requireScheduleConfig = true,
+  groupCount = 2,
+  advancePerGroup = 1,
 }: RulesetViewProps) {
   const isStrict = (teamComposition?.maleCount ?? 0) > 0 || (teamComposition?.femaleCount ?? 0) > 0;
 
@@ -68,6 +72,14 @@ export function RulesetView({
           <div>
             <div className="text-sm font-bold text-slate-200">{EVENT_TYPE_LABEL[eventType]}</div>
             <div className="text-xs text-slate-400 mt-1">{COMPETITION_FORMAT_LABEL[competitionFormat]}</div>
+            {(competitionFormat === 'GROUP_STAGE_KNOCKOUT' || competitionFormat === 'ROUND_ROBIN') && (
+              <div className="text-[11px] text-amber-500 mt-1 font-semibold flex flex-col gap-0.5">
+                <span>Cấu hình: {groupCount} bảng đấu</span>
+                {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && (
+                  <span>Lấy top {advancePerGroup} đội/bảng vào Playoff</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

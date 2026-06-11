@@ -126,6 +126,20 @@ export default function DrawPage() {
   const [editingTeamName, setEditingTeamName] = useState<string>('');
   const currentUser = useMemo(() => getCurrentUser(), []);
 
+  const [teamsState, setTeamsState] = useState<any[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [draggedTeamPlayer, setDraggedTeamPlayer] = useState<{ playerId: string; sourceTeamCode: string } | null>(null);
+
+  const uxContext = useMemo(
+    () => buildTournamentUxContext({ tournament, stats: playerStats }),
+    [playerStats, tournament],
+  );
+
+  const drawAccess = useMemo(
+    () => getActionAccess('drawTeams', currentUser.role, uxContext),
+    [currentUser.role, uxContext],
+  );
+
   const handleStartEditTeam = (teamId: string, currentName: string) => {
     setEditingTeamId(teamId);
     setEditingTeamName(currentName);
@@ -164,6 +178,104 @@ export default function DrawPage() {
     }
   };
 
+  const handleTeamDragStart = useCallback((event: React.DragEvent, playerId: string, sourceTeamCode: string) => {
+    setDraggedTeamPlayer({ playerId, sourceTeamCode });
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', JSON.stringify({ playerId, sourceTeamCode }));
+  }, []);
+
+  const handleTeamDragEnd = useCallback(() => {
+    setDraggedTeamPlayer(null);
+  }, []);
+
+  const handleTeamDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleTeamDrop = useCallback((event: React.DragEvent, targetTeamCode: string) => {
+    event.preventDefault();
+    const dataStr = event.dataTransfer.getData('text/plain');
+    let playerId = '';
+    let sourceTeamCode = '';
+    if (dataStr) {
+      try {
+        const data = JSON.parse(dataStr);
+        playerId = data.playerId;
+        sourceTeamCode = data.sourceTeamCode;
+      } catch {
+        // Fallback
+      }
+    }
+    if (!playerId && draggedTeamPlayer) {
+      playerId = draggedTeamPlayer.playerId;
+      sourceTeamCode = draggedTeamPlayer.sourceTeamCode;
+    }
+
+    if (!playerId || !sourceTeamCode || sourceTeamCode === targetTeamCode) return;
+
+    setTeamsState((prev) => {
+      const sourceTeam = prev.find((t) => t.code === sourceTeamCode);
+      const targetTeam = prev.find((t) => t.code === targetTeamCode);
+      const player = sourceTeam?.players.find((p: any) => p.id === playerId);
+
+      if (!sourceTeam || !targetTeam || !player) return prev;
+
+      const nextTeams = prev.map((t) => {
+        if (t.code === sourceTeamCode) {
+          return {
+            ...t,
+            players: t.players.filter((p: any) => p.id !== playerId),
+          };
+        }
+        if (t.code === targetTeamCode) {
+          return {
+            ...t,
+            players: [...t.players, player],
+          };
+        }
+        return t;
+      });
+
+      setHasChanges(true);
+      return nextTeams;
+    });
+
+    setDraggedTeamPlayer(null);
+  }, [draggedTeamPlayer]);
+
+  const teamComposition = useMemo(() => getTeamComposition(tournament), [tournament]);
+
+  const teamsValidation = useMemo(() => {
+    if (!teamComposition || teamsState.length === 0) {
+      return {
+        valid: true,
+        errors: [],
+      };
+    }
+
+    const errors: string[] = [];
+    teamsState.forEach((team) => {
+      const malesCount = team.players.filter((player: any) => normalizeGender(player.gender) === 'MALE').length;
+      const femalesCount = team.players.filter((player: any) => normalizeGender(player.gender) === 'FEMALE').length;
+
+      if (team.players.length !== teamComposition.teamSize) {
+        errors.push(`${team.name} cần có đúng ${teamComposition.teamSize} VĐV (đang có ${team.players.length}).`);
+      }
+      if (teamComposition.maleCount > 0 && malesCount !== teamComposition.maleCount) {
+        errors.push(`${team.name} cần có đúng ${teamComposition.maleCount} Nam (đang có ${malesCount}).`);
+      }
+      if (teamComposition.femaleCount > 0 && femalesCount !== teamComposition.femaleCount) {
+        errors.push(`${team.name} cần có đúng ${teamComposition.femaleCount} Nữ (đang có ${femalesCount}).`);
+      }
+    });
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
+  }, [teamsState, teamComposition]);
+
   const loadDraws = useCallback(async () => {
     if (!tournament) return;
     try {
@@ -191,9 +303,22 @@ export default function DrawPage() {
       const activePreview = data.find((draw) => draw.status === 'PREVIEW');
       if (activePreview) {
         setPreviewDraw(activePreview);
+        setTeamsState(activePreview.outputSnapshot?.teams || []);
       } else {
         setPreviewDraw(null);
+        if (Array.isArray(teamsData) && teamsData.length > 0) {
+          const mappedOfficial = teamsData.map(t => ({
+            id: t.id,
+            code: t.code,
+            name: t.name,
+            players: t.members.map((m: any) => m.playerProfile).filter(Boolean) as PlayerLike[]
+          }));
+          setTeamsState(mappedOfficial);
+        } else {
+          setTeamsState([]);
+        }
       }
+      setHasChanges(false);
     } catch (error: unknown) {
       console.error(error);
       toast(getErrorMessage(error, 'Lỗi tải lịch sử bốc thăm.'), 'error');
@@ -201,6 +326,41 @@ export default function DrawPage() {
       setLoading(false);
     }
   }, [toast, tournament]);
+
+  const handleSubmitDragDropChanges = useCallback(async () => {
+    if (!drawAccess.allowed) {
+      toast(drawAccess.reason || 'Chưa thể lưu đội hình.', 'error');
+      return;
+    }
+
+    if (!teamsValidation.valid) {
+      toast(teamsValidation.errors[0] || 'Đội hình sau khi xếp chưa hợp lệ.', 'error');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await apiFetch(`/tournaments/${tournament!.id}/teams/manual-assignment`, {
+        method: 'POST',
+        body: {
+          teams: teamsState.map((team) => ({
+            code: team.code,
+            name: team.name,
+            playerIds: team.players.map((player: any) => player.id),
+          })),
+        },
+      });
+
+      toast('Đã lưu cấu trúc đội hình thành công!', 'success');
+      setHasChanges(false);
+      await loadDraws();
+      await reloadTournament();
+    } catch (error: unknown) {
+      toast(getErrorMessage(error, 'Lỗi lưu cấu trúc đội hình.'), 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  }, [drawAccess.allowed, drawAccess.reason, loadDraws, teamsState, teamsValidation.errors, teamsValidation.valid, reloadTournament, toast, tournament]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -210,17 +370,6 @@ export default function DrawPage() {
     return () => window.clearTimeout(timer);
   }, [loadDraws]);
 
-  const uxContext = useMemo(
-    () => buildTournamentUxContext({ tournament, stats: playerStats }),
-    [playerStats, tournament],
-  );
-
-  const drawAccess = useMemo(
-    () => getActionAccess('drawTeams', currentUser.role, uxContext),
-    [currentUser.role, uxContext],
-  );
-
-  const teamComposition = useMemo(() => getTeamComposition(tournament), [tournament]);
   const manualTeamCount = useMemo(() => {
     if (!teamComposition || players.length === 0) return 0;
     const count = players.length / teamComposition.teamSize;
@@ -395,11 +544,26 @@ export default function DrawPage() {
 
     try {
       setActionLoading(true);
-      await apiFetch(`/tournaments/${tournament!.id}/team-draws/${previewDraw.id}/confirm`, {
-        method: 'POST',
-      });
-
-      toast('Đã xác nhận bốc thăm thành công! 8 đội tuyển đã được lập chính thức.', 'success');
+      if (hasChanges) {
+        // Nếu có thay đổi kéo thả, ta lưu bản chỉnh sửa này làm đội chính thức
+        await apiFetch(`/tournaments/${tournament!.id}/teams/manual-assignment`, {
+          method: 'POST',
+          body: {
+            teams: teamsState.map((team) => ({
+              code: team.code,
+              name: team.name,
+              playerIds: team.players.map((player: any) => player.id),
+            })),
+          },
+        });
+        toast('Đã lưu cấu trúc đội bốc thăm đã điều chỉnh thành công!', 'success');
+      } else {
+        // Nếu không thay đổi, xác nhận bản bốc thăm gốc
+        await apiFetch(`/tournaments/${tournament!.id}/team-draws/${previewDraw.id}/confirm`, {
+          method: 'POST',
+        });
+        toast('Đã xác nhận bốc thăm thành công! 8 đội tuyển đã được lập chính thức.', 'success');
+      }
       setPreviewDraw(null);
       setConfirmModalOpen(false);
       await loadDraws();
@@ -409,7 +573,7 @@ export default function DrawPage() {
     } finally {
       setActionLoading(false);
     }
-  }, [drawAccess.allowed, drawAccess.reason, loadDraws, previewDraw, reloadTournament, toast, tournament]);
+  }, [drawAccess.allowed, drawAccess.reason, loadDraws, previewDraw, reloadTournament, toast, tournament, hasChanges, teamsState]);
 
   if (tLoading || (loading && draws.length === 0)) {
     return <PageLoading />;
@@ -425,20 +589,40 @@ export default function DrawPage() {
         icon={Dices}
       />
 
-      {officialTeams.length > 0 && (
+      {officialTeams.length > 0 && teamsState.length > 0 && (
         <div className="card p-6 space-y-4 shadow-xl">
-          <h3 className="font-bold text-base text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3">
-            <Users className="w-5 h-5 text-amber-500" />
-            Đội chính thức ({officialTeams.length})
-          </h3>
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3 gap-2 flex-wrap">
+            <h3 className="font-bold text-base text-slate-100 flex items-center gap-2">
+              <Users className="w-5 h-5 text-amber-500" />
+              Đội chính thức ({officialTeams.length})
+            </h3>
+            <div className="text-[10px] text-slate-400 italic">
+              * Kéo thả thành viên giữa các đội để điều chỉnh đội hình chính thức.
+            </div>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            {officialTeams.map((team) => {
-              const males = team.members.filter((member) => normalizeGender(member.playerProfile?.gender) === 'MALE').length;
-              const females = team.members.filter((member) => normalizeGender(member.playerProfile?.gender) === 'FEMALE').length;
+            {teamsState.map((team) => {
+              const males = team.players.filter((player: any) => normalizeGender(player.gender) === 'MALE').length;
+              const females = team.players.filter((player: any) => normalizeGender(player.gender) === 'FEMALE').length;
               const isEditing = editingTeamId === team.id;
+              const composition = teamComposition;
+              const teamValid = composition !== null
+                && team.players.length === composition.teamSize
+                && (composition.maleCount === 0 || males === composition.maleCount)
+                && (composition.femaleCount === 0 || females === composition.femaleCount);
 
               return (
-                <div key={team.id} className="rounded-xl border border-slate-800 bg-slate-950/35 p-4 space-y-3">
+                <div
+                  key={team.code}
+                  onDragOver={handleTeamDragOver}
+                  onDrop={(event) => handleTeamDrop(event, team.code)}
+                  className={`rounded-xl border p-4 space-y-3 transition-all ${
+                    teamValid
+                      ? 'border-slate-800 bg-slate-950/35'
+                      : 'border-red-500/25 bg-red-500/5'
+                  }`}
+                >
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2 gap-2">
                     {isEditing ? (
                       <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -479,14 +663,16 @@ export default function DrawPage() {
                       <div className="min-w-0 flex-1 group/team">
                         <div className="flex items-center gap-1.5">
                           <div className="truncate text-sm font-bold text-slate-100">{team.name}</div>
-                          <button
-                            type="button"
-                            onClick={() => handleStartEditTeam(team.id, team.name)}
-                            className="opacity-0 group-hover/team:opacity-100 transition-opacity p-0.5 rounded text-slate-500 hover:text-amber-500 hover:bg-slate-900"
-                            title="Đổi tên đội"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
+                          {team.id && (
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditTeam(team.id, team.name)}
+                              className="opacity-0 group-hover/team:opacity-100 transition-opacity p-0.5 rounded text-slate-500 hover:text-amber-500 hover:bg-slate-900"
+                              title="Đổi tên đội"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                         <div className="text-[10px] font-semibold text-slate-500">
                           {males} Nam · {females} Nữ
@@ -498,14 +684,21 @@ export default function DrawPage() {
                     </span>
                   </div>
                   <div className="space-y-1.5">
-                    {team.members.map((member, index) => {
-                      const player = member.playerProfile;
-                      const gender = normalizeGender(player?.gender);
+                    {team.players.map((player: any, index: number) => {
+                      const gender = normalizeGender(player.gender);
 
                       return (
-                        <div key={member.id} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-lg bg-slate-900/50 px-2.5 py-1.5 text-xs">
-                          <span className="truncate font-semibold text-slate-300">
-                            #{index + 1} {player?.fullName ?? member.playerId}
+                        <div
+                          key={player.id}
+                          draggable={drawAccess.allowed && !actionLoading}
+                          onDragStart={(event) => handleTeamDragStart(event, player.id, team.code)}
+                          onDragEnd={handleTeamDragEnd}
+                          className={`cursor-grab active:cursor-grabbing grid grid-cols-[1fr_auto] items-center gap-2 rounded-lg bg-slate-900/50 px-2.5 py-1.5 text-xs hover:bg-slate-900 transition-colors ${
+                            draggedTeamPlayer?.playerId === player.id ? 'opacity-50 ring-1 ring-amber-500/40' : ''
+                          }`}
+                        >
+                          <span className="truncate font-semibold text-slate-350">
+                            #{index + 1} {player.fullName}
                           </span>
                           <span className={`text-[10px] font-bold ${gender === 'MALE' ? 'text-sky-400' : 'text-rose-400'}`}>
                             {gender === 'MALE' ? 'Nam' : 'Nữ'}
@@ -518,6 +711,45 @@ export default function DrawPage() {
               );
             })}
           </div>
+
+          {hasChanges && (
+            <div className="flex items-center gap-3 pt-4 border-t border-slate-800 flex-wrap">
+              <div className="text-xs text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>Bạn đã thay đổi đội hình tuyển. Vui lòng lưu thay đổi.</span>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => loadDraws()}
+                  disabled={actionLoading}
+                  className="btn btn-secondary py-1.5 px-3 text-xs"
+                >
+                  Hủy thay đổi
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitDragDropChanges}
+                  disabled={actionLoading || !teamsValidation.valid}
+                  className="btn btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Lưu thay đổi
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!teamsValidation.valid && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-400">
+              <div className="font-bold text-red-300">Đội hình sau điều chỉnh chưa hợp lệ theo ruleset:</div>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-red-200/90 font-medium">
+                {teamsValidation.errors.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -600,11 +832,11 @@ export default function DrawPage() {
               </div>
               <button
                 onClick={() => setConfirmModalOpen(true)}
-                disabled={!drawAccess.allowed || actionLoading}
+                disabled={!drawAccess.allowed || actionLoading || (hasChanges && !teamsValidation.valid)}
                 className="w-full btn btn-secondary py-2.5 bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                Xác nhận kết quả bốc thăm
+                {hasChanges ? 'Xác nhận bốc thăm đã chỉnh sửa' : 'Xác nhận kết quả bốc thăm'}
               </button>
             </div>
           )}
@@ -645,37 +877,111 @@ export default function DrawPage() {
       </div>
 
       {/* Stout Preview Grid */}
-      {activeTeamsOutput.length > 0 && (
+      {previewDraw && teamsState.length > 0 && (
         <div className="space-y-4 pt-4">
-          <h3 className="font-bold text-base text-slate-100 flex items-center gap-2">
-            <Users className="w-5 h-5 text-amber-500" />
-            Kết quả chia đội xem trước (8 Đội)
-          </h3>
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2 flex-wrap gap-2">
+            <h3 className="font-bold text-base text-slate-100 flex items-center gap-2">
+              <Users className="w-5 h-5 text-amber-500" />
+              Kết quả chia đội xem trước ({teamsState.length} Đội)
+            </h3>
+            <div className="text-[10px] text-slate-400 italic">
+              * Bạn có thể kéo thả thành viên giữa các đội preview dưới đây để tinh chỉnh trước khi xác nhận.
+            </div>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-scale-in">
-            {activeTeamsOutput.map((team) => (
-              <div key={team.code} className="card p-4 space-y-4 hover:border-amber-500/40 hover:bg-slate-800/20 transition-all shadow-md">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <div className="font-bold text-sm text-amber-400">{team.name}</div>
-                  <div className="text-xs font-mono bg-slate-900 px-2 py-0.5 rounded text-slate-400 border border-slate-800">{team.code}</div>
+            {teamsState.map((team) => {
+              const males = team.players.filter((player: any) => normalizeGender(player.gender) === 'MALE').length;
+              const females = team.players.filter((player: any) => normalizeGender(player.gender) === 'FEMALE').length;
+              const composition = teamComposition;
+              const teamValid = composition !== null
+                && team.players.length === composition.teamSize
+                && (composition.maleCount === 0 || males === composition.maleCount)
+                && (composition.femaleCount === 0 || females === composition.femaleCount);
+
+              return (
+                <div
+                  key={team.code}
+                  onDragOver={handleTeamDragOver}
+                  onDrop={(event) => handleTeamDrop(event, team.code)}
+                  className={`card p-4 space-y-4 hover:border-amber-500/40 transition-all shadow-md ${
+                    teamValid
+                      ? 'border-slate-850 bg-slate-900/10'
+                      : 'border-red-500/25 bg-red-500/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="font-bold text-sm text-amber-400">{team.name}</div>
+                    <div className="text-xs font-mono bg-slate-900 px-2 py-0.5 rounded text-slate-400 border border-slate-800">{team.code}</div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {team.players.map((player: any, idx: number) => {
+                      const gender = normalizeGender(player.gender);
+                      return (
+                        <div
+                          key={player.id}
+                          draggable={drawAccess.allowed && !actionLoading}
+                          onDragStart={(event) => handleTeamDragStart(event, player.id, team.code)}
+                          onDragEnd={handleTeamDragEnd}
+                          className={`cursor-grab active:cursor-grabbing flex items-center justify-between text-xs py-0.5 hover:bg-slate-800/45 px-1 rounded transition-colors ${
+                            draggedTeamPlayer?.playerId === player.id ? 'opacity-50 ring-1 ring-amber-500/40' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-500">#{idx + 1}</span>
+                            <span className="font-semibold text-slate-350">{player.fullName}</span>
+                          </div>
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold ${gender === 'MALE' ? 'bg-sky-500/10 text-sky-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                            {gender === 'MALE' ? '♂' : '♀'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  {team.players.map((player, idx: number) => (
-                    <div key={player.id} className="flex items-center justify-between text-xs py-0.5 hover:bg-slate-800/45 px-1 rounded transition-colors">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-500">#{idx + 1}</span>
-                        <span className="font-semibold text-slate-350">{player.fullName}</span>
-                      </div>
-                      <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold ${normalizeGender(player.gender) === 'MALE' ? 'bg-sky-500/10 text-sky-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                        {normalizeGender(player.gender) === 'MALE' ? '♂' : '♀'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+
+          {!teamsValidation.valid && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-400">
+              <div className="font-bold text-red-300">Đội hình preview sau điều chỉnh chưa hợp lệ theo ruleset:</div>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-red-200/90 font-medium">
+                {teamsValidation.errors.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {hasChanges && (
+            <div className="flex items-center gap-3 pt-4 border-t border-slate-800 flex-wrap">
+              <div className="text-xs text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>Bạn đã điều chỉnh kết quả bốc thăm xem trước. Vui lòng xác nhận kết quả bốc thăm để lưu chính thức.</span>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => loadDraws()}
+                  disabled={actionLoading}
+                  className="btn btn-secondary py-1.5 px-3 text-xs"
+                >
+                  Hủy thay đổi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmModalOpen(true)}
+                  disabled={actionLoading || !teamsValidation.valid}
+                  className="btn btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Xác nhận bốc thăm đã chỉnh sửa
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       </>

@@ -29,6 +29,17 @@ export class ScoringController {
     return this.scoringService.undoLatestScore(matchId, reason || 'Trọng tài sửa điểm', req.user.id);
   }
 
+  @Post('matches/:matchId/score-events/undo-team')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin', 'SCORER')
+  async undoTeamScore(
+    @Param('matchId') matchId: string,
+    @Request() req: any,
+    @Body('teamId') teamId: string,
+    @Body('reason') reason?: string
+  ) {
+    return this.scoringService.undoTeamScore(matchId, teamId, reason || 'Trọng tài giảm điểm', req.user.id);
+  }
+
   @Post('matches/:matchId/segments/:segmentId/start-next')
   @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin', 'SCORER')
   async startNextSegment(
@@ -58,6 +69,25 @@ export class ScoringController {
     return this.scoringService.overrideResult(
       matchId,
       { teamAScore, teamBScore, winnerTeamId, reason },
+      req.user.id,
+      req.user.roles
+    );
+  }
+
+  @Post('matches/:matchId/segments/:segmentId/override-score')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin', 'SCORER')
+  async overrideSegmentScore(
+    @Param('matchId') matchId: string,
+    @Param('segmentId') segmentId: string,
+    @Request() req: any,
+    @Body('teamASegmentScore') teamASegmentScore: number,
+    @Body('teamBSegmentScore') teamBSegmentScore: number,
+    @Body('reason') reason: string
+  ) {
+    return this.scoringService.overrideSegmentScore(
+      matchId,
+      segmentId,
+      { teamASegmentScore, teamBSegmentScore, reason },
       req.user.id,
       req.user.roles
     );

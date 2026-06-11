@@ -174,8 +174,8 @@ export class PlayerService {
         afterData: reg,
       });
 
-      await this.validatorService.markSectionNeedsReview(tournamentId, ['teams']);
-      await this.validatorService.validateAll(tournamentId);
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['teams'], tx);
+      await this.validatorService.validateAll(tournamentId, tx);
 
       return reg;
     });
@@ -290,8 +290,8 @@ export class PlayerService {
         afterData: { created, updated, mode },
       });
 
-      await this.validatorService.markSectionNeedsReview(tournamentId, ['teams']);
-      await this.validatorService.validateAll(tournamentId);
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['teams'], tx);
+      await this.validatorService.validateAll(tournamentId, tx);
 
       return { created, updated, warnings };
     });
@@ -450,8 +450,8 @@ export class PlayerService {
       });
 
       // 5. Update validation section statuses
-      await this.validatorService.markSectionNeedsReview(tournamentId, ['players', 'teams']);
-      await this.validatorService.validateAll(tournamentId);
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['players', 'teams'], tx);
+      await this.validatorService.validateAll(tournamentId, tx);
 
       return { success: true };
     });

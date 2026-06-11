@@ -72,6 +72,8 @@ export default function RulesetSettingsPage() {
   const [femaleMaxSegments, setFemaleMaxSegments] = useState(2);
   const [noOverlapAllPlayers, setNoOverlapAllPlayers] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [groupCount, setGroupCount] = useState(2);
+  const [advancePerGroup, setAdvancePerGroup] = useState(1);
 
   const [winScore, setWinScore] = useState(24);
   const [gamePointScore, setGamePointScore] = useState(11);
@@ -151,6 +153,8 @@ export default function RulesetSettingsPage() {
         setMatchFormat(data.matchFormat || 'relay');
         setEventType(data.eventType || 'TEAM_EVENT');
         setCompetitionFormat(data.competitionFormat || 'GROUP_STAGE_KNOCKOUT');
+        setGroupCount(data.groupCount ?? 2);
+        setAdvancePerGroup(data.advancePerGroup ?? 1);
 
         const segs = data.segmentDefinitions || data.segments || [];
         if (segs.length > 0) {
@@ -325,6 +329,8 @@ export default function RulesetSettingsPage() {
         matchFormat: matchFormat,
         eventType: eventType,
         competitionFormat: competitionFormat,
+        groupCount: Number(groupCount),
+        advancePerGroup: Number(advancePerGroup),
         requireCourtConfig,
         requireScheduleConfig,
         segments: matchFormat === 'relay'
@@ -508,6 +514,44 @@ export default function RulesetSettingsPage() {
                 disabled={saving}
               />
 
+              {/* Bước 2.5: Cấu hình số bảng đấu (Chỉ khi có chia bảng) */}
+              {(competitionFormat === 'GROUP_STAGE_KNOCKOUT' || competitionFormat === 'ROUND_ROBIN') && (
+                <div className="space-y-1.5 border-t border-slate-800 pt-4">
+                  <label className="block text-xs font-semibold text-slate-400">Số lượng bảng đấu (Vòng bảng)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={groupCount}
+                    onChange={(e) => setGroupCount(Math.max(1, Math.min(8, parseInt(e.target.value, 10) || 1)))}
+                    className="w-full premium-input max-w-[200px]"
+                    disabled={saving}
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Số bảng đấu hiện tại dùng để chia đội/entry (ví dụ: 1 bảng đấu, 2 bảng A/B, 4 bảng A/B/C/D...). Mặc định là 2 bảng.
+                  </p>
+                </div>
+              )}
+
+              {/* Bước 2.6: Cấu hình số đội vào vòng trong mỗi bảng (Chỉ khi có Playoff) */}
+              {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && (
+                <div className="space-y-1.5 border-t border-slate-800 pt-4">
+                  <label className="block text-xs font-semibold text-slate-400">Số đội đi tiếp từ mỗi bảng vào Playoffs</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={advancePerGroup}
+                    onChange={(e) => setAdvancePerGroup(Math.max(1, Math.min(8, parseInt(e.target.value, 10) || 1)))}
+                    className="w-full premium-input max-w-[200px]"
+                    disabled={saving}
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Số lượng đội tuyển có thành tích tốt nhất ở mỗi bảng đấu sẽ được quyền vào chơi vòng loại trực tiếp (ví dụ: lấy 1 đội đầu bảng, lấy 2 đội hoặc 3 đội).
+                  </p>
+                </div>
+              )}
+
               {/* Bước 3: Thể thức tính điểm trận đấu */}
               {/* relay chỉ hiển thị khi TEAM_EVENT */}
               <div className="space-y-3">
@@ -677,6 +721,8 @@ export default function RulesetSettingsPage() {
               matchFormat={matchFormat}
               eventType={eventType}
               competitionFormat={competitionFormat}
+              groupCount={groupCount}
+              advancePerGroup={advancePerGroup}
               teamComposition={eventType === 'TEAM_EVENT' ? {
                 teamSize: currentTeamSize,
                 maleCount: genderFormat === 'strict' ? maleCount : 0,

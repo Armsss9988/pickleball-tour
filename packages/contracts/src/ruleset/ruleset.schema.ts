@@ -66,6 +66,8 @@ export const CreateRulesetSchema = z.object({
   competitionFormat: CompetitionFormatEnum.default('GROUP_STAGE_KNOCKOUT'),
   requireCourtConfig: z.boolean().default(true),
   requireScheduleConfig: z.boolean().default(true),
+  groupCount: z.number().int().min(1).max(8).default(2),
+  advancePerGroup: z.number().int().min(1).max(8).default(1),
   segments: z.array(SegmentDefinitionSchema).default([]),
   // teamComposition optional — auto-set for SINGLES (1) / DOUBLES (2)
   teamComposition: TeamCompositionRuleSchema.optional(),

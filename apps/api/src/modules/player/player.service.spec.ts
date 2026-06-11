@@ -83,7 +83,7 @@ describe('PlayerService.removePlayer', () => {
         entityId: 'p1',
       }),
     );
-    expect(validatorService.markSectionNeedsReview).toHaveBeenCalledWith('t1', ['players', 'teams']);
-    expect(validatorService.validateAll).toHaveBeenCalledWith('t1');
+    expect(validatorService.markSectionNeedsReview).toHaveBeenCalledWith('t1', ['players', 'teams'], expect.anything());
+    expect(validatorService.validateAll).toHaveBeenCalledWith('t1', expect.anything());
   });
 });

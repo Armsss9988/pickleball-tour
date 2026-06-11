@@ -290,6 +290,8 @@ model TournamentRuleset {
   competitionFormat      CompetitionFormat @default(GROUP_STAGE_KNOCKOUT) @map("competition_format")
   requireCourtConfig     Boolean           @default(true) @map("require_court_config")
   requireScheduleConfig  Boolean           @default(true) @map("require_schedule_config")
+  groupCount             Int               @default(2) @map("group_count")
+  advancePerGroup        Int               @default(1) @map("advance_per_group")
   createdById            String?           @map("created_by")
   createdAt              DateTime          @default(now()) @map("created_at")
   updatedAt              DateTime          @updatedAt @map("updated_at")

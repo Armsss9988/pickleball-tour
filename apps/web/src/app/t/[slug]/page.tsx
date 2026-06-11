@@ -3,9 +3,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import Link from 'next/link';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
+import { Trophy, ChevronRight, ChevronLeft } from '@/components/icons';
+
+function getMatchStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    SCHEDULED: 'Chưa bắt đầu',
+    LINEUP_PENDING: 'Chờ lineup',
+    LINEUP_READY: 'Đã nộp lineup',
+    READY: 'Sẵn sàng',
+    RUNNING: 'Đang đấu',
+    SEGMENT_BREAK: 'Nghỉ chặng',
+    COMPLETED: 'Chờ xác nhận',
+    RESULT_CONFIRMED: 'Đã kết thúc',
+    CANCELLED: 'Đã hủy',
+    WALKOVER: 'Bỏ cuộc',
+  };
+  return map[status] ?? status;
+}
 
 export default function PublicSpectatorPage() {
   const params = useParams();
@@ -18,6 +35,7 @@ export default function PublicSpectatorPage() {
   const [bracket, setBracket] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'matches' | 'standings' | 'bracket' | 'teams'>('matches');
+  const [selectedMatchGroup, setSelectedMatchGroup] = useState<string>('all');
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,7 +81,6 @@ export default function PublicSpectatorPage() {
 
     socket.on('connect', () => {
       console.log('Public page connected to live scoring websocket');
-      // We will listen globally or join the tournament room when tournament is loaded
     });
 
     socket.on('score.updated', (payload: any) => {
@@ -80,15 +97,116 @@ export default function PublicSpectatorPage() {
 
   // When tournament ID is determined, join the socket room
   useEffect(() => {
-    if (tournament && socketRef.current) {
-      socketRef.current.emit('joinTournament', { tournamentId: tournament.id });
+    const socket = socketRef.current;
+    if (!socket || !tournament?.id) return;
+
+    const joinRoom = () => {
+      socket.emit('joinTournament', { tournamentId: tournament.id });
+      console.log('Emitted joinTournament for room:', `tournament:${tournament.id}`);
+    };
+
+    if (socket.connected) {
+      joinRoom();
     }
+
+    socket.on('connect', joinRoom);
+
     return () => {
-      if (tournament && socketRef.current) {
-        socketRef.current.emit('leaveTournament', { tournamentId: tournament.id });
+      socket.off('connect', joinRoom);
+      if (socket.connected) {
+        socket.emit('leaveTournament', { tournamentId: tournament.id });
       }
     };
-  }, [tournament]);
+  }, [tournament?.id]);
+
+  // Group list dynamically from matches
+  const groupsInMatches = useMemo(() => {
+    return Array.from(new Set(matches.map(m => m.group?.code).filter(Boolean))).sort() as string[];
+  }, [matches]);
+
+  // Filter matches based on selected tab
+  const filteredMatchesForTab = useMemo(() => {
+    return matches.filter(m => {
+      if (selectedMatchGroup === 'playoff') {
+        return !m.group;
+      } else {
+        if (!m.group) return false;
+        if (selectedMatchGroup !== 'all') {
+          return m.group.code === selectedMatchGroup;
+        }
+        return true;
+      }
+    });
+  }, [matches, selectedMatchGroup]);
+
+  const getTeamDisplayName = (team: any, source: string | null) => {
+    if (team) return team.name;
+    if (!source) return 'Chưa xác định';
+    if (source.startsWith('SF')) {
+      return `Chưa xác định (Thắng Bán Kết ${source.replace('SF', '')})`;
+    }
+    if (source.startsWith('QF') || source.startsWith('P')) {
+      return `Chưa xác định (Thắng Vòng Nhánh ${source.replace('QF', '').replace('P', '')})`;
+    }
+    return `Chưa xác định (${source})`;
+  };
+
+  const renderBracketCard = (node: any) => {
+    const isWinnerA = node.match?.result?.winnerTeamId === node.teamAId && node.teamAId;
+    const isWinnerB = node.match?.result?.winnerTeamId === node.teamBId && node.teamBId;
+    const isTeamATbd = !node.teamAId;
+    const isTeamBTbd = !node.teamBId;
+    
+    const teamALabel = getTeamDisplayName(node.teamA, node.sourceA);
+    const teamBLabel = getTeamDisplayName(node.teamB, node.sourceB);
+
+    return (
+      <div key={node.id} className="card p-4 space-y-3 bg-slate-905/70 border-slate-850 hover:border-slate-800 transition-colors shadow-md text-slate-200">
+        <div className="text-[9px] text-slate-500 font-mono tracking-wider flex justify-between items-center">
+          <span>CODE: #{node.nodeKey}</span>
+          {node.match && (
+            <span className="text-[8px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 font-mono">
+              {getMatchStatusLabel(node.match.status)}
+            </span>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <div className={`p-2 rounded-xl text-xs flex justify-between items-center ${
+            isWinnerA 
+              ? 'bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20' 
+              : isTeamATbd 
+                ? 'bg-slate-950/50 text-slate-600 italic border border-dashed border-slate-900' 
+                : 'bg-slate-900/40 text-slate-300 border border-transparent'
+          }`}>
+            <span className="truncate max-w-[170px]" title={teamALabel}>{teamALabel}</span>
+            {node.match?.result && <span className="font-mono text-[13px]">{node.match.result.teamAScore}</span>}
+          </div>
+          <div className={`p-2 rounded-xl text-xs flex justify-between items-center ${
+            isWinnerB 
+              ? 'bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20' 
+              : isTeamBTbd 
+                ? 'bg-slate-950/50 text-slate-600 italic border border-dashed border-slate-900' 
+                : 'bg-slate-900/40 text-slate-300 border border-transparent'
+          }`}>
+            <span className="truncate max-w-[170px]" title={teamBLabel}>{teamBLabel}</span>
+            {node.match?.result && <span className="font-mono text-[13px]">{node.match.result.teamBScore}</span>}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const finalNode = bracket.find((n: any) => n.nodeKey === 'F');
+
+  const leftNodes = bracket.filter((n: any) => ['SF1', 'P1', 'QF1', 'QF2'].includes(n.nodeKey));
+  const rightNodes = bracket.filter((n: any) => ['SF2', 'P2', 'QF3', 'QF4'].includes(n.nodeKey));
+
+  const leftRound2 = leftNodes.filter((n: any) => n.roundName === 'Bán Kết');
+  const leftRound1 = leftNodes.filter((n: any) => n.roundName === 'Vòng Nhánh' || n.roundName === 'Tứ Kết');
+
+  const rightRound2 = rightNodes.filter((n: any) => n.roundName === 'Bán Kết');
+  const rightRound1 = rightNodes.filter((n: any) => n.roundName === 'Vòng Nhánh' || n.roundName === 'Tứ Kết');
 
   if (loading) {
     return (
@@ -113,9 +231,9 @@ export default function PublicSpectatorPage() {
   }
 
   // Filter live active matches vs completed/scheduled matches
-  const liveMatches = matches.filter(m => m.status === 'RUNNING' || m.status === 'SEGMENT_BREAK' || m.status === 'COMPLETED');
-  const scheduledMatches = matches.filter(m => m.status === 'SCHEDULED' || m.status === 'LINEUP_PENDING' || m.status === 'LINEUP_READY' || m.status === 'READY');
-  const finishedMatches = matches.filter(m => m.status === 'RESULT_CONFIRMED');
+  const liveMatches = filteredMatchesForTab.filter(m => m.status === 'RUNNING' || m.status === 'SEGMENT_BREAK' || m.status === 'COMPLETED');
+  const scheduledMatches = filteredMatchesForTab.filter(m => m.status === 'SCHEDULED' || m.status === 'LINEUP_PENDING' || m.status === 'LINEUP_READY' || m.status === 'READY');
+  const finishedMatches = filteredMatchesForTab.filter(m => m.status === 'RESULT_CONFIRMED');
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-brand-500/35 selection:text-white">
@@ -172,7 +290,48 @@ export default function PublicSpectatorPage() {
         
         {/* MATCHES AND LIVE SCORE VIEW */}
         {activeTab === 'matches' && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-scale-in">
+            {/* Group Filter Tabs */}
+            {groupsInMatches.length > 0 && (
+              <div className="space-y-3">
+                {/* Level 1: Primary Stage Tabs */}
+                <div className="flex flex-wrap items-center gap-1 bg-slate-900/40 p-1 rounded-xl border border-slate-900/60 max-w-max">
+                  <button
+                    onClick={() => setSelectedMatchGroup('all')}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${selectedMatchGroup !== 'playoff' ? 'bg-brand-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Vòng Bảng
+                  </button>
+                  <button
+                    onClick={() => setSelectedMatchGroup('playoff')}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${selectedMatchGroup === 'playoff' ? 'bg-brand-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Playoffs
+                  </button>
+                </div>
+
+                {/* Level 2: Sub-tabs (only if Vòng Bảng is selected) */}
+                {selectedMatchGroup !== 'playoff' && (
+                  <div className="flex flex-wrap items-center gap-1 bg-slate-900/20 p-1 rounded-xl border border-slate-800/40 max-w-max animate-scale-in">
+                    <button
+                      onClick={() => setSelectedMatchGroup('all')}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${selectedMatchGroup === 'all' ? 'bg-slate-800 text-brand-400 border border-slate-700/50 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                      Tất cả
+                    </button>
+                    {groupsInMatches.map(groupCode => (
+                      <button
+                        key={groupCode}
+                        onClick={() => setSelectedMatchGroup(groupCode)}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap ${selectedMatchGroup === groupCode ? 'bg-slate-800 text-brand-400 border border-slate-700/50 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                      >
+                        Bảng {groupCode}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* LIVE MATCHES BLOCK */}
             {liveMatches.length > 0 && (
@@ -197,7 +356,7 @@ export default function PublicSpectatorPage() {
                             {m.group ? `BẢNG ${m.group.code} · VÒNG ${m.roundNo}` : m.label || 'Playoff'}
                           </span>
                           <span className="text-[10px] bg-emerald-500/25 px-2 py-0.5 rounded text-emerald-400 font-bold tracking-wider animate-pulse-soft">
-                            {m.status === 'RUNNING' ? 'LIVE SCORING' : m.status}
+                            {m.status === 'RUNNING' ? 'TRỰC TIẾP' : getMatchStatusLabel(m.status)}
                           </span>
                         </div>
 
@@ -247,7 +406,7 @@ export default function PublicSpectatorPage() {
                     <div key={m.id} className="card p-4 space-y-3 flex flex-col justify-between">
                       <div className="flex items-center justify-between border-b border-slate-850 pb-2 text-[10px] text-slate-500 font-mono font-bold uppercase">
                         <span>{m.group ? `Bảng ${m.group.code} · Vòng ${m.roundNo}` : m.label || 'Playoff'}</span>
-                        <span className="text-slate-400">{m.status}</span>
+                        <span className="text-slate-400">{getMatchStatusLabel(m.status)}</span>
                       </div>
                       
                       <div className="py-2 text-center text-sm font-semibold text-slate-200">
@@ -307,54 +466,65 @@ export default function PublicSpectatorPage() {
         {/* STANDINGS VIEW */}
         {activeTab === 'standings' && (
           <div className="space-y-6">
-            {groups.map(group => {
-              const groupStds = standings.filter(s => s.groupId === group.id).sort((a, b) => a.rank - b.rank);
-              
-              return (
-                <div key={group.id} className="card p-6 space-y-4">
-                  <div className="font-black text-base text-brand-400 border-b border-slate-850 pb-2 uppercase tracking-wide">
-                    {group.name} (Group {group.code} Standings)
-                  </div>
+            {groups.length === 0 ? (
+              <div className="card p-10 text-center text-slate-500 italic text-xs border border-dashed border-slate-800 rounded-3xl">
+                Chưa có dữ liệu bảng xếp hạng.
+              </div>
+            ) : (
+              groups.map(group => {
+                // Group flat standings array by group.id on the frontend
+                const groupStds = standings
+                  .filter((s: any) => s.groupId === group.id)
+                  .sort((a: any, b: any) => (a.rank ?? 999) - (b.rank ?? 999));
 
-                  {groupStds.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-xs font-semibold text-slate-400">
-                            <th className="py-2.5 w-12 text-center">Hạng</th>
-                            <th>Đội tuyển</th>
-                            <th className="text-center">Số trận</th>
-                            <th className="text-center">Thắng</th>
-                            <th className="text-center">Thua</th>
-                            <th className="text-center">Hiệu số</th>
-                            <th className="text-right">Điểm số</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-850 text-sm">
-                          {groupStds.map(s => (
-                            <tr key={s.id} className="hover:bg-slate-800/40">
-                              <td className="py-3.5 text-center font-black text-brand-400">{s.rank}</td>
-                              <td className="font-bold text-slate-200">
-                                {s.team?.name || '—'}
-                              </td>
-                              <td className="text-center text-slate-350 font-semibold">{s.matchesPlayed}</td>
-                              <td className="text-center text-emerald-400 font-semibold">{s.wins}</td>
-                              <td className="text-center text-rose-400 font-semibold">{s.losses}</td>
-                              <td className="text-center text-slate-400 font-mono">
-                                {s.pointsFor - s.pointsAgainst > 0 ? `+${s.pointsFor - s.pointsAgainst}` : s.pointsFor - s.pointsAgainst}
-                              </td>
-                              <td className="text-right font-mono font-black text-slate-200">{s.points}đ</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                return (
+                  <div key={group.id} className="card p-6 space-y-4">
+                    <div className="font-black text-base text-brand-400 border-b border-slate-850 pb-2 uppercase tracking-wide">
+                      {group.name} (Bảng {group.code})
                     </div>
-                  ) : (
-                    <p className="text-xs text-slate-500 italic py-4">Bảng xếp hạng chưa được khởi chạy.</p>
-                  )}
-                </div>
-              );
-            })}
+
+                    {groupStds.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-xs font-semibold text-slate-400">
+                              <th className="py-2.5 w-12 text-center">Hạng</th>
+                              <th>Đội tuyển</th>
+                              <th className="text-center">Số trận</th>
+                              <th className="text-center">Thắng</th>
+                              <th className="text-center">Thua</th>
+                              <th className="text-center">Hiệu số</th>
+                              <th className="text-right">Điểm</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-850 text-sm">
+                            {groupStds.map((s: any) => (
+                              <tr key={s.id} className="hover:bg-slate-800/40 transition-colors">
+                                <td className="py-3.5 text-center font-black text-brand-400">
+                                  {s.rank <= 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : s.rank}
+                                </td>
+                                <td className="font-bold text-slate-200">{s.team?.name || '—'}</td>
+                                <td className="text-center text-slate-350 font-semibold">{s.matchesPlayed}</td>
+                                <td className="text-center text-emerald-400 font-bold">{s.wins}</td>
+                                <td className="text-center text-rose-400 font-bold">{s.losses}</td>
+                                <td className="text-center text-slate-400 font-mono text-xs">
+                                  {(s.pointsFor - s.pointsAgainst) > 0
+                                    ? `+${s.pointsFor - s.pointsAgainst}`
+                                    : s.pointsFor - s.pointsAgainst}
+                                </td>
+                                <td className="text-right font-mono font-black text-slate-200">{s.points}đ</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic py-4">Chưa có dữ liệu xếp hạng cho bảng này.</p>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
 
@@ -362,104 +532,163 @@ export default function PublicSpectatorPage() {
         {activeTab === 'bracket' && (
           <div className="card p-6 space-y-6">
             <h2 className="text-base font-black text-brand-400 border-b border-slate-850 pb-2 uppercase tracking-wide">🔱 Nhánh Đấu Vòng Loại Trực Tiếp (Playoffs Knockout)</h2>
-            
-            {bracket.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch pt-4">
-                
-                {/* Round 1: Q1 and Q2 */}
-                <div className="space-y-8 flex flex-col justify-center">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 text-center block mb-2">Tứ Kết (Play-In)</span>
-                  
-                  {bracket.filter(n => n.nodeKey === 'Q1' || n.nodeKey === 'Q2').map(node => (
-                    <div key={node.id} className="card p-4 border-slate-850 bg-slate-900/20 relative space-y-3 shadow-md">
-                      <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded font-bold">{node.roundName}</span>
-                      
-                      <div className="space-y-1.5 text-xs">
-                        <div className="flex justify-between items-center text-slate-300 font-medium">
-                          <span>🔵 {node.teamA?.name || 'Chờ xác định'}</span>
-                          <span className="font-mono font-bold">{node.match?.result ? node.match.result.teamAScore : ''}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-slate-300 font-medium">
-                          <span>🔴 {node.teamB?.name || 'Chờ xác định'}</span>
-                          <span className="font-mono font-bold">{node.match?.result ? node.match.result.teamBScore : ''}</span>
-                        </div>
+
+            {bracket.length > 0 ? (() => {
+              const cleanSource = (src: string | null | undefined) => {
+                if (!src) return '?';
+                const s = src.replace(/^W:/, '');
+                if (s.startsWith('SF')) return `Thắng BK ${s.replace('SF', '')}`;
+                if (s.startsWith('QF')) return `Thắng TK ${s.replace('QF', '')}`;
+                if (s.startsWith('P')) return `Thắng VN ${s.replace('P', '')}`;
+                return s;
+              };
+
+              const isWin = (node: any, side: 'A' | 'B') =>
+                node.match?.result?.winnerTeamId && node.match.result.winnerTeamId === (side === 'A' ? node.teamAId : node.teamBId);
+              const isTbd = (node: any, side: 'A' | 'B') => !(side === 'A' ? node.teamAId : node.teamBId);
+              const teamLabel = (node: any, side: 'A' | 'B') => {
+                const team = side === 'A' ? node.teamA : node.teamB;
+                const src  = side === 'A' ? node.sourceA : node.sourceB;
+                return team?.name ?? cleanSource(src);
+              };
+
+              const renderCard = (node: any, isFinal = false) => (
+                <div key={node.id} style={{ width: 200 }}
+                  className={`rounded-xl border overflow-hidden shadow-lg ${isFinal
+                    ? 'border-amber-500/40 bg-gradient-to-br from-slate-900 to-amber-950/20'
+                    : 'border-slate-700/60 bg-slate-900/70'}`}
+                >
+                  <div className={`px-3 py-1.5 flex items-center justify-between border-b text-[9px] font-mono ${
+                    isFinal ? 'border-amber-500/20 bg-amber-500/5 text-amber-400/60' : 'border-slate-800 bg-slate-950/40 text-slate-500'
+                  }`}>
+                    <span>#{node.nodeKey}</span>
+                    {node.match && <span>{getMatchStatusLabel(node.match.status)}</span>}
+                  </div>
+                  <div className="p-2.5 space-y-1.5">
+                    {(['A', 'B'] as const).map(side => (
+                      <div key={side} className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-xs gap-2 ${
+                        isWin(node, side) ? 'bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20'
+                          : isTbd(node, side) ? 'bg-slate-800/20 text-slate-600 italic border border-dashed border-slate-800'
+                          : 'bg-slate-800/40 text-slate-300 border border-transparent'
+                      }`}>
+                        <span className="truncate" style={{ maxWidth: 130 }}>{isWin(node, side) && '🏆 '}{teamLabel(node, side)}</span>
+                        {node.match?.result != null && (
+                          <span className={`font-mono shrink-0 ${isFinal ? 'text-sm font-bold' : ''}`}>
+                            {side === 'A' ? node.match.result.teamAScore : node.match.result.teamBScore}
+                          </span>
+                        )}
                       </div>
-                      
-                      {node.match && (
-                        <div className="text-[9px] text-slate-500 text-right pt-1 border-t border-slate-850 font-mono">
-                          Trạng thái: {node.match.status}
-                        </div>
+                    ))}
+                  </div>
+                  {node.match?.result?.winnerTeamId && node.match?.status === 'RESULT_CONFIRMED' && (
+                    <div className="px-2.5 pb-2.5">
+                      <div className="text-center py-1 bg-amber-500/10 border border-amber-500/25 rounded-lg text-[9px] font-bold text-amber-400">
+                        🏆 {node.match.result.winnerTeamId === node.teamAId ? node.teamA?.name : node.teamB?.name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+
+              const leftR1  = (bracket as any[]).filter(n => ['QF1','QF2','P1'].includes(n.nodeKey));
+              const leftSF  = (bracket as any[]).find(n => n.nodeKey === 'SF1');
+              const finalN  = (bracket as any[]).find(n => n.nodeKey === 'F');
+              const rightSF = (bracket as any[]).find(n => n.nodeKey === 'SF2');
+              const rightR1 = (bracket as any[]).filter(n => ['QF3','QF4','P2'].includes(n.nodeKey));
+
+              const Arrow = ({ dir }: { dir: 'right' | 'left' }) => (
+                <div className="flex items-center self-center shrink-0" style={{ width: 44 }}>
+                  {dir === 'right' ? (
+                    <div className="w-full flex items-center">
+                      <div className="flex-1 h-px bg-gradient-to-r from-slate-700/40 to-amber-500/60" />
+                      <ChevronRight className="w-4 h-4 text-amber-400 shrink-0" />
+                    </div>
+                  ) : (
+                    <div className="w-full flex items-center">
+                      <ChevronLeft className="w-4 h-4 text-amber-400 shrink-0" />
+                      <div className="flex-1 h-px bg-gradient-to-l from-slate-700/40 to-amber-500/60" />
+                    </div>
+                  )}
+                </div>
+              );
+
+              const renderBranch = (r1: any[], sf: any, dir: 'left' | 'right') => {
+                const tbd = <div style={{ width: 200, height: 88 }} className="rounded-xl border border-dashed border-slate-800 flex items-center justify-center text-xs text-slate-600 italic">Chưa có dữ liệu</div>;
+                if (dir === 'left') return (
+                  <div className="flex items-center gap-0">
+                    {r1.length > 0 && (
+                      <div className="flex flex-col gap-3">
+                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 mb-1">Vòng Nhánh <ChevronRight className="w-2.5 h-2.5 text-amber-500/50" /></div>
+                        {r1.map(n => renderCard(n))}
+                      </div>
+                    )}
+                    {r1.length > 0 && (
+                      <svg width={38} height={r1.length > 1 ? 210 : 90} style={{ overflow: 'visible', flexShrink: 0 }}>
+                        {r1.length > 1 && (<><line x1={2} y1={55} x2={2} y2={155} stroke="#334155" strokeWidth={1.5}/><line x1={2} y1={55} x2={30} y2={55} stroke="#334155" strokeWidth={1.5}/><line x1={2} y1={155} x2={30} y2={155} stroke="#334155" strokeWidth={1.5}/></>)}
+                        <line x1={2} y1={105} x2={36} y2={105} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3 2"/>
+                        <polyline points="31,100 36,105 31,110" stroke="#f59e0b" strokeWidth={1.5} fill="none"/>
+                      </svg>
+                    )}
+                    <div className="flex flex-col">
+                      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 mb-1">Bán Kết 1 <ChevronRight className="w-2.5 h-2.5 text-amber-500/50" /></div>
+                      {sf ? renderCard(sf) : tbd}
+                    </div>
+                    <Arrow dir="right" />
+                  </div>
+                );
+                return (
+                  <div className="flex items-center gap-0">
+                    <Arrow dir="left" />
+                    <div className="flex flex-col">
+                      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 mb-1"><ChevronLeft className="w-2.5 h-2.5 text-amber-500/50" /> Bán Kết 2</div>
+                      {sf ? renderCard(sf) : tbd}
+                    </div>
+                    {r1.length > 0 && (
+                      <svg width={38} height={r1.length > 1 ? 210 : 90} style={{ overflow: 'visible', flexShrink: 0 }}>
+                        {r1.length > 1 && (<><line x1={36} y1={55} x2={36} y2={155} stroke="#334155" strokeWidth={1.5}/><line x1={36} y1={55} x2={8} y2={55} stroke="#334155" strokeWidth={1.5}/><line x1={36} y1={155} x2={8} y2={155} stroke="#334155" strokeWidth={1.5}/></>)}
+                        <line x1={36} y1={105} x2={2} y2={105} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3 2"/>
+                        <polyline points="7,100 2,105 7,110" stroke="#f59e0b" strokeWidth={1.5} fill="none"/>
+                      </svg>
+                    )}
+                    {r1.length > 0 && (
+                      <div className="flex flex-col gap-3">
+                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 mb-1"><ChevronLeft className="w-2.5 h-2.5 text-amber-500/50" /> Vòng Nhánh</div>
+                        {r1.map(n => renderCard(n))}
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+
+              return (
+                <div className="overflow-x-auto pt-4 pb-2">
+                  <div className="flex items-center gap-4 mb-5 justify-center flex-wrap">
+                    {[{c:'bg-slate-600',l:'Chưa bắt đầu'},{c:'bg-blue-500',l:'Đang đấu'},{c:'bg-amber-500',l:'Chờ xác nhận'},{c:'bg-emerald-500',l:'Đã kết thúc'}].map(i => (
+                      <div key={i.l} className="flex items-center gap-1.5 text-[10px] text-slate-400"><div className={`w-2 h-2 rounded-full ${i.c}`}/>{i.l}</div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-center" style={{ minWidth: 860 }}>
+                    {renderBranch(leftR1, leftSF, 'left')}
+                    <div className="flex flex-col items-center gap-2 px-3">
+                      <Trophy className="w-5 h-5 text-amber-400" />
+                      <div className="text-[9px] font-bold text-amber-400 uppercase tracking-widest mb-1">Chung Kết</div>
+                      {finalN ? renderCard(finalN, true) : (
+                        <div style={{ width: 200, height: 100 }} className="rounded-2xl border border-dashed border-amber-500/30 bg-slate-900/40 flex items-center justify-center text-xs text-slate-600 italic">Chờ kết quả BK</div>
                       )}
                     </div>
-                  ))}
+                    {renderBranch(rightR1, rightSF, 'right')}
+                  </div>
                 </div>
-
-                {/* Round 2: S1 and S2 */}
-                <div className="space-y-8 flex flex-col justify-center">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-purple-400 text-center block mb-2">Bán Kết</span>
-                  
-                  {bracket.filter(n => n.nodeKey === 'S1' || n.nodeKey === 'S2').map(node => (
-                    <div key={node.id} className="card p-4 border-purple-500/20 bg-purple-500/5 relative space-y-3 shadow-lg">
-                      <span className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-0.2 rounded font-bold">{node.roundName}</span>
-
-                      <div className="space-y-1.5 text-xs">
-                        <div className="flex justify-between items-center text-slate-200 font-medium">
-                          <span>🔵 {node.teamA?.name || `Winner ${node.sourceA}`}</span>
-                          <span className="font-mono font-bold">{node.match?.result ? node.match.result.teamAScore : ''}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-slate-200 font-medium">
-                          <span>🔴 {node.teamB?.name || `Winner ${node.sourceB}`}</span>
-                          <span className="font-mono font-bold">{node.match?.result ? node.match.result.teamBScore : ''}</span>
-                        </div>
-                      </div>
-
-                      {node.match && (
-                        <div className="text-[9px] text-purple-500/60 text-right pt-1 border-t border-slate-850 font-mono">
-                          Trạng thái: {node.match.status}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Round 3: Final F */}
-                <div className="space-y-8 flex flex-col justify-center">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-amber-400 text-center block mb-2">Chung Kết</span>
-
-                  {bracket.filter(n => n.nodeKey === 'F').map(node => (
-                    <div key={node.id} className="card p-6 border-amber-500/30 bg-amber-500/5 relative space-y-4 shadow-2xl relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-xl group-hover:bg-amber-500/10 transition-all duration-700" />
-
-                      <span className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-black uppercase tracking-wider">{node.roundName}</span>
-
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between items-center text-slate-100 font-bold">
-                          <span>🏆 {node.teamA?.name || 'Winner Bán Kết 1'}</span>
-                          <span className="font-mono">{node.match?.result ? node.match.result.teamAScore : ''}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-slate-100 font-bold">
-                          <span>🏆 {node.teamB?.name || 'Winner Bán Kết 2'}</span>
-                          <span className="font-mono">{node.match?.result ? node.match.result.teamBScore : ''}</span>
-                        </div>
-                      </div>
-
-                      {node.match?.status === 'RESULT_CONFIRMED' && (
-                        <div className="p-2.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded-xl text-center font-bold text-xs">
-                          🥇 VÔ ĐỊCH: {node.match.result.winnerTeamId === node.teamAId ? node.teamA?.name : node.teamB?.name}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-            ) : (
+              );
+            })() : (
               <div className="p-10 text-center text-slate-500 italic text-xs border border-dashed border-slate-800 rounded-3xl">
                 Nhánh đấu Playoff Vòng Loại Trực Tiếp sẽ được tự động kích hoạt sau khi Vòng Bảng hoàn tất.
               </div>
             )}
           </div>
         )}
+
+
 
         {/* TEAMS LIST VIEW */}
         {activeTab === 'teams' && (

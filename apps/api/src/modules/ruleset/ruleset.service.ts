@@ -126,6 +126,8 @@ export class RulesetService {
             competitionFormat: (dto.competitionFormat || 'GROUP_STAGE_KNOCKOUT') as any,
             requireCourtConfig: dto.requireCourtConfig ?? true,
             requireScheduleConfig: dto.requireScheduleConfig ?? true,
+            groupCount: dto.groupCount ?? 2,
+            advancePerGroup: dto.advancePerGroup ?? 1,
             isTemplate: false,
             createdById: userId,
           },
@@ -148,6 +150,8 @@ export class RulesetService {
             competitionFormat: (dto.competitionFormat || 'GROUP_STAGE_KNOCKOUT') as any,
             requireCourtConfig: dto.requireCourtConfig ?? true,
             requireScheduleConfig: dto.requireScheduleConfig ?? true,
+            groupCount: dto.groupCount ?? 2,
+            advancePerGroup: dto.advancePerGroup ?? 1,
           },
         });
 
@@ -252,8 +256,8 @@ export class RulesetService {
         afterData: updatedRuleset,
       });
 
-      await this.validatorService.markSectionNeedsReview(tournamentId, ['players', 'teams', 'lineup']);
-      await this.validatorService.validateAll(tournamentId);
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['players', 'teams', 'lineup'], tx);
+      await this.validatorService.validateAll(tournamentId, tx);
 
       return updatedRuleset;
     });

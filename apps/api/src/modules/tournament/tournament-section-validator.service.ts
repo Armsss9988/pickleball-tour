@@ -13,12 +13,13 @@ import { SectionStatusEnum } from '@golab/db';
 export class TournamentSectionValidatorService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async validateAll(tournamentId: string) {
-    const data = await this.getTournamentSectionData(tournamentId);
+  async validateAll(tournamentId: string, tx?: any) {
+    const client = tx || this.prisma;
+    const data = await this.getTournamentSectionData(tournamentId, client);
     const results = validateAllSections(data);
 
     // Save each status to DB
-    await this.persistSectionStatuses(tournamentId, results);
+    await this.persistSectionStatuses(tournamentId, results, client);
 
     return {
       results,
@@ -27,8 +28,9 @@ export class TournamentSectionValidatorService {
     };
   }
 
-  async getTournamentSectionData(tournamentId: string): Promise<TournamentSectionData> {
-    const tournament = await this.prisma.tournament.findUniqueOrThrow({
+  async getTournamentSectionData(tournamentId: string, tx?: any): Promise<TournamentSectionData> {
+    const client = tx || this.prisma;
+    const tournament = await client.tournament.findUniqueOrThrow({
       where: { id: tournamentId },
       include: {
         ruleset: {
@@ -65,18 +67,18 @@ export class TournamentSectionValidatorService {
 
     // 3. Players
     // Count players registered for this tournament
-    const registrations = await this.prisma.tournamentRegistration.findMany({
+    const registrations = await client.tournamentRegistration.findMany({
       where: { tournamentId, status: 'APPROVED' },
       include: { playerProfile: true },
     });
     const players = {
       total: registrations.length,
-      males: registrations.filter(r => r.playerProfile.gender?.toUpperCase() === 'MALE').length,
-      females: registrations.filter(r => r.playerProfile.gender?.toUpperCase() === 'FEMALE').length,
+      males: registrations.filter((r: any) => r.playerProfile.gender?.toUpperCase() === 'MALE').length,
+      females: registrations.filter((r: any) => r.playerProfile.gender?.toUpperCase() === 'FEMALE').length,
     };
 
     // 4. Teams
-    const dbTeams = await this.prisma.team.findMany({
+    const dbTeams = await client.team.findMany({
       where: { tournamentId },
       include: {
         members: {
@@ -85,11 +87,11 @@ export class TournamentSectionValidatorService {
       },
     });
 
-    const membersCounts = dbTeams.map(t => t.members.length);
-    const membersGenders = dbTeams.map(t => ({
+    const membersCounts = dbTeams.map((t: any) => t.members.length);
+    const membersGenders = dbTeams.map((t: any) => ({
       teamId: t.id,
-      males: t.members.filter(m => m.playerProfile.gender?.toUpperCase() === 'MALE').length,
-      females: t.members.filter(m => m.playerProfile.gender?.toUpperCase() === 'FEMALE').length,
+      males: t.members.filter((m: any) => m.playerProfile.gender?.toUpperCase() === 'MALE').length,
+      females: t.members.filter((m: any) => m.playerProfile.gender?.toUpperCase() === 'FEMALE').length,
     }));
 
     const teams = {
@@ -99,7 +101,7 @@ export class TournamentSectionValidatorService {
     };
 
     // 5. Schedule
-    const matches = await this.prisma.match.findMany({
+    const matches = await client.match.findMany({
       where: { tournamentId },
     });
 
@@ -108,8 +110,8 @@ export class TournamentSectionValidatorService {
 
     const schedule = {
       matchCount: matches.length,
-      allMatchesHaveTime: matches.length > 0 && matches.every(m => !!m.scheduledTime),
-      allMatchesHaveCourt: matches.length > 0 && matches.every(m => !!m.courtId || !!m.courtName),
+      allMatchesHaveTime: matches.length > 0 && matches.every((m: any) => !!m.scheduledTime),
+      allMatchesHaveCourt: matches.length > 0 && matches.every((m: any) => !!m.courtId || !!m.courtName),
       hasCourtConflicts,
     };
 
@@ -145,10 +147,11 @@ export class TournamentSectionValidatorService {
     return false;
   }
 
-  private async persistSectionStatuses(tournamentId: string, results: SectionValidationResult[]) {
+  private async persistSectionStatuses(tournamentId: string, results: SectionValidationResult[], tx?: any) {
+    const client = tx || this.prisma;
     for (const res of results) {
       const dbStatus = res.valid ? SectionStatusEnum.VALID : SectionStatusEnum.INVALID;
-      await this.prisma.tournamentSectionStatus.upsert({
+      await client.tournamentSectionStatus.upsert({
         where: {
           tournamentId_sectionKey: {
             tournamentId,
@@ -171,9 +174,10 @@ export class TournamentSectionValidatorService {
     }
   }
 
-  async markSectionNeedsReview(tournamentId: string, sectionKeys: string[]) {
+  async markSectionNeedsReview(tournamentId: string, sectionKeys: string[], tx?: any) {
+    const client = tx || this.prisma;
     for (const key of sectionKeys) {
-      await this.prisma.tournamentSectionStatus.upsert({
+      await client.tournamentSectionStatus.upsert({
         where: {
           tournamentId_sectionKey: {
             tournamentId,

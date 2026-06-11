@@ -173,45 +173,116 @@ export class RankingService {
    * Retrieves standing tables for all groups in a tournament.
    */
   async getStandings(tournamentId: string) {
-    const standings = await this.prisma.standing.findMany({
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: { ruleset: true },
+    });
+    
+    const rulesetConfig = (tournament?.ruleset as any) || {};
+    const pointsForWin = rulesetConfig.pointsForWin ?? 3;
+    const pointsForLoss = rulesetConfig.pointsForLoss ?? 0;
+
+    const groups = await this.prisma.group.findMany({
+      where: { tournamentId },
+      include: {
+        groupTeams: {
+          include: {
+            team: true,
+          },
+        },
+      },
+    });
+
+    const dbStandings = await this.prisma.standing.findMany({
       where: { tournamentId },
       include: {
         team: true,
         group: true,
       },
-      orderBy: [
-        { groupId: 'asc' },
-        { rank: 'asc' },
-      ],
     });
 
-    // Group by Bảng
-    const groupsMap = new Map<string, any[]>();
-    for (const std of standings) {
-      const groupCode = std.group.code;
-      if (!groupsMap.has(groupCode)) {
-        groupsMap.set(groupCode, []);
+    const resultStandings = [];
+
+    for (const group of groups) {
+      const groupTeams = group.groupTeams.map(gt => gt.team);
+      const groupDbStandings = dbStandings.filter(s => s.groupId === group.id);
+
+      if (groupDbStandings.length > 0) {
+        for (const std of groupDbStandings) {
+          resultStandings.push({
+            id: std.id,
+            organizationId: std.organizationId,
+            tournamentId: std.tournamentId,
+            groupId: std.groupId,
+            teamId: std.teamId,
+            matchesPlayed: std.matchesPlayed,
+            wins: std.wins,
+            losses: std.losses,
+            pointsFor: std.pointsFor,
+            pointsAgainst: std.pointsAgainst,
+            pointDiff: std.pointDiff,
+            rank: std.rank ?? 0,
+            tieBreakDetail: std.tieBreakDetail,
+            calculatedAt: std.calculatedAt,
+            team: std.team,
+            group: { id: std.group.id, name: std.group.name, code: std.group.code },
+            points: std.wins * pointsForWin + std.losses * pointsForLoss,
+          });
+        }
+
+        const existingTeamIds = new Set(groupDbStandings.map(s => s.teamId));
+        const missingTeams = groupTeams.filter(t => !existingTeamIds.has(t.id));
+        if (missingTeams.length > 0) {
+          const currentMaxRank = Math.max(...groupDbStandings.map(s => s.rank ?? 0), 0);
+          missingTeams.forEach((team, index) => {
+            resultStandings.push({
+              id: `temp-${group.id}-${team.id}`,
+              organizationId: group.organizationId,
+              tournamentId: group.tournamentId,
+              groupId: group.id,
+              teamId: team.id,
+              matchesPlayed: 0,
+              wins: 0,
+              losses: 0,
+              pointsFor: 0,
+              pointsAgainst: 0,
+              pointDiff: 0,
+              rank: currentMaxRank + index + 1,
+              tieBreakDetail: { requiresAdminDecision: false, tieBreakReason: '' },
+              calculatedAt: new Date(),
+              team,
+              group: { id: group.id, name: group.name, code: group.code },
+              points: 0,
+            });
+          });
+        }
+      } else {
+        const sortedTeams = [...groupTeams].sort((a, b) => a.code.localeCompare(b.code));
+        sortedTeams.forEach((team, index) => {
+          resultStandings.push({
+            id: `temp-${group.id}-${team.id}`,
+            organizationId: group.organizationId,
+            tournamentId: group.tournamentId,
+            groupId: group.id,
+            teamId: team.id,
+            matchesPlayed: 0,
+            wins: 0,
+            losses: 0,
+            pointsFor: 0,
+            pointsAgainst: 0,
+            pointDiff: 0,
+            rank: index + 1,
+            tieBreakDetail: { requiresAdminDecision: false, tieBreakReason: '' },
+            calculatedAt: new Date(),
+            team,
+            group: { id: group.id, name: group.name, code: group.code },
+            points: 0,
+          });
+        });
       }
-      groupsMap.get(groupCode)!.push({
-        teamId: std.teamId,
-        teamName: std.team.name,
-        teamCode: std.team.code,
-        matchesPlayed: std.matchesPlayed,
-        wins: std.wins,
-        losses: std.losses,
-        pointsFor: std.pointsFor,
-        pointsAgainst: std.pointsAgainst,
-        pointDiff: std.pointDiff,
-        rank: std.rank,
-        requiresAdminDecision: (std.tieBreakDetail as any)?.requiresAdminDecision ?? false,
-        tieBreakReason: (std.tieBreakDetail as any)?.tieBreakReason ?? null,
-      });
     }
 
-    return Array.from(groupsMap.entries()).map(([code, items]) => ({
-      groupCode: code,
-      items,
-    }));
+    return resultStandings;
   }
 
   /**

@@ -4,6 +4,7 @@ import { AuditService } from '../audit/audit.service';
 import { MatchMapper } from './match.mapper';
 import { MatchStatus } from '@golab/contracts';
 import { TournamentSectionValidatorService } from '../tournament/tournament-section-validator.service';
+import { ScoreGateway } from '../../gateways/score.gateway';
 
 @Injectable()
 export class MatchService {
@@ -11,6 +12,7 @@ export class MatchService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly validatorService: TournamentSectionValidatorService,
+    private readonly scoreGateway: ScoreGateway,
   ) {}
 
   /**
@@ -39,6 +41,7 @@ export class MatchService {
       include: {
         teamA: true,
         teamB: true,
+        group: true,
         segments: {
           orderBy: { segmentOrder: 'asc' },
         },
@@ -124,8 +127,8 @@ export class MatchService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.match.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.match.update({
         where: { id: matchId },
         data: MatchMapper.toPersistence(domainMatch),
       });
@@ -135,6 +138,15 @@ export class MatchService {
         await tx.matchSegment.update({
           where: { id: firstSeg.id },
           data: { status: 'RUNNING' },
+        });
+      }
+
+      // Auto-transition tournament → RUNNING when the first match starts
+      const preOngoingStatuses = ['GROUP_ASSIGNED', 'SCHEDULE_GENERATED', 'TEAM_DRAW_COMPLETED', 'PUBLISHED'];
+      if (preOngoingStatuses.includes(match.tournament?.status ?? '')) {
+        await tx.tournament.update({
+          where: { id: match.tournamentId },
+          data: { status: 'RUNNING' as any },
         });
       }
 
@@ -149,8 +161,29 @@ export class MatchService {
         afterData: { status: 'RUNNING' },
       });
 
-      return updated;
+      return u;
     });
+
+    // Broadcast WebSocket update so that clients/spectators know the match started in real-time!
+    const firstSeg = match.segments[0];
+    this.scoreGateway.broadcastScoreUpdate(matchId, match.tournamentId, {
+      matchId,
+      tournamentId: match.tournamentId,
+      scoreA: 0,
+      scoreB: 0,
+      matchStatus: 'RUNNING',
+      activeSegment: firstSeg
+        ? {
+            id: firstSeg.id,
+            order: firstSeg.segmentOrder,
+            name: firstSeg.name,
+            targetScore: firstSeg.targetScore,
+            status: 'RUNNING',
+          }
+        : null,
+    });
+
+    return updated;
   }
 
   /**

@@ -97,6 +97,16 @@ export class PublicService {
         publicEnabled: true,
         createdAt: true,
         updatedAt: true,
+        ruleset: {
+          select: {
+            scoringConfig: {
+              select: {
+                pointsForWin: true,
+                pointsForLoss: true,
+              },
+            },
+          },
+        },
       },
       take: 2,
       orderBy: { updatedAt: 'desc' },
@@ -115,6 +125,8 @@ export class PublicService {
     }
 
     const tournament = tournaments[0]!;
+    const pointsForWin = tournament.ruleset?.scoringConfig?.pointsForWin ?? 3;
+    const pointsForLoss = tournament.ruleset?.scoringConfig?.pointsForLoss ?? 0;
 
     const [matches, groups, standings, teams, bracket] =
       await this.prisma.$transaction([
@@ -160,7 +172,13 @@ export class PublicService {
           where: { tournamentId: tournament.id },
           include: {
             team: true,
-            group: true,
+            group: {
+              include: {
+                groupTeams: {
+                  include: { team: true },
+                },
+              },
+            },
           },
           orderBy: [{ groupId: 'asc' }, { rank: 'asc' }],
         }),
@@ -191,11 +209,15 @@ export class PublicService {
         }),
       ]);
 
+    // Strip the ruleset from the tournament object before returning to keep response lean
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { ruleset: _ruleset, ...tournamentData } = tournament as typeof tournament & { ruleset?: unknown };
+
     return {
-      tournament,
+      tournament: tournamentData,
       matches,
       groups,
-      standings: this.mapStandings(standings),
+      standings: this.mapStandings(standings, pointsForWin, pointsForLoss),
       teams,
       bracket,
     };
@@ -203,9 +225,16 @@ export class PublicService {
 
   private mapStandings(
     standings: Array<{
-      group: { code: string };
-      team: { id: string; name: string; code: string };
+      id: string;
+      groupId: string;
       teamId: string;
+      group: {
+        id: string;
+        code: string;
+        name: string;
+        groupTeams: Array<{ team: { id: string; name: string; code: string } }>;
+      };
+      team: { id: string; name: string; code: string };
       matchesPlayed: number;
       wins: number;
       losses: number;
@@ -215,35 +244,90 @@ export class PublicService {
       rank: number | null;
       tieBreakDetail: unknown;
     }>,
+    pointsForWin: number,
+    pointsForLoss: number,
   ) {
-    const groupsMap = new Map<string, any[]>();
+    const result: Array<{
+      id: string;
+      groupId: string;
+      teamId: string;
+      team: { id: string; name: string; code: string };
+      group: { id: string; name: string; code: string };
+      matchesPlayed: number;
+      wins: number;
+      losses: number;
+      pointsFor: number;
+      pointsAgainst: number;
+      pointDiff: number;
+      rank: number;
+      points: number;
+      requiresAdminDecision: boolean;
+      tieBreakReason: string | null;
+    }> = [];
 
-    for (const standing of standings) {
-      const groupCode = standing.group.code;
-      if (!groupsMap.has(groupCode)) {
-        groupsMap.set(groupCode, []);
+    // Track which teams already have a standing row per group (for placeholder logic)
+    const groupTeamsSeen = new Map<string, Set<string>>();
+
+    for (const s of standings) {
+      if (!groupTeamsSeen.has(s.groupId)) {
+        groupTeamsSeen.set(s.groupId, new Set());
       }
+      groupTeamsSeen.get(s.groupId)!.add(s.teamId);
 
-      groupsMap.get(groupCode)!.push({
-        ...this.getTieBreakMeta(standing.tieBreakDetail),
-        teamId: standing.teamId,
-        teamName: standing.team.name,
-        teamCode: standing.team.code,
-        matchesPlayed: standing.matchesPlayed,
-        wins: standing.wins,
-        losses: standing.losses,
-        pointsFor: standing.pointsFor,
-        pointsAgainst: standing.pointsAgainst,
-        pointDiff: standing.pointDiff,
-        rank: standing.rank,
+      result.push({
+        id: s.id,
+        groupId: s.groupId,
+        teamId: s.teamId,
+        team: s.team,
+        group: { id: s.group.id, name: s.group.name, code: s.group.code },
+        matchesPlayed: s.matchesPlayed,
+        wins: s.wins,
+        losses: s.losses,
+        pointsFor: s.pointsFor,
+        pointsAgainst: s.pointsAgainst,
+        pointDiff: s.pointDiff,
+        rank: s.rank ?? 0,
+        points: s.wins * pointsForWin + s.losses * pointsForLoss,
+        ...this.getTieBreakMeta(s.tieBreakDetail),
       });
     }
 
-    return Array.from(groupsMap.entries()).map(([groupCode, items]) => ({
-      groupCode,
-      items,
-    }));
+    // Add placeholder rows for teams that have no standing record yet (pre-match state)
+    for (const s of standings) {
+      const seenTeams = groupTeamsSeen.get(s.groupId)!;
+      const groupResults = result.filter((r) => r.groupId === s.groupId);
+      const maxRank = groupResults.length > 0 ? Math.max(...groupResults.map((r) => r.rank)) : 0;
+      let offset = 0;
+
+      for (const gt of s.group.groupTeams) {
+        const team = gt.team;
+        if (!seenTeams.has(team.id)) {
+          seenTeams.add(team.id);
+          result.push({
+            id: `placeholder-${s.groupId}-${team.id}`,
+            groupId: s.groupId,
+            teamId: team.id,
+            team,
+            group: { id: s.group.id, name: s.group.name, code: s.group.code },
+            matchesPlayed: 0,
+            wins: 0,
+            losses: 0,
+            pointsFor: 0,
+            pointsAgainst: 0,
+            pointDiff: 0,
+            rank: maxRank + offset + 1,
+            points: 0,
+            requiresAdminDecision: false,
+            tieBreakReason: null,
+          });
+          offset++;
+        }
+      }
+    }
+
+    return result;
   }
+
 
   private getTieBreakMeta(tieBreakDetail: unknown) {
     if (!tieBreakDetail || typeof tieBreakDetail !== 'object') {

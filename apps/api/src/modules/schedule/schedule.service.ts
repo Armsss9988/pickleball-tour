@@ -241,7 +241,7 @@ export class ScheduleService {
       });
 
       // Trigger section validations
-      await this.validatorService.validateAll(tournamentId);
+      await this.validatorService.validateAll(tournamentId, tx);
 
       return tx.match.findMany({
         where: { tournamentId, stageId: stage.id },

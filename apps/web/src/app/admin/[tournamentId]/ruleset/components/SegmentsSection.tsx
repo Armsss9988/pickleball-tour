@@ -107,7 +107,7 @@ export function SegmentsSection({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+            <div className="grid grid-cols-1 gap-3 mt-1">
               <div className="space-y-1">
                 <label className="text-[10px] text-slate-450 font-medium">Luật giới tính</label>
                 <select
@@ -125,15 +125,6 @@ export function SegmentsSection({
                     </>
                   )}
                 </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] text-slate-450 font-medium">Mã định danh chặng</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={segment.segmentKey}
-                  className="w-full premium-input text-xs bg-slate-900/60 text-slate-500 cursor-not-allowed font-mono"
-                />
               </div>
             </div>
             <div className="flex items-center gap-2 mt-2">

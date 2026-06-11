@@ -1,0 +1,3 @@
+{"type":"server-started","port":52308,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:52308","screen_dir":"D:\\AMWork\\ai\\golab-tournament-pickleball\\.superpowers\\brainstorm\\codex-20260608225830\\content","state_dir":"D:\\AMWork\\ai\\golab-tournament-pickleball\\.superpowers\\brainstorm\\codex-20260608225830\\state"}
+{"type":"screen-added","file":"D:\\AMWork\\ai\\golab-tournament-pickleball\\.superpowers\\brainstorm\\codex-20260608225830\\content\\control-room-layout-options.html"}
+{"type":"server-stopped","reason":"owner process exited"}

@@ -5,6 +5,22 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 
+function getMatchStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    SCHEDULED: 'Chưa bắt đầu',
+    LINEUP_PENDING: 'Chờ lineup',
+    LINEUP_READY: 'Đã nộp lineup',
+    READY: 'Sẵn sàng',
+    RUNNING: 'Đang đấu',
+    SEGMENT_BREAK: 'Nghỉ chặng',
+    COMPLETED: 'Chờ xác nhận',
+    RESULT_CONFIRMED: 'Đã kết thúc',
+    CANCELLED: 'Đã hủy',
+    WALKOVER: 'Bỏ cuộc',
+  };
+  return map[status] ?? status;
+}
+
 export default function RefereeScorerPage() {
   const params = useParams();
   const router = useRouter();
@@ -17,6 +33,24 @@ export default function RefereeScorerPage() {
   const [activeSegment, setActiveSegment] = useState<any>(null);
   const [activePlayers, setActivePlayers] = useState<{ teamA: any[]; teamB: any[] }>({ teamA: [], teamB: [] });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Override result modal state
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideForm, setOverrideForm] = useState({
+    teamAScore: 0,
+    teamBScore: 0,
+    winnerTeamId: '',
+    reason: '',
+  });
+
+  // Segment edit modal state
+  const [showSegmentEditModal, setShowSegmentEditModal] = useState(false);
+  const [editingSegment, setEditingSegment] = useState<any>(null);
+  const [segmentEditForm, setSegmentEditForm] = useState({
+    teamASegmentScore: 0,
+    teamBSegmentScore: 0,
+    reason: '',
+  });
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -177,31 +211,31 @@ export default function RefereeScorerPage() {
     }
   };
 
-  // Undo the latest point
-  const handleUndoPoint = async () => {
+  // Undo the latest point of a specific team (decrease score)
+  const handleUndoTeamPoint = async (teamId: string) => {
     if (!match || isSubmitting) return;
     if (match.status === 'RESULT_CONFIRMED') {
-      setError('Trận đấu đã được xác nhận kết quả, không thể undo!');
+      setError('Trận đấu đã được xác nhận kết quả, không thể giảm điểm!');
       playSound('error');
       return;
     }
 
-    if (!confirm('Bạn có chắc chắn muốn HOÀN TÁC (Undo) điểm số vừa ghi nhận?')) return;
+    if (!confirm('Bạn có chắc chắn muốn GIẢM 1 ĐIỂM của đội này?')) return;
 
     setIsSubmitting(true);
     setError('');
     setSuccess('');
 
     try {
-      await apiFetch(`/matches/${matchId}/score-events/undo-latest`, {
+      await apiFetch(`/matches/${matchId}/score-events/undo-team`, {
         method: 'POST',
-        body: { reason: 'Trọng tài điều chỉnh điểm số tại bàn scorer' },
+        body: { teamId, reason: 'Trọng tài giảm điểm trực tiếp' },
       });
       playSound('undo');
       loadMatchDetails(false);
     } catch (e: any) {
       console.error(e);
-      setError(e.message || 'Lỗi hoàn tác điểm số.');
+      setError(e.message || 'Lỗi giảm điểm số.');
       playSound('error');
     } finally {
       setIsSubmitting(false);
@@ -252,6 +286,120 @@ export default function RefereeScorerPage() {
     } catch (e: any) {
       console.error(e);
       setError(e.message || 'Lỗi xác nhận kết quả.');
+      playSound('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Helper: compute per-segment scores from scoreEvents
+  const getSegmentScores = (seg: any) => {
+    if (!match) return { scoreA: 0, scoreB: 0, pointsA: 0, pointsB: 0 };
+    const allActive = (match.scoreEvents || []).filter((e: any) => !e.isUndone);
+    const segEvents = allActive.filter((e: any) => e.segmentId === seg.id);
+    if (segEvents.length === 0) return { scoreA: 0, scoreB: 0, pointsA: 0, pointsB: 0 };
+    const last = segEvents[segEvents.length - 1];
+    // Points A in this segment = count of events where scoringTeamId === teamAId
+    const pointsA = segEvents.filter((e: any) => e.scoringTeamId === match.teamAId).length;
+    const pointsB = segEvents.filter((e: any) => e.scoringTeamId === match.teamBId).length;
+    return { scoreA: last.scoreAAfter, scoreB: last.scoreBAfter, pointsA, pointsB };
+  };
+
+  // Open segment edit modal
+  const handleOpenSegmentEdit = (seg: any) => {
+    const scores = getSegmentScores(seg);
+    setEditingSegment(seg);
+    setSegmentEditForm({
+      teamASegmentScore: scores.pointsA,
+      teamBSegmentScore: scores.pointsB,
+      reason: '',
+    });
+    setError('');
+    setShowSegmentEditModal(true);
+  };
+
+  // Submit segment override
+  const handleOverrideSegmentScore = async () => {
+    if (!match || !editingSegment || isSubmitting) return;
+    if (!segmentEditForm.reason.trim()) {
+      setError('Vui lòng nhập lý do chỉnh sửa.');
+      return;
+    }
+    setIsSubmitting(true);
+    setError('');
+    setSuccess('');
+    try {
+      await apiFetch(`/matches/${matchId}/segments/${editingSegment.id}/override-score`, {
+        method: 'POST',
+        body: {
+          teamASegmentScore: Number(segmentEditForm.teamASegmentScore),
+          teamBSegmentScore: Number(segmentEditForm.teamBSegmentScore),
+          reason: segmentEditForm.reason,
+        },
+      });
+      playSound('complete');
+      setSuccess(`Đã chỉnh sửa kết quả chặng "${editingSegment.name}" thành công!`);
+      setShowSegmentEditModal(false);
+      setEditingSegment(null);
+      loadMatchDetails(false);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || 'Lỗi chỉnh sửa điểm chặng.');
+      playSound('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Open override modal - pre-fill with current scores
+  const handleOpenOverrideModal = () => {
+    if (!match) return;
+    const scoreEventsFiltered = match.scoreEvents || [];
+    const latestEv = scoreEventsFiltered[scoreEventsFiltered.length - 1];
+    const curScoreA = latestEv ? latestEv.scoreAAfter : (match.result?.teamAScore ?? 0);
+    const curScoreB = latestEv ? latestEv.scoreBAfter : (match.result?.teamBScore ?? 0);
+    setOverrideForm({
+      teamAScore: curScoreA,
+      teamBScore: curScoreB,
+      winnerTeamId: match.result?.winnerTeamId || match.winnerTeamId || '',
+      reason: '',
+    });
+    setShowOverrideModal(true);
+  };
+
+  // Submit override result
+  const handleOverrideResult = async () => {
+    if (!match || isSubmitting) return;
+    if (!overrideForm.winnerTeamId) {
+      setError('Vui lòng chọn đội thắng.');
+      return;
+    }
+    if (!overrideForm.reason.trim()) {
+      setError('Vui lòng nhập lý do chỉnh sửa kết quả.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiFetch(`/matches/${matchId}/override-result`, {
+        method: 'POST',
+        body: {
+          teamAScore: Number(overrideForm.teamAScore),
+          teamBScore: Number(overrideForm.teamBScore),
+          winnerTeamId: overrideForm.winnerTeamId,
+          reason: overrideForm.reason,
+        },
+      });
+      playSound('complete');
+      setSuccess('Đã chỉnh sửa kết quả trận đấu thành công!');
+      setShowOverrideModal(false);
+      loadMatchDetails(true);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || 'Lỗi chỉnh sửa kết quả.');
       playSound('error');
     } finally {
       setIsSubmitting(false);
@@ -312,7 +460,7 @@ export default function RefereeScorerPage() {
             match.status === 'RESULT_CONFIRMED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
             'bg-slate-800 text-slate-400 border border-slate-700'
           }`}>
-            {match.status}
+            {getMatchStatusLabel(match.status)}
           </span>
           <button 
             onClick={() => loadMatchDetails(true)} 
@@ -370,6 +518,23 @@ export default function RefereeScorerPage() {
           </div>
         )}
 
+        {match.status === 'RESULT_CONFIRMED' && (
+          <div className="p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-3xl text-center space-y-4 max-w-xl mx-auto backdrop-blur-md shadow-2xl">
+            <span className="text-3xl text-emerald-400 block">✅ KẾT QUẢ ĐÃ XÁC NHẬN</span>
+            <h3 className="text-base font-bold text-slate-200">Trận đấu đã hoàn tất — tỷ số chính thức: <span className="text-emerald-400 font-mono">{scoreA} – {scoreB}</span></h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Bảng xếp hạng đã được cập nhật. Nếu phát hiện sai sót, trọng tài có thể chỉnh sửa và ghi đè kết quả bên dưới.
+            </p>
+            <button
+              onClick={handleOpenOverrideModal}
+              disabled={isSubmitting}
+              className="w-full py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:border-amber-500/50 font-bold rounded-2xl text-sm transition-all flex items-center justify-center gap-2"
+            >
+              ✏️ CHỈNH SỬA KẾT QUẢ
+            </button>
+          </div>
+        )}
+
         {/* Large Score panels */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
           
@@ -417,6 +582,13 @@ export default function RefereeScorerPage() {
             >
               ➕ Ghi Điểm Đội A
             </button>
+            <button
+              onClick={() => handleUndoTeamPoint(match.teamAId)}
+              disabled={match.status !== 'RUNNING' || isSubmitting || scoreA === 0}
+              className="w-full mt-2.5 py-3 bg-slate-800 text-sky-400 border border-sky-500/20 rounded-xl hover:bg-slate-750 active:scale-98 transition-all text-xs font-bold disabled:opacity-20 disabled:pointer-events-none uppercase"
+            >
+              ➖ Giảm Điểm Đội A
+            </button>
           </div>
 
           {/* Team B (ROSE/PINK ACCENT) */}
@@ -463,6 +635,13 @@ export default function RefereeScorerPage() {
             >
               ➕ Ghi Điểm Đội B
             </button>
+            <button
+              onClick={() => handleUndoTeamPoint(match.teamBId)}
+              disabled={match.status !== 'RUNNING' || isSubmitting || scoreB === 0}
+              className="w-full mt-2.5 py-3 bg-slate-800 text-pink-400 border border-pink-500/20 rounded-xl hover:bg-slate-750 active:scale-98 transition-all text-xs font-bold disabled:opacity-20 disabled:pointer-events-none uppercase"
+            >
+              ➖ Giảm Điểm Đội B
+            </button>
           </div>
 
         </div>
@@ -470,37 +649,83 @@ export default function RefereeScorerPage() {
         {/* Global score controls & details */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          {/* Active Segment status and target threshold details */}
+          {/* Active Segment status + All Segments Breakdown */}
           <div className="card p-6 space-y-4">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 border-b border-slate-850 pb-2">Chặng hiện tại</h3>
-            
-            {activeSegment ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-200">{activeSegment.name}</span>
-                  <span className="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded font-bold">Chặng {activeSegment.segmentOrder}</span>
-                </div>
-                <div className="text-xs text-slate-400">
-                  Mốc điểm chặng: <strong className="text-brand-400 font-mono text-sm">{activeTargetScore}</strong>
-                </div>
-                
-                {/* Visual game progress bar to active chặng target score */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                    <span>Tiến trình chặng {activeSegment.segmentOrder}:</span>
-                    <span>{Math.max(scoreA, scoreB)} / {activeTargetScore}</span>
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 border-b border-slate-850 pb-2">Chặng đấu</h3>
+
+            {/* All segments list with scores + edit button */}
+            <div className="space-y-2">
+              {(match.segments || []).map((seg: any) => {
+                const isActive = seg.id === activeSegment?.id;
+                const isDone = seg.status === 'COMPLETED' || seg.status === 'RUNNING';
+                const scores = getSegmentScores(seg);
+                const canEdit = seg.status !== 'PENDING';
+                return (
+                  <div
+                    key={seg.id}
+                    className={`p-3 rounded-xl border transition-all ${
+                      isActive
+                        ? 'bg-brand-500/10 border-brand-500/30'
+                        : seg.status === 'COMPLETED'
+                        ? 'bg-emerald-500/5 border-emerald-500/20'
+                        : seg.status === 'PENDING'
+                        ? 'bg-slate-900/40 border-slate-800'
+                        : 'bg-slate-900/60 border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                            isActive ? 'bg-brand-500/20 text-brand-400' :
+                            seg.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
+                            'bg-slate-800 text-slate-500'
+                          }`}>
+                            {seg.status === 'COMPLETED' ? '✓ Xong' : isActive ? '▶ Đang đấu' : 'Chờ'}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-200 truncate">{seg.name}</span>
+                        </div>
+                        {isDone ? (
+                          <div className="flex items-center gap-2 font-mono text-xs">
+                            <span className="text-sky-400 font-bold">{scores.pointsA}<span className="text-slate-500 font-normal"> đA</span></span>
+                            <span className="text-slate-600">–</span>
+                            <span className="text-pink-400 font-bold">{scores.pointsB}<span className="text-slate-500 font-normal"> đB</span></span>
+                            <span className="text-slate-600 text-[10px]">(Ụ: {scores.scoreA}-{scores.scoreB})</span>
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-500 italic">Mốc đến: {seg.targetScore} điểm</div>
+                        )}
+                      </div>
+                      {canEdit && (
+                        <button
+                          onClick={() => handleOpenSegmentEdit(seg)}
+                          disabled={isSubmitting}
+                          className="flex-shrink-0 px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/50 text-amber-400 rounded-lg text-[10px] font-bold transition-all disabled:opacity-40"
+                          title={`Chỉnh sửa điểm chặng ${seg.name}`}
+                        >
+                          ✏️
+                        </button>
+                      )}
+                    </div>
+                    {/* Progress bar for active segment */}
+                    {isActive && (
+                      <div className="mt-2 space-y-1">
+                        <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                          <span>Tiến trình:</span>
+                          <span>{Math.max(scoreA, scoreB)} / {seg.targetScore}</span>
+                        </div>
+                        <div className="w-full bg-slate-850 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-brand-500 h-full rounded-full transition-all duration-300"
+                            style={{ width: `${Math.min(100, (Math.max(scoreA, scoreB) / seg.targetScore) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="w-full bg-slate-850 rounded-full h-2.5 overflow-hidden">
-                    <div 
-                      className="bg-brand-500 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, (Math.max(scoreA, scoreB) / activeTargetScore) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-xs text-slate-500 italic">Không có chặng đấu nào active</div>
-            )}
+                );
+              })}
+            </div>
 
             {/* Total match points details */}
             <div className="pt-3 border-t border-slate-850 text-xs text-slate-400 space-y-1.5">
@@ -517,14 +742,6 @@ export default function RefereeScorerPage() {
             </div>
             
             <div className="space-y-2.5 pt-4">
-              <button
-                onClick={handleUndoPoint}
-                disabled={scoreEventsFiltered.length === 0 || match.status === 'RESULT_CONFIRMED' || isSubmitting}
-                className="w-full py-3 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-20 disabled:pointer-events-none"
-              >
-                ↩ HOÀN TÁC ĐIỂM (UNDO LATEST)
-              </button>
-
               <button
                 onClick={() => {
                   if(confirm('Bạn muốn đóng bàn trọng tài này?')) {
@@ -579,6 +796,251 @@ export default function RefereeScorerPage() {
       <footer className="bg-slate-900/10 border-t border-slate-900/50 py-4 px-6 text-center text-[10px] text-slate-600">
         GOLAB Pickleball Relays Platform © {new Date().getFullYear()} · Trọng tài chịu trách nhiệm chính về tính đúng đắn của dữ liệu.
       </footer>
+
+      {/* Override Result Modal */}
+      {showOverrideModal && match && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-amber-500/30 rounded-3xl shadow-2xl shadow-amber-500/10 w-full max-w-md overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">✏️</span>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-100">Chỉnh Sửa Kết Quả Trận Đấu</h2>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Ghi đè kết quả đã xác nhận — cần lý do cụ thể</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowOverrideModal(false); setError(''); }}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-all text-lg"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-5 space-y-5">
+              {error && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-semibold flex items-center gap-2">
+                  <span>⚠️</span> {error}
+                </div>
+              )}
+
+              {/* Scores */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-sky-400 block">
+                    Điểm Đội A — {match.teamA?.name}
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={overrideForm.teamAScore}
+                    onChange={e => setOverrideForm(f => ({ ...f, teamAScore: Number(e.target.value) }))}
+                    className="w-full bg-slate-800 border border-slate-700 focus:border-sky-500/50 rounded-xl px-4 py-3 text-slate-100 font-mono text-2xl font-black text-center outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-pink-400 block">
+                    Điểm Đội B — {match.teamB?.name}
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={overrideForm.teamBScore}
+                    onChange={e => setOverrideForm(f => ({ ...f, teamBScore: Number(e.target.value) }))}
+                    className="w-full bg-slate-800 border border-slate-700 focus:border-pink-500/50 rounded-xl px-4 py-3 text-slate-100 font-mono text-2xl font-black text-center outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Winner selection */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Đội Thắng</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setOverrideForm(f => ({ ...f, winnerTeamId: match.teamAId }))}
+                    className={`py-3 px-4 rounded-xl font-bold text-xs border transition-all ${
+                      overrideForm.winnerTeamId === match.teamAId
+                        ? 'bg-sky-500/20 border-sky-500/60 text-sky-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
+                  >
+                    🏆 {match.teamA?.name || 'Đội A'}
+                  </button>
+                  <button
+                    onClick={() => setOverrideForm(f => ({ ...f, winnerTeamId: match.teamBId }))}
+                    className={`py-3 px-4 rounded-xl font-bold text-xs border transition-all ${
+                      overrideForm.winnerTeamId === match.teamBId
+                        ? 'bg-pink-500/20 border-pink-500/60 text-pink-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
+                  >
+                    🏆 {match.teamB?.name || 'Đội B'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Lý do chỉnh sửa <span className="text-rose-400">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="VD: Điểm số ghi nhận sai do lỗi nhập liệu, kết quả thực tế là..."
+                  value={overrideForm.reason}
+                  onChange={e => setOverrideForm(f => ({ ...f, reason: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 focus:border-amber-500/50 rounded-xl px-4 py-3 text-slate-200 text-xs outline-none resize-none transition-all placeholder:text-slate-600"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-800 flex gap-3">
+              <button
+                onClick={() => { setShowOverrideModal(false); setError(''); }}
+                disabled={isSubmitting}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl font-bold text-xs border border-slate-700 transition-all disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleOverrideResult}
+                disabled={isSubmitting || !overrideForm.winnerTeamId || !overrideForm.reason.trim()}
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-black text-xs transition-all disabled:opacity-40 disabled:pointer-events-none shadow-lg shadow-amber-500/20"
+              >
+                {isSubmitting ? '⏳ Đang lưu...' : '✓ XÁC NHẬN CHỈNH SỬA'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Segment Score Edit Modal */}
+      {showSegmentEditModal && editingSegment && match && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-sky-500/20 rounded-3xl shadow-2xl shadow-sky-500/5 w-full max-w-md overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🎯</span>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-100">Chỉnh Sửa Kết Quả Chặng</h2>
+                  <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+                    <span className="px-1.5 py-0.5 bg-brand-500/20 text-brand-400 rounded font-bold text-[9px]">{editingSegment.name}</span>
+                    <span>— Mốc: {editingSegment.targetScore} điểm</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowSegmentEditModal(false); setEditingSegment(null); setError(''); }}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition-all text-lg"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-5 space-y-5">
+              {error && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-semibold flex items-center gap-2">
+                  <span>⚠️</span> {error}
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-400 leading-relaxed bg-slate-800/50 rounded-xl px-4 py-3">
+                Nhập số điểm một đội gành được riêng trong chặng này
+                (không phải tổng tích luỹ). Hệ thống sẽ tự động cập nhật lại toàn bộ trận đấu.
+              </p>
+
+              {/* Per-segment scores */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-sky-400 block">
+                    Điểm chặng — {match.teamA?.name}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={0}
+                      value={segmentEditForm.teamASegmentScore}
+                      onChange={e => setSegmentEditForm(f => ({ ...f, teamASegmentScore: Number(e.target.value) }))}
+                      className="w-full bg-slate-800 border border-slate-700 focus:border-sky-500/50 rounded-xl px-4 py-3 text-slate-100 font-mono text-3xl font-black text-center outline-none transition-all"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 flex justify-between px-1 pb-0.5">
+                      <button
+                        onClick={() => setSegmentEditForm(f => ({ ...f, teamASegmentScore: Math.max(0, f.teamASegmentScore - 1) }))}
+                        className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-sky-400 text-lg font-bold"
+                      >-</button>
+                      <button
+                        onClick={() => setSegmentEditForm(f => ({ ...f, teamASegmentScore: f.teamASegmentScore + 1 }))}
+                        className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-sky-400 text-lg font-bold"
+                      >+</button>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-pink-400 block">
+                    Điểm chặng — {match.teamB?.name}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={0}
+                      value={segmentEditForm.teamBSegmentScore}
+                      onChange={e => setSegmentEditForm(f => ({ ...f, teamBSegmentScore: Number(e.target.value) }))}
+                      className="w-full bg-slate-800 border border-slate-700 focus:border-pink-500/50 rounded-xl px-4 py-3 text-slate-100 font-mono text-3xl font-black text-center outline-none transition-all"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 flex justify-between px-1 pb-0.5">
+                      <button
+                        onClick={() => setSegmentEditForm(f => ({ ...f, teamBSegmentScore: Math.max(0, f.teamBSegmentScore - 1) }))}
+                        className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-pink-400 text-lg font-bold"
+                      >-</button>
+                      <button
+                        onClick={() => setSegmentEditForm(f => ({ ...f, teamBSegmentScore: f.teamBSegmentScore + 1 }))}
+                        className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-pink-400 text-lg font-bold"
+                      >+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Lý do chỉnh sửa <span className="text-rose-400">*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="VD: Trọng tài ghi nhọn nhầm, kết quả chặng thực tế là..."
+                  value={segmentEditForm.reason}
+                  onChange={e => setSegmentEditForm(f => ({ ...f, reason: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 focus:border-sky-500/50 rounded-xl px-4 py-3 text-slate-200 text-xs outline-none resize-none transition-all placeholder:text-slate-600"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-800 flex gap-3">
+              <button
+                onClick={() => { setShowSegmentEditModal(false); setEditingSegment(null); setError(''); }}
+                disabled={isSubmitting}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl font-bold text-xs border border-slate-700 transition-all disabled:opacity-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleOverrideSegmentScore}
+                disabled={isSubmitting || !segmentEditForm.reason.trim()}
+                className="flex-1 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-xl font-black text-xs transition-all disabled:opacity-40 disabled:pointer-events-none shadow-lg shadow-sky-500/20"
+              >
+                {isSubmitting ? '⏳ Đang lưu...' : '✓ CẬP NHẬT CHẶNG'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

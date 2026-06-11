@@ -38,10 +38,10 @@ describe('TournamentService publish guard', () => {
     const service = new TournamentService(prisma as any, { log: jest.fn() } as any, { validateAll } as any);
 
     await expect(service.publish('t1', 'u1')).rejects.toBeInstanceOf(BadRequestException);
-    await expect(service.publish('t1', 'u1')).rejects.toThrow('giải chưa hoàn tất');
+    await expect(service.publish('t1', 'u1')).rejects.toThrow('chưa hoàn thành bước bốc thăm');
   });
 
-  it('rejects publishing before tournament completion', async () => {
+  it('rejects publishing when tournament is still in PLAYERS_READY (before draw)', async () => {
     const prisma = {
       tournament: {
         findUnique: jest.fn().mockResolvedValue({
@@ -51,7 +51,7 @@ describe('TournamentService publish guard', () => {
           slug: 'test-cup',
           venueName: 'Arena',
           openingTime: new Date('2026-05-29T09:00:00.000Z'),
-          status: 'ONGOING',
+          status: 'PLAYERS_READY',
           ruleset: {
             segmentDefinitions: [],
             teamCompositionRule: null,
@@ -67,7 +67,7 @@ describe('TournamentService publish guard', () => {
     const publish = () => service.publish('t1', 'u1');
 
     await expect(publish()).rejects.toBeInstanceOf(BadRequestException);
-    await expect(publish()).rejects.toThrow('giải chưa hoàn tất');
+    await expect(publish()).rejects.toThrow('chưa hoàn thành bước bốc thăm');
   });
 
   it('publishes a completed tournament when readiness checks pass', async () => {
@@ -129,7 +129,66 @@ describe('TournamentService publish guard', () => {
     expect(log).toHaveBeenCalled();
   });
 
-  it('rejects publishing a completed tournament when not all match results are confirmed', async () => {
+  it('allows publishing an ONGOING tournament when readiness checks pass', async () => {
+    const validateAll = jest.fn().mockResolvedValue({
+      publishReady: { ready: true, missing: [] },
+      operationalReady: { ready: true, missing: [] },
+    });
+    const update = jest.fn().mockResolvedValue({
+      id: 't1',
+      status: 'PUBLISHED',
+      publicEnabled: true,
+    });
+    const log = jest.fn();
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 't1',
+          organizationId: 'org1',
+          name: 'Test Cup',
+          slug: 'test-cup',
+          venueName: 'Arena',
+          openingTime: new Date('2026-05-29T09:00:00.000Z'),
+          status: 'ONGOING',
+          publicEnabled: false,
+          ruleset: {
+            segmentDefinitions: [{}],
+            teamCompositionRule: { teamSize: 5, maleCount: 3, femaleCount: 2 },
+            playerLimitRules: [],
+            overlapRules: [],
+            scoringConfig: { winScore: 21 },
+          },
+          sectionStatuses: [],
+        }),
+        update,
+      },
+      team: {
+        count: jest.fn().mockResolvedValue(8),
+      },
+      match: {
+        count: jest.fn().mockResolvedValue(12),
+      },
+      stage: {
+        count: jest.fn().mockResolvedValue(0),
+      },
+    };
+
+    const service = new TournamentService(prisma as any, { log } as any, { validateAll } as any);
+
+    await expect(service.publish('t1', 'u1')).resolves.toEqual({
+      published: true,
+      operationallyReady: true,
+      operationalWarnings: [],
+    });
+    expect(validateAll).toHaveBeenCalledWith('t1');
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 't1' },
+      data: { status: 'PUBLISHED', publicEnabled: true },
+    });
+    expect(log).toHaveBeenCalled();
+  });
+
+  it('rejects publishing when tournament is missing required data (no teams)', async () => {
     const validateAll = jest.fn().mockResolvedValue({
       publishReady: { ready: true, missing: [] },
       operationalReady: { ready: true, missing: [] },
@@ -143,7 +202,7 @@ describe('TournamentService publish guard', () => {
           slug: 'test-cup',
           venueName: 'Arena',
           openingTime: new Date('2026-05-29T09:00:00.000Z'),
-          status: 'COMPLETED',
+          status: 'ONGOING',
           publicEnabled: false,
           ruleset: {
             segmentDefinitions: [{}],
@@ -156,12 +215,10 @@ describe('TournamentService publish guard', () => {
         }),
       },
       team: {
-        count: jest.fn().mockResolvedValue(8),
+        count: jest.fn().mockResolvedValue(0), // No teams!
       },
       match: {
-        count: jest.fn().mockImplementation(({ where }: { where?: { status?: string } }) =>
-          Promise.resolve(where?.status === 'RESULT_CONFIRMED' ? 11 : 12),
-        ),
+        count: jest.fn().mockResolvedValue(0), // No matches!
       },
       stage: {
         count: jest.fn().mockResolvedValue(0),

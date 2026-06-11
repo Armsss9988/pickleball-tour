@@ -413,13 +413,8 @@ export function getPublishReadiness(context: TournamentUxContext): PublishReadin
   const missing: string[] = [];
   if (!context.hasTournamentInfo) missing.push('thông tin giải');
   if (!context.hasValidRuleset) missing.push('ruleset');
-  if (context.teamCount < 8) missing.push('đội thi đấu');
+  if (context.teamCount < 2) missing.push('đội thi đấu (tối thiểu 2 đội)');
   if (context.matchCount === 0) missing.push('lịch thi đấu');
-  if (context.resultConfirmedMatchCount < context.matchCount) missing.push('kết quả trận đấu');
-  if (context.hasKnockoutStage && !['COMPLETED', 'PUBLISHED'].includes(context.status)) {
-    missing.push('vòng knockout hoàn tất');
-  }
-  if (!['COMPLETED', 'PUBLISHED'].includes(context.status)) missing.push('trạng thái hoàn tất');
   return { ready: missing.length === 0, missing };
 }
 

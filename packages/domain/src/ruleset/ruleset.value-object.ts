@@ -56,6 +56,14 @@ export class Ruleset extends ValueObject<CreateRulesetDto> {
     return this.props.requireScheduleConfig ?? true;
   }
 
+  get groupCount(): number {
+    return this.props.groupCount ?? 2;
+  }
+
+  get advancePerGroup(): number {
+    return this.props.advancePerGroup ?? 1;
+  }
+
   /**
    * Performs domain validation on the ruleset configuration.
    * Validation branches based on eventType and matchFormat.

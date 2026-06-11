@@ -350,8 +350,8 @@ export class TeamService {
       });
 
       // Re-validate and mark dependents
-      await this.validatorService.markSectionNeedsReview(tournamentId, ['lineup']);
-      await this.validatorService.validateAll(tournamentId);
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['lineup'], tx);
+      await this.validatorService.validateAll(tournamentId, tx);
 
       return confirmedTeams;
     });
@@ -555,8 +555,8 @@ export class TeamService {
         })),
       });
 
-      await this.validatorService.markSectionNeedsReview(tournamentId, ['lineup']);
-      await this.validatorService.validateAll(tournamentId);
+      await this.validatorService.markSectionNeedsReview(tournamentId, ['lineup'], tx);
+      await this.validatorService.validateAll(tournamentId, tx);
 
       return confirmedTeams;
     });

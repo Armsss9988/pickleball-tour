@@ -22,6 +22,15 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
+    // If the user is already logged in, redirect them to /admin automatically!
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('golab_access_token');
+      if (token) {
+        router.push('/admin');
+        return; // Keep loading as true to prevent flash of content
+      }
+    }
+
     async function fetchTournaments() {
       try {
         setLoading(true);
@@ -93,6 +102,24 @@ export default function HomePage() {
       {/* Background Decorative Blur Orbs */}
       <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 right-1/4 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Header Navigation */}
+      <header className="bg-slate-950/40 backdrop-blur-md border-b border-slate-900/60 sticky top-0 z-50 px-6 py-4 flex justify-between items-center w-full max-w-7xl mx-auto rounded-b-2xl">
+        <Link href="/" className="flex items-center gap-2 text-decoration-none">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <Trophy className="w-4 h-4 text-amber-500" />
+          </div>
+          <span className="text-base font-bold text-slate-100 tracking-tight">
+            GOLAB CÚP
+          </span>
+        </Link>
+        <Link
+          href="/login"
+          className="btn btn-secondary btn-sm flex items-center gap-1.5 font-bold border border-slate-850 hover:border-amber-500/30 bg-slate-900/40 hover:bg-slate-900/60 text-slate-300 hover:text-white transition-all rounded-xl"
+        >
+          🔑 Đăng nhập BTC / Trọng tài
+        </Link>
+      </header>
 
       {/* Main Container */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-6 flex flex-col justify-center items-center z-10">

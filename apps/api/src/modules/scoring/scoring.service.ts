@@ -357,6 +357,121 @@ export class ScoringService {
   }
 
   /**
+   * Undoes the latest score event for a specific team in a match.
+   */
+  async undoTeamScore(matchId: string, teamId: string, reason: string, userId: string) {
+    const domainInput = await this.loadDomainMatchInput(matchId);
+
+    const activeEvents = domainInput.scoreEvents.filter((e) => !e.isUndone);
+    const lastTeamEvent = activeEvents.slice().reverse().find((e) => e.scoringTeamId === teamId);
+
+    if (!lastTeamEvent) {
+      throw new BadRequestException('Không có điểm số nào của đội này để giảm.');
+    }
+
+    const matchObj = await this.prisma.match.findUnique({
+      where: { id: matchId },
+    });
+
+    if (!matchObj) {
+      throw new NotFoundException('Không tìm thấy trận đấu.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Mark this specific event as undone
+      await tx.scoreEvent.update({
+        where: { id: lastTeamEvent.id },
+        data: {
+          isUndone: true,
+          undonById: userId,
+          undoneAt: new Date(),
+          undoReason: reason,
+        },
+      });
+
+      // 2. Re-fetch all events and replay
+      const updatedEvents = await tx.scoreEvent.findMany({
+        where: { matchId },
+        orderBy: { eventNo: 'asc' },
+      });
+
+      const replayedInput = {
+        ...domainInput,
+        scoreEvents: updatedEvents,
+        status: 'RUNNING' as MatchStatus,
+      };
+
+      const state = ScoringEngine.replayState(replayedInput);
+
+      // 3. Update Match
+      await tx.match.update({
+        where: { id: matchId },
+        data: {
+          status: state.status,
+          winnerTeamId: state.winnerTeamId,
+        },
+      });
+
+      // 4. Update Match Segments
+      for (const seg of state.segments) {
+        await tx.matchSegment.update({
+          where: { id: seg.id },
+          data: {
+            status: seg.status,
+            completedAt: seg.status === 'COMPLETED' ? new Date() : null,
+          },
+        });
+      }
+
+      // 5. Delete draft Match Result if it was completed
+      if (state.status !== 'COMPLETED') {
+        await tx.matchResult.deleteMany({
+          where: { matchId },
+        });
+      }
+
+      await this.auditService.log({
+        organizationId: matchObj.organizationId,
+        tournamentId: matchObj.tournamentId,
+        actorUserId: userId,
+        action: 'SCORE_EVENT_UNDONE',
+        entityType: 'Match',
+        entityId: matchId,
+        reason,
+        afterData: {
+          scoreA: state.scoreA,
+          scoreB: state.scoreB,
+          matchStatus: state.status,
+        },
+      });
+
+      // 6. Broadcast WebSocket update
+      const activeSeg = state.segments[state.activeSegmentIndex];
+      this.scoreGateway.broadcastScoreUpdate(matchId, matchObj.tournamentId, {
+        matchId,
+        tournamentId: matchObj.tournamentId,
+        scoreA: state.scoreA,
+        scoreB: state.scoreB,
+        matchStatus: state.status,
+        activeSegment: activeSeg
+          ? {
+              id: activeSeg.id,
+              order: activeSeg.segmentOrder,
+              name: activeSeg.name,
+              targetScore: activeSeg.targetScore,
+              status: activeSeg.status,
+            }
+          : null,
+      });
+
+      return {
+        score: { teamA: state.scoreA, teamB: state.scoreB },
+        matchStatus: state.status.toLowerCase(),
+      };
+    });
+  }
+
+  /**
    * Resumes a match after a segment break by starting the next segment.
    */
   async startNextSegment(matchId: string, segmentId: string, userId: string) {
@@ -479,11 +594,23 @@ export class ScoringService {
       return result;
     });
 
-    this.eventEmitter.emit('match.confirmed', {
+    try {
+      await this.eventEmitter.emitAsync('match.confirmed', {
+        matchId,
+        groupId: match.groupId,
+        tournamentId: match.tournamentId,
+        userId,
+      });
+    } catch (err) {
+      console.error('Error in match.confirmed event handlers:', err);
+    }
+
+    this.scoreGateway.broadcastScoreUpdate(matchId, match.tournamentId, {
       matchId,
-      groupId: match.groupId,
-      tournamentId: match.tournamentId,
-      userId,
+      status: 'RESULT_CONFIRMED',
+      winnerTeamId: result.winnerTeamId,
+      teamAScore: result.teamAScore,
+      teamBScore: result.teamBScore,
     });
 
     return result;
@@ -616,11 +743,269 @@ export class ScoringService {
       return updatedResult;
     });
 
-    this.eventEmitter.emit('match.confirmed', {
+    try {
+      await this.eventEmitter.emitAsync('match.confirmed', {
+        matchId,
+        groupId: match.groupId,
+        tournamentId: match.tournamentId,
+        userId,
+      });
+    } catch (err) {
+      console.error('Error in match.confirmed event handlers:', err);
+    }
+
+    this.scoreGateway.broadcastScoreUpdate(matchId, match.tournamentId, {
       matchId,
-      groupId: match.groupId,
+      status: 'RESULT_CONFIRMED',
+      winnerTeamId: result.winnerTeamId,
+      teamAScore: result.teamAScore,
+      teamBScore: result.teamBScore,
+    });
+
+    return result;
+  }
+
+  /**
+   * Override the score for a specific segment.
+   * Undoes all existing events for the segment and injects new ones to match the desired score delta.
+   * Only allowed before RESULT_CONFIRMED (unless admin role).
+   */
+  async overrideSegmentScore(
+    matchId: string,
+    segmentId: string,
+    dto: { teamASegmentScore: number; teamBSegmentScore: number; reason: string },
+    userId: string,
+    userRoles: string[]
+  ) {
+    const isAuthorized = userRoles.some((role) =>
+      ['SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin', 'SCORER'].includes(role)
+    );
+    if (!isAuthorized) {
+      throw new ForbiddenException('Bạn không có quyền chỉnh sửa điểm số chặng đấu.');
+    }
+
+    if (!dto.reason || dto.reason.trim() === '') {
+      throw new BadRequestException('Phải cung cấp lý do chỉnh sửa điểm chặng.');
+    }
+
+    if (dto.teamASegmentScore < 0 || dto.teamBSegmentScore < 0) {
+      throw new BadRequestException('Điểm số không được âm.');
+    }
+
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: {
+        segments: { orderBy: { segmentOrder: 'asc' } },
+        scoreEvents: { orderBy: { eventNo: 'asc' } },
+        tournament: {
+          include: { ruleset: { include: { scoringConfig: true } } },
+        },
+      },
+    });
+
+    if (!match) throw new NotFoundException('Không tìm thấy trận đấu.');
+
+    const segment = match.segments.find((s) => s.id === segmentId);
+    if (!segment) throw new NotFoundException('Không tìm thấy chặng đấu.');
+
+    if (segment.status === 'PENDING') {
+      throw new BadRequestException('Chặng đấu chưa bắt đầu, không thể chỉnh sửa điểm.');
+    }
+
+    const ruleset = match.tournament.ruleset;
+    if (!ruleset?.scoringConfig) {
+      throw new BadRequestException('Trận đấu chưa cấu hình luật tính điểm.');
+    }
+
+    // Compute the base score BEFORE this segment (from previous segments' events only)
+    const activeEvents = match.scoreEvents.filter((e) => !e.isUndone);
+    const eventsBeforeSegment = activeEvents.filter((e) => {
+      const seg = match.segments.find((s) => s.id === e.segmentId);
+      return seg && seg.segmentOrder < segment.segmentOrder;
+    });
+    const baseScoreA = eventsBeforeSegment.length > 0
+      ? eventsBeforeSegment[eventsBeforeSegment.length - 1]!.scoreAAfter
+      : 0;
+    const baseScoreB = eventsBeforeSegment.length > 0
+      ? eventsBeforeSegment[eventsBeforeSegment.length - 1]!.scoreBAfter
+      : 0;
+
+    // Target final scores at end of this segment
+    const finalScoreA = baseScoreA + dto.teamASegmentScore;
+    const finalScoreB = baseScoreB + dto.teamBSegmentScore;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // 1. Mark all current events of this segment as undone
+      const segmentEvents = activeEvents.filter((e) => e.segmentId === segmentId);
+      for (const ev of segmentEvents) {
+        await tx.scoreEvent.update({
+          where: { id: ev.id },
+          data: {
+            isUndone: true,
+            undonById: userId,
+            undoneAt: new Date(),
+            undoReason: `Chỉnh sửa chặng: ${dto.reason}`,
+          },
+        });
+      }
+
+      // 2. Determine next eventNo
+      const maxEventNo = await tx.scoreEvent.aggregate({
+        where: { matchId },
+        _max: { eventNo: true },
+      });
+      let nextEventNo = (maxEventNo._max.eventNo ?? 0) + 1;
+
+      // 3. Inject new events: interleave A/B points to reach target delta scores
+      const newEvents: { teamId: string; scoreA: number; scoreB: number }[] = [];
+      let curA = baseScoreA;
+      let curB = baseScoreB;
+
+      // Interleave points alternately until both targets reached
+      const totalNew = dto.teamASegmentScore + dto.teamBSegmentScore;
+      let addedA = 0;
+      let addedB = 0;
+      for (let i = 0; i < totalNew; i++) {
+        // Alternate: first fill A, then B — simple sequential approach
+        if (addedA < dto.teamASegmentScore) {
+          curA++;
+          addedA++;
+          newEvents.push({ teamId: match.teamAId!, scoreA: curA, scoreB: curB });
+        } else {
+          curB++;
+          addedB++;
+          newEvents.push({ teamId: match.teamBId!, scoreA: curA, scoreB: curB });
+        }
+      }
+      // Fill remaining B if A was exhausted first
+      while (addedB < dto.teamBSegmentScore) {
+        curB++;
+        addedB++;
+        newEvents.push({ teamId: match.teamBId!, scoreA: curA, scoreB: curB });
+      }
+
+      for (const ev of newEvents) {
+        await tx.scoreEvent.create({
+          data: {
+            organizationId: match.organizationId,
+            tournamentId: match.tournamentId,
+            matchId,
+            segmentId,
+            scoringTeamId: ev.teamId,
+            scoreAAfter: ev.scoreA,
+            scoreBAfter: ev.scoreB,
+            eventNo: nextEventNo++,
+            createdById: userId,
+          },
+        });
+      }
+
+      // 4. Rebuild domain state from all non-undone events (after injection)
+      const allEvents = await tx.scoreEvent.findMany({
+        where: { matchId },
+        orderBy: { eventNo: 'asc' },
+      });
+
+      const domainInput = {
+        id: matchId,
+        teamAId: match.teamAId!,
+        teamBId: match.teamBId!,
+        status: match.status,
+        winnerTeamId: match.winnerTeamId,
+        winScore: ruleset.scoringConfig!.winScore,
+        segments: match.segments.map((s) => ({
+          id: s.id,
+          segmentOrder: s.segmentOrder,
+          segmentKey: s.segmentKey,
+          name: s.name,
+          targetScore: s.targetScore,
+          status: s.status,
+        })),
+        scoreEvents: allEvents.map((e) => ({
+          id: e.id,
+          scoringTeamId: e.scoringTeamId,
+          scoreAAfter: e.scoreAAfter,
+          scoreBAfter: e.scoreBAfter,
+          eventNo: e.eventNo,
+          isUndone: e.isUndone,
+          segmentId: e.segmentId,
+        })),
+        lineupLocked: true,
+        matchFormat: ruleset.matchFormat || 'relay',
+        gamePointScore: ruleset.scoringConfig!.gamePointScore,
+        setsToWin: ruleset.scoringConfig!.setsToWin,
+        lastSetPointScore: ruleset.scoringConfig!.lastSetPointScore,
+        deuceMaxScore: ruleset.scoringConfig!.deuceMaxScore,
+        noDeuce: ruleset.scoringConfig!.noDeuce,
+      };
+
+      const state = ScoringEngine.replayState(domainInput);
+
+      // 5. Update match status + segment statuses
+      await tx.match.update({
+        where: { id: matchId },
+        data: {
+          status: state.status,
+          winnerTeamId: state.winnerTeamId,
+        },
+      });
+
+      for (const seg of state.segments) {
+        await tx.matchSegment.update({
+          where: { id: seg.id },
+          data: {
+            status: seg.status,
+            completedAt: seg.status === 'COMPLETED' ? new Date() : null,
+          },
+        });
+      }
+
+      // 6. Update or delete match result draft
+      if (state.status === 'COMPLETED' || state.status === 'RESULT_CONFIRMED') {
+        await tx.matchResult.upsert({
+          where: { matchId },
+          update: {
+            teamAScore: state.scoreA,
+            teamBScore: state.scoreB,
+            winnerTeamId: state.winnerTeamId!,
+          },
+          create: {
+            organizationId: match.organizationId,
+            tournamentId: match.tournamentId,
+            matchId,
+            teamAId: match.teamAId!,
+            teamBId: match.teamBId!,
+            teamAScore: state.scoreA,
+            teamBScore: state.scoreB,
+            winnerTeamId: state.winnerTeamId!,
+          },
+        });
+      } else {
+        await tx.matchResult.deleteMany({ where: { matchId } });
+      }
+
+      await this.auditService.log({
+        organizationId: match.organizationId,
+        tournamentId: match.tournamentId,
+        actorUserId: userId,
+        action: 'SEGMENT_SCORE_OVERRIDDEN',
+        entityType: 'MatchSegment',
+        entityId: segmentId,
+        beforeData: { segmentEvents: segmentEvents.map((e) => ({ id: e.id, scoreAAfter: e.scoreAAfter, scoreBAfter: e.scoreBAfter })) },
+        afterData: { teamASegmentScore: dto.teamASegmentScore, teamBSegmentScore: dto.teamBSegmentScore, finalScoreA, finalScoreB },
+        reason: dto.reason,
+      });
+
+      return { scoreA: state.scoreA, scoreB: state.scoreB, matchStatus: state.status };
+    });
+
+    // Broadcast WebSocket update
+    this.scoreGateway.broadcastScoreUpdate(matchId, match.tournamentId, {
+      matchId,
       tournamentId: match.tournamentId,
-      userId,
+      scoreA: result.scoreA,
+      scoreB: result.scoreB,
+      matchStatus: result.matchStatus,
     });
 
     return result;

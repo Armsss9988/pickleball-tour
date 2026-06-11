@@ -15,6 +15,8 @@ export class RulesetMapper {
       competitionFormat: raw.competitionFormat || 'GROUP_STAGE_KNOCKOUT',
       requireCourtConfig: raw.requireCourtConfig ?? true,
       requireScheduleConfig: raw.requireScheduleConfig ?? true,
+      groupCount: raw.groupCount ?? 2,
+      advancePerGroup: raw.advancePerGroup ?? 1,
       segments: (raw.segmentDefinitions || []).map((s: any) => ({
         segmentKey: s.segmentKey,
         name: s.name,

@@ -1,0 +1,108 @@
+[31m[Nest] 27864  - [39m06/05/2026, 8:58:43 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mPrismaClientKnownRequestError: 
+Invalid `this.prisma.refreshSession.create()` invocation in
+D:\AMWork\ai\golab-tournament-pickleball\apps\api\src\modules\auth\auth.service.ts:209:39
+
+  206   refreshToken: string,
+  207   metadata: AuthRequestMetadata,
+  208 ) {
+→ 209   return this.prisma.refreshSession.create(
+The table `public.refresh_sessions` does not exist in the current database.
+    at ei.handleRequestError (D:\AMWork\ai\golab-tournament-pickleball\node_modules\[4m.pnpm[24m\@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3\node_modules\[4m@prisma\client[24m\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (D:\AMWork\ai\golab-tournament-pickleball\node_modules\[4m.pnpm[24m\@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3\node_modules\[4m@prisma\client[24m\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (D:\AMWork\ai\golab-tournament-pickleball\node_modules\[4m.pnpm[24m\@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3\node_modules\[4m@prisma\client[24m\src\runtime\RequestHandler.ts:143:12)
+    at async a (D:\AMWork\ai\golab-tournament-pickleball\node_modules\[4m.pnpm[24m\@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3\node_modules\[4m@prisma\client[24m\src\runtime\getPrismaClient.ts:833:24)
+    at async AuthService.login [90m(D:\AMWork\ai\golab-tournament-pickleball\apps\api\[39msrc\modules\auth\auth.service.ts:87:5[90m)[39m
+    at async AuthController.login [90m(D:\AMWork\ai\golab-tournament-pickleball\apps\api\[39msrc\modules\auth\auth.controller.ts:71:20[90m)[39m
+    at async D:\AMWork\ai\golab-tournament-pickleball\node_modules\[4m.pnpm[24m\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\[4m@nestjs\core[24m\router\router-execution-context.js:46:28
+    at async D:\AMWork\ai\golab-tournament-pickleball\node_modules\[4m.pnpm[24m\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\[4m@nestjs\core[24m\router\router-proxy.js:9:17 {
+  code: [32m'P2021'[39m,
+  meta: {
+    modelName: [32m'RefreshSession'[39m,
+    table: [32m'public.refresh_sessions'[39m
+  },
+  clientVersion: [32m'6.19.3'[39m
+}
+node:internal/modules/cjs/loader:1451
+  throw err;
+  ^
+
+Error: Cannot find module 'D:\AMWork\ai\golab-tournament-pickleball\apps\api\dist\main'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1448:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1234:25)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v24.13.1
+[31m[Nest] 25816  - [39m06/09/2026, 9:47:19 PM [31m  ERROR[39m [38;5;3m[NestApplication] [39m[31mError: listen EADDRINUSE: address already in use :::3001[39m[38;5;3m +3ms[39m
+node:net:1940
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at ExpressAdapter.listen (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+platform-express@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validat_wu7e7wzufb3wpv2rusgdsffwwy\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\@nestjs\core\nest-application.js:190:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\@nestjs\core\nest-application.js:180:16)
+    at async bootstrap (D:\AMWork\ai\golab-tournament-pickleball\apps\api\src\main.ts:28:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v24.13.1
+ERROR: The process "51944" not found.
+ERROR: The process "51944" not found.
+node:child_process:1000
+    throw err;
+    ^
+
+Error: Command failed: taskkill /pid 51944 /T /F
+ERROR: The process "51944" not found.
+
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at treeKillSync (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+cli@11.0.21_@types+node@24.12.4_prettier@3.8.3\node_modules\@nestjs\cli\lib\utils\tree-kill.js:7:38)
+    at D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+cli@11.0.21_@types+node@24.12.4_prettier@3.8.3\node_modules\@nestjs\cli\actions\start.action.js:69:46
+    at Object.onWatchStatusChange (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+cli@11.0.21_@types+node@24.12.4_prettier@3.8.3\node_modules\@nestjs\cli\lib\compiler\watch-compiler.js:82:17)
+    at D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\typescript@5.9.3\node_modules\typescript\lib\typescript.js:133916:30
+    at emitFilesAndReportErrors (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\typescript@5.9.3\node_modules\typescript\lib\typescript.js:133737:5)
+    at result.afterProgramCreate (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\typescript@5.9.3\node_modules\typescript\lib\typescript.js:133912:5) {
+  status: 128,
+  signal: null,
+  output: [
+    null,
+    Buffer(0) [Uint8Array] [],
+    Buffer(39) [Uint8Array] [
+       69,  82,  82,  79,  82,  58,  32,  84, 104,
+      101,  32, 112, 114, 111,  99, 101, 115, 115,
+       32,  34,  53,  49,  57,  52,  52,  34,  32,
+      110, 111, 116,  32, 102, 111, 117, 110, 100,
+       46,  13,  10
+    ]
+  ],
+  pid: 59096,
+  stdout: Buffer(0) [Uint8Array] [],
+  stderr: Buffer(39) [Uint8Array] [
+     69,  82,  82,  79,  82,  58,  32,  84, 104,
+    101,  32, 112, 114, 111,  99, 101, 115, 115,
+     32,  34,  53,  49,  57,  52,  52,  34,  32,
+    110, 111, 116,  32, 102, 111, 117, 110, 100,
+     46,  13,  10
+  ]
+}
+
+Node.js v24.13.1

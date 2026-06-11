@@ -1,0 +1,586 @@
+Failed to proxy http://localhost:3001/api/tournaments/317e1bac-d1d9-4867-b0a7-6c4f237347e8 AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+Failed to proxy http://localhost:3001/api/tournaments/317e1bac-d1d9-4867-b0a7-6c4f237347e8 AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+Failed to proxy http://localhost:3001/api/tournaments/317e1bac-d1d9-4867-b0a7-6c4f237347e8 AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+Failed to proxy http://localhost:3001/api/tournaments/317e1bac-d1d9-4867-b0a7-6c4f237347e8 AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+[browser] Failed to load active tournament: Error: Lỗi kết nối máy chủ (Mã: 500)
+    at apiFetch (src/lib/api-client.ts:39:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  37 |   if (!response.ok) {
+  38 |     const errorData = await response.json().catch(() => ({}));
+> 39 |     throw new Error(errorData.message || `Lỗi kết nối máy chủ (Mã: ${response.status})`);
+     |           ^
+  40 |   }
+  41 |
+  42 |   return response.json(); (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Lỗi kết nối máy chủ (Mã: 500)
+    at apiFetch (src/lib/api-client.ts:39:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  37 |   if (!response.ok) {
+  38 |     const errorData = await response.json().catch(() => ({}));
+> 39 |     throw new Error(errorData.message || `Lỗi kết nối máy chủ (Mã: ${response.status})`);
+     |           ^
+  40 |   }
+  41 |
+  42 |   return response.json(); (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Lỗi kết nối máy chủ (Mã: 500)
+    at apiFetch (src/lib/api-client.ts:39:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  37 |   if (!response.ok) {
+  38 |     const errorData = await response.json().catch(() => ({}));
+> 39 |     throw new Error(errorData.message || `Lỗi kết nối máy chủ (Mã: ${response.status})`);
+     |           ^
+  40 |   }
+  41 |
+  42 |   return response.json(); (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Lỗi kết nối máy chủ (Mã: 500)
+    at apiFetch (src/lib/api-client.ts:39:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  37 |   if (!response.ok) {
+  38 |     const errorData = await response.json().catch(() => ({}));
+> 39 |     throw new Error(errorData.message || `Lỗi kết nối máy chủ (Mã: ${response.status})`);
+     |           ^
+  40 |   }
+  41 |
+  42 |   return response.json(); (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Error: Cannot GET /api/audit-logs
+    at apiFetch (src/lib/api-client.ts:39:11)
+    at async loadLogs (src/app/admin/[tournamentId]/audit/page.tsx:31:22)
+  37 |   if (!response.ok) {
+  38 |     const errorData = await response.json().catch(() => ({}));
+> 39 |     throw new Error(errorData.message || `Lỗi kết nối máy chủ (Mã: ${response.status})`);
+     |           ^
+  40 |   }
+  41 |
+  42 |   return response.json(); (src/app/admin/[tournamentId]/audit/page.tsx:34:17)
+[browser] Error: Cannot GET /api/audit-logs
+    at apiFetch (src/lib/api-client.ts:39:11)
+    at async loadLogs (src/app/admin/[tournamentId]/audit/page.tsx:31:22)
+  37 |   if (!response.ok) {
+  38 |     const errorData = await response.json().catch(() => ({}));
+> 39 |     throw new Error(errorData.message || `Lỗi kết nối máy chủ (Mã: ${response.status})`);
+     |           ^
+  40 |   }
+  41 |
+  42 |   return response.json(); (src/app/admin/[tournamentId]/audit/page.tsx:34:17)
+[browser] Error: Cannot GET /api/audit-logs
+    at apiFetch (src/lib/api-client.ts:39:11)
+    at async loadLogs (src/app/admin/[tournamentId]/audit/page.tsx:31:22)
+  37 |   if (!response.ok) {
+  38 |     const errorData = await response.json().catch(() => ({}));
+> 39 |     throw new Error(errorData.message || `Lỗi kết nối máy chủ (Mã: ${response.status})`);
+     |           ^
+  40 |   }
+  41 |
+  42 |   return response.json(); (src/app/admin/[tournamentId]/audit/page.tsx:34:17)
+[browser] Error: Cannot GET /api/audit-logs
+    at apiFetch (src/lib/api-client.ts:39:11)
+    at async loadLogs (src/app/admin/[tournamentId]/audit/page.tsx:31:22)
+  37 |   if (!response.ok) {
+  38 |     const errorData = await response.json().catch(() => ({}));
+> 39 |     throw new Error(errorData.message || `Lỗi kết nối máy chủ (Mã: ${response.status})`);
+     |           ^
+  40 |   }
+  41 |
+  42 |   return response.json(); (src/app/admin/[tournamentId]/audit/page.tsx:34:17)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Phiên đăng nhập đã hết hạn.
+    at apiFetch (src/lib/api-client.ts:34:11)
+    at async useActiveTournament.useCallback[loadOrCreate] (src/lib/use-tournament.ts:49:29)
+  32 |     clearStoredAuth();
+  33 |     window.location.href = '/login';
+> 34 |     throw new Error('Phiên đăng nhập đã hết hạn.');
+     |           ^
+  35 |   }
+  36 |
+  37 |   if (!response.ok) { (src/lib/use-tournament.ts:81:15)
+Failed to proxy http://localhost:3001/api/tournaments/b04c6e99-c772-4382-b0e3-7c2f61e13b5b AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+Failed to proxy http://localhost:3001/api/tournaments/b04c6e99-c772-4382-b0e3-7c2f61e13b5b AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+AggregateError: 
+    at ignore-listed frames {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:3001
+        at <unknown> (Error: connect ECONNREFUSED ::1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 3001
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:3001
+        at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:3001) {
+      errno: -4078,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 3001
+    }
+  ]
+}
+[browser] Failed to load active tournament: Error: Lỗi kết nối máy chủ (Mã: 500)
+    at apiFetch (file://D:/AMWork/ai/golab-tournament-pickleball/apps/web/.next/dev/static/chunks/apps_web_src_0aj7umo._.js?id=%255Bproject%255D%252Fapps%252Fweb%252Fsrc%252Flib%252Fapi-client.ts+%255Bapp-client%255D+%2528ecmascript%2529:80:15)
+    at async useActiveTournament.useCallback[loadOrCreate] (file://D:/AMWork/ai/golab-tournament-pickleball/apps/web/.next/dev/static/chunks/apps_web_src_0aj7umo._.js:1582:41) (src/lib/use-tournament.ts:81:15)
+[browser] Failed to load active tournament: Error: Lỗi kết nối máy chủ (Mã: 500)
+    at apiFetch (file://D:/AMWork/ai/golab-tournament-pickleball/apps/web/.next/dev/static/chunks/apps_web_src_0aj7umo._.js?id=%255Bproject%255D%252Fapps%252Fweb%252Fsrc%252Flib%252Fapi-client.ts+%255Bapp-client%255D+%2528ecmascript%2529:80:15)
+    at async useActiveTournament.useCallback[loadOrCreate] (file://D:/AMWork/ai/golab-tournament-pickleball/apps/web/.next/dev/static/chunks/apps_web_src_0aj7umo._.js:1582:41) (src/lib/use-tournament.ts:81:15)
+[browser] Uncaught Error: ./apps/web/src/app/admin/[tournamentId]/matches/page.tsx:1208:9
+the name `scheduleStartTime` is defined multiple times
+  1206 |   };
+  1207 |
+> 1208 |   const scheduleStartTime = scheduleForm.startTime || toDatetimeLocal(tournament?.openin...
+       |         ^^^^^^^^^^^^^^^^^
+  1209 |
+  1210 |   return (
+  1211 |     <div className="premium-container space-y-6 animate-scale-in">
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/src/app/admin/[tournamentId]/matches/page.tsx [Client Component Browser]
+    ./apps/web/src/app/admin/[tournamentId]/matches/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/src/app/admin/[tournamentId]/matches/page.tsx [Client Component SSR]
+    ./apps/web/src/app/admin/[tournamentId]/matches/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./apps/web/src/app/admin/[tournamentId]/matches/page.tsx:1208:9)
+    at <unknown> (Error: (./apps/web/src/app/admin/[tournamentId]/matches/page.tsx:1208:9)
+⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+⚠ Invalid next.config.ts options detected: 
+⚠     Unrecognized key(s) in object: 'eslint'
+⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+⚠ Invalid next.config.ts options detected: 
+⚠     Unrecognized key(s) in object: 'eslint'
+⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config

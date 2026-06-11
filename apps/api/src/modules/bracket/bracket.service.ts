@@ -55,34 +55,112 @@ export class BracketService {
       orderBy: { rank: 'asc' },
     });
 
-    const groupAStandings = standings.filter((s) => s.group.code === 'A');
-    const groupBStandings = standings.filter((s) => s.group.code === 'B');
+    const groups = await this.prisma.group.findMany({
+      where: { tournamentId },
+    });
+    const groupsCount = groups.length;
 
-    // Verify group stage is complete (at least 3 teams in each group have standing rows)
-    if (groupAStandings.length < 3 || groupBStandings.length < 3) {
-      throw new BadRequestException(
-        `Vòng bảng chưa hoàn thành hoặc chưa có đủ bảng xếp hạng. Cần ít nhất 3 đội mỗi bảng.`
-      );
+    const advancePerGroup = ruleset.advancePerGroup ?? 1;
+
+    let seeds: any = {};
+
+    if (groupsCount === 4) {
+      const groupAStandings = standings.filter((s) => s.group.code === 'A');
+      const groupBStandings = standings.filter((s) => s.group.code === 'B');
+      const groupCStandings = standings.filter((s) => s.group.code === 'C');
+      const groupDStandings = standings.filter((s) => s.group.code === 'D');
+
+      if (
+        groupAStandings.length < advancePerGroup ||
+        groupBStandings.length < advancePerGroup ||
+        groupCStandings.length < advancePerGroup ||
+        groupDStandings.length < advancePerGroup
+      ) {
+        throw new BadRequestException(
+          `Vòng bảng chưa hoàn thành hoặc chưa có đủ bảng xếp hạng. Cần ít nhất ${advancePerGroup} đội mỗi bảng (A, B, C, D).`
+        );
+      }
+
+      // Check ties in top advancePerGroup
+      const hasTiesA = groupAStandings.slice(0, advancePerGroup).some((s) => (s.tieBreakDetail as any)?.requiresAdminDecision);
+      const hasTiesB = groupBStandings.slice(0, advancePerGroup).some((s) => (s.tieBreakDetail as any)?.requiresAdminDecision);
+      const hasTiesC = groupCStandings.slice(0, advancePerGroup).some((s) => (s.tieBreakDetail as any)?.requiresAdminDecision);
+      const hasTiesD = groupDStandings.slice(0, advancePerGroup).some((s) => (s.tieBreakDetail as any)?.requiresAdminDecision);
+
+      if (hasTiesA || hasTiesB || hasTiesC || hasTiesD) {
+        throw new BadRequestException(
+          `Có đội đang hòa chỉ số xếp hạng ở Top ${advancePerGroup} của các bảng. Vui lòng giải quyết phân hạng thủ công trước.`
+        );
+      }
+
+      seeds.A1 = groupAStandings[0]!.teamId;
+      seeds.B1 = groupBStandings[0]!.teamId;
+      seeds.C1 = groupCStandings[0]!.teamId;
+      seeds.D1 = groupDStandings[0]!.teamId;
+
+      if (advancePerGroup >= 2) {
+        seeds.A2 = groupAStandings[1]!.teamId;
+        seeds.B2 = groupBStandings[1]!.teamId;
+        seeds.C2 = groupCStandings[1]!.teamId;
+        seeds.D2 = groupDStandings[1]!.teamId;
+      }
+    } else if (groupsCount === 2) {
+      const groupAStandings = standings.filter((s) => s.group.code === 'A');
+      const groupBStandings = standings.filter((s) => s.group.code === 'B');
+
+      if (groupAStandings.length < advancePerGroup || groupBStandings.length < advancePerGroup) {
+        throw new BadRequestException(
+          `Vòng bảng chưa hoàn thành hoặc chưa có đủ bảng xếp hạng. Cần ít nhất ${advancePerGroup} đội mỗi bảng.`
+        );
+      }
+
+      const hasTiesA = groupAStandings.slice(0, advancePerGroup).some((s) => (s.tieBreakDetail as any)?.requiresAdminDecision);
+      const hasTiesB = groupBStandings.slice(0, advancePerGroup).some((s) => (s.tieBreakDetail as any)?.requiresAdminDecision);
+
+      if (hasTiesA || hasTiesB) {
+        throw new BadRequestException(
+          `Có đội đang hòa chỉ số xếp hạng ở Top ${advancePerGroup}. Vui lòng giải quyết phân hạng thủ công trước.`
+        );
+      }
+
+      seeds.A1 = groupAStandings[0]!.teamId;
+      seeds.B1 = groupBStandings[0]!.teamId;
+
+      if (advancePerGroup >= 2) {
+        seeds.A2 = groupAStandings[1]!.teamId;
+        seeds.B2 = groupBStandings[1]!.teamId;
+      }
+      if (advancePerGroup >= 3) {
+        seeds.A3 = groupAStandings[2]!.teamId;
+        seeds.B3 = groupBStandings[2]!.teamId;
+      }
+      if (advancePerGroup >= 4) {
+        seeds.A4 = groupAStandings[3]!.teamId;
+        seeds.B4 = groupBStandings[3]!.teamId;
+      }
+    } else {
+      // groupsCount === 1
+      const groupCode = groups[0]?.code || 'A';
+      const singleGroupStandings = standings.filter((s) => s.group.code === groupCode);
+
+      if (singleGroupStandings.length < advancePerGroup) {
+        throw new BadRequestException(
+          `Vòng bảng chưa hoàn thành hoặc chưa có đủ bảng xếp hạng. Cần ít nhất ${advancePerGroup} đội ở bảng ${groupCode}.`
+        );
+      }
+
+      const hasTies = singleGroupStandings.slice(0, advancePerGroup).some((s) => (s.tieBreakDetail as any)?.requiresAdminDecision);
+
+      if (hasTies) {
+        throw new BadRequestException(
+          `Có đội đang hòa chỉ số xếp hạng ở Top ${advancePerGroup}. Vui lòng giải quyết phân hạng thủ công trước.`
+        );
+      }
+
+      for (let i = 0; i < advancePerGroup; i++) {
+        seeds[`T${i + 1}`] = singleGroupStandings[i]!.teamId;
+      }
     }
-
-    // Check for any unresolved ties in top 3
-    const hasTiesA = groupAStandings.slice(0, 3).some((s) => (s.tieBreakDetail as any)?.requiresAdminDecision);
-    const hasTiesB = groupBStandings.slice(0, 3).some((s) => (s.tieBreakDetail as any)?.requiresAdminDecision);
-
-    if (hasTiesA || hasTiesB) {
-      throw new BadRequestException(
-        `Có đội đang hòa chỉ số xếp hạng ở Top 3. Vui lòng giải quyết phân hạng thủ công trước.`
-      );
-    }
-
-    const seeds = {
-      A1: groupAStandings[0]!.teamId,
-      A2: groupAStandings[1]!.teamId,
-      A3: groupAStandings[2]!.teamId,
-      B1: groupBStandings[0]!.teamId,
-      B2: groupBStandings[1]!.teamId,
-      B3: groupBStandings[2]!.teamId,
-    };
 
     return this.prisma.$transaction(async (tx) => {
       // 2. Initialize Knockout Stage
@@ -134,7 +212,9 @@ export class BracketService {
         tournament.organizationId,
         tournamentId,
         stage.id,
-        seeds
+        seeds,
+        groupsCount,
+        advancePerGroup
       );
 
       const createdNodes = [];
@@ -144,7 +224,28 @@ export class BracketService {
 
         // If both teams are resolved, we can create the match record right away!
         if (node.teamAId && node.teamBId) {
-          const matchLabel = `${node.roundName} - ${node.nodeKey === 'P1' ? 'Trận 1' : 'Trận 2'}`;
+          let matchLabel = '';
+          if (node.nodeKey === 'SF1') {
+            matchLabel = 'Bán Kết - Trận 1';
+          } else if (node.nodeKey === 'SF2') {
+            matchLabel = 'Bán Kết - Trận 2';
+          } else if (node.nodeKey === 'F') {
+            matchLabel = 'Chung Kết';
+          } else if (node.nodeKey === 'P1') {
+            matchLabel = 'Vòng Nhánh - Trận 1';
+          } else if (node.nodeKey === 'P2') {
+            matchLabel = 'Vòng Nhánh - Trận 2';
+          } else if (node.nodeKey === 'QF1') {
+            matchLabel = 'Tứ Kết - Trận 1';
+          } else if (node.nodeKey === 'QF2') {
+            matchLabel = 'Tứ Kết - Trận 2';
+          } else if (node.nodeKey === 'QF3') {
+            matchLabel = 'Tứ Kết - Trận 3';
+          } else if (node.nodeKey === 'QF4') {
+            matchLabel = 'Tứ Kết - Trận 4';
+          } else {
+            matchLabel = `${node.roundName} - ${node.nodeKey}`;
+          }
 
           const match = await tx.match.create({
             data: {
@@ -366,7 +467,28 @@ export class BracketService {
       const ruleset = tournament?.ruleset;
 
       if (ruleset) {
-        const matchLabel = `${targetNode.roundName} - ${targetNode.nodeKey === 'F' ? 'Chung Kết' : 'Bán Kết'}`;
+        let matchLabel = '';
+        if (targetNode.nodeKey === 'SF1') {
+          matchLabel = 'Bán Kết - Trận 1';
+        } else if (targetNode.nodeKey === 'SF2') {
+          matchLabel = 'Bán Kết - Trận 2';
+        } else if (targetNode.nodeKey === 'F') {
+          matchLabel = 'Chung Kết';
+        } else if (targetNode.nodeKey === 'P1') {
+          matchLabel = 'Vòng Nhánh - Trận 1';
+        } else if (targetNode.nodeKey === 'P2') {
+          matchLabel = 'Vòng Nhánh - Trận 2';
+        } else if (targetNode.nodeKey === 'QF1') {
+          matchLabel = 'Tứ Kết - Trận 1';
+        } else if (targetNode.nodeKey === 'QF2') {
+          matchLabel = 'Tứ Kết - Trận 2';
+        } else if (targetNode.nodeKey === 'QF3') {
+          matchLabel = 'Tứ Kết - Trận 3';
+        } else if (targetNode.nodeKey === 'QF4') {
+          matchLabel = 'Tứ Kết - Trận 4';
+        } else {
+          matchLabel = `${targetNode.roundName} - ${targetNode.nodeKey}`;
+        }
 
         const match = await prisma.match.create({
           data: {

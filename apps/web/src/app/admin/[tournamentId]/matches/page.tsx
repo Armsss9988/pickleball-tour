@@ -2,8 +2,9 @@
 
 import { useActiveTournament } from '@/lib/use-tournament';
 import { apiFetch } from '@/lib/api-client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { io } from 'socket.io-client';
 import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/components/toast';
 import { ConfirmModal } from '@/components/confirm-modal';
@@ -181,8 +182,11 @@ function getMatchStatusBadge(status: string) {
     LINEUP_READY: { label: 'Lineup xong', color: 'text-violet-400 bg-violet-500/10 border-violet-500/20' },
     READY: { label: 'Sẵn sàng', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
     RUNNING: { label: 'Đang đấu', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20 animate-pulse' },
-    COMPLETED: { label: 'Hoàn thành', color: 'text-slate-400 bg-slate-500/10 border-slate-500/20' },
-    CONFIRMED: { label: 'Đã xác nhận', color: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
+    SEGMENT_BREAK: { label: 'Nghỉ chặng', color: 'text-amber-500 bg-amber-500/10 border-amber-500/20 animate-pulse' },
+    COMPLETED: { label: 'Chờ xác nhận', color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
+    CONFIRMED: { label: 'Đã kết thúc', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+    RESULT_CONFIRMED: { label: 'Đã kết thúc', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+    CANCELLED: { label: 'Đã hủy', color: 'text-rose-450 bg-rose-500/10 border-rose-500/20' },
     WALKOVER: { label: 'Bỏ cuộc', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
   };
   const s = map[status] ?? { label: status, color: 'text-slate-400 bg-slate-500/10 border-slate-500/20' };
@@ -201,6 +205,127 @@ function getPlayerCountForSegment(segmentKey: string, ruleset: any): number {
 
 function getMemberGender(member: MatchPlayer): string {
   return String(member.playerProfile?.gender ?? member.gender ?? '').trim().toUpperCase();
+}
+
+function getFilteredMembers(
+  members: MatchPlayer[],
+  segmentId: string,
+  segmentKey: string,
+  slotIdx: number,
+  teamKey: 'teamA' | 'teamB',
+  lineupsData: LineupFormState,
+  segments: MatchSegment[],
+  ruleset: any
+) {
+  if (!Array.isArray(members)) return [];
+
+  // Find segment definitions
+  const rulesetSegments = ruleset?.segmentDefinitions || ruleset?.segments || [];
+  const segmentDef = rulesetSegments.find((s: any) => s.segmentKey === segmentKey);
+
+  // Fallback gender rule detection
+  let genderRule = segmentDef?.genderRule;
+  if (!genderRule) {
+    const keyLower = segmentKey.toLowerCase();
+    if (keyLower.includes('mens') || keyLower.includes('men')) {
+      genderRule = 'male_only';
+    } else if (keyLower.includes('womens') || keyLower.includes('women')) {
+      genderRule = 'female_only';
+    } else if (keyLower.includes('mixed')) {
+      genderRule = 'mixed';
+    } else {
+      genderRule = 'any';
+    }
+  }
+
+  let filtered = [...members];
+
+  // 1. Filter by gender rules
+  if (genderRule === 'male_only') {
+    filtered = filtered.filter(m => getMemberGender(m) === 'MALE');
+  } else if (genderRule === 'female_only') {
+    filtered = filtered.filter(m => getMemberGender(m) === 'FEMALE');
+  } else if (genderRule === 'mixed') {
+    const otherSlotIdx = 1 - slotIdx;
+    const otherPlayerId = lineupsData[teamKey]?.[segmentId]?.[otherSlotIdx];
+    if (otherPlayerId) {
+      const otherPlayer = members.find(m => m.playerProfile?.id === otherPlayerId);
+      if (otherPlayer) {
+        const otherGender = getMemberGender(otherPlayer);
+        if (otherGender === 'MALE') {
+          filtered = filtered.filter(m => getMemberGender(m) === 'FEMALE');
+        } else if (otherGender === 'FEMALE') {
+          filtered = filtered.filter(m => getMemberGender(m) === 'MALE');
+        }
+      }
+    }
+  }
+
+  // 2. Filter duplicate players in the same segment
+  const currentSegmentPlayers = lineupsData[teamKey]?.[segmentId] || [];
+  const selectedOtherPlayerIds = currentSegmentPlayers.filter((_, idx) => idx !== slotIdx);
+  filtered = filtered.filter(m => !selectedOtherPlayerIds.includes(m.playerProfile.id));
+
+  // 3. Filter by max appearances limit per player (playerLimitRules / playerLimits)
+  const playerSegmentCounts: Record<string, number> = {};
+  Object.entries(lineupsData[teamKey] || {}).forEach(([sId, playerIds]) => {
+    if (sId === segmentId) return; // ignore current segment
+    playerIds.forEach(id => {
+      if (!id) return;
+      playerSegmentCounts[id] = (playerSegmentCounts[id] || 0) + 1;
+    });
+  });
+
+  let maxMale = 1;
+  let maxFemale = 2;
+  const limitRules = ruleset?.playerLimitRules || ruleset?.playerLimits;
+  if (ruleset?.noOverlapAllPlayers || (Array.isArray(limitRules) && limitRules.every((l: any) => l.maxSegments === 1))) {
+    maxMale = 1;
+    maxFemale = 1;
+  } else if (Array.isArray(limitRules)) {
+    const mLimit = limitRules.find((l: any) => String(l.gender).toUpperCase() === 'MALE');
+    const fLimit = limitRules.find((l: any) => String(l.gender).toUpperCase() === 'FEMALE');
+    if (mLimit) maxMale = mLimit.maxSegments;
+    if (fLimit) maxFemale = fLimit.maxSegments;
+  }
+
+  filtered = filtered.filter(m => {
+    const gender = getMemberGender(m);
+    const count = playerSegmentCounts[m.playerProfile.id] || 0;
+    const maxAllowed = gender === 'MALE' ? maxMale : maxFemale;
+    return count < maxAllowed;
+  });
+
+  // 4. Filter by forbidden segment overlaps (overlapRules)
+  const rulesetOverlapRules = ruleset?.overlapRules || [
+    {
+      segmentAKey: 'mens_doubles',
+      segmentBKey: 'mixed_doubles',
+      gender: 'MALE',
+      isForbidden: true
+    }
+  ];
+
+  const activeRules = rulesetOverlapRules.filter((r: any) => 
+    (r.segmentAKey === segmentKey || r.segmentBKey === segmentKey) && r.isForbidden !== false
+  );
+
+  activeRules.forEach((rule: any) => {
+    const otherKey = rule.segmentAKey === segmentKey ? rule.segmentBKey : rule.segmentAKey;
+    const otherSegment = segments.find(s => s.segmentKey === otherKey);
+    if (!otherSegment) return;
+
+    const otherPlayers = lineupsData[teamKey]?.[otherSegment.id] || [];
+    otherPlayers.forEach(pId => {
+      if (!pId) return;
+      const player = members.find(m => m.playerProfile.id === pId);
+      if (player && getMemberGender(player) === String(rule.gender).toUpperCase()) {
+        filtered = filtered.filter(m => m.playerProfile.id !== pId);
+      }
+    });
+  });
+
+  return filtered;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -223,10 +348,70 @@ export default function MatchesPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
+  // ── Standings state ──
+  const [standingsData, setStandingsData] = useState<any[]>([]);
+  const [standingsGroups, setStandingsGroups] = useState<any[]>([]);
+
   // ── Expanded match detail ──
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [matchDetails, setMatchDetails] = useState<MatchDetails | null>(null);
   const [lineupsData, setLineupsData] = useState<LineupFormState>({ teamA: {}, teamB: {} });
+
+  const handlePlayerChange = (teamKey: 'teamA' | 'teamB', segmentId: string, playerIdx: number, playerId: string) => {
+    setLineupsData((prev) => {
+      // 1. Calculate the next edited segment lineup state
+      const nextTeamState = { ...prev[teamKey] };
+      const nextSegmentList = [...(nextTeamState[segmentId] || [])];
+      nextSegmentList[playerIdx] = playerId;
+      nextTeamState[segmentId] = nextSegmentList;
+
+      const updatedState = {
+        ...prev,
+        [teamKey]: nextTeamState
+      };
+
+      // 2. Perform a cleanup pass for other segments/slots of this team
+      const teamMembers = teamKey === 'teamA' ? matchDetails?.teamA?.members : matchDetails?.teamB?.members;
+      if (teamMembers && matchDetails) {
+        let changed = true;
+        let iteration = 0;
+        // Clean iteratively up to 3 times to handle dependencies stability
+        while (changed && iteration < 3) {
+          changed = false;
+          iteration++;
+          
+          for (const segment of matchDetails.segments) {
+            const currentPlayers = updatedState[teamKey][segment.id] || [];
+            const count = getPlayerCountForSegment(segment.segmentKey, tournament?.ruleset);
+            for (let idx = 0; idx < count; idx++) {
+              const currentVal = currentPlayers[idx];
+              if (currentVal) {
+                const filtered = getFilteredMembers(
+                  teamMembers,
+                  segment.id,
+                  segment.segmentKey,
+                  idx,
+                  teamKey,
+                  updatedState,
+                  matchDetails.segments,
+                  tournament?.ruleset
+                );
+                const isValid = filtered.some(m => m.playerProfile.id === currentVal);
+                if (!isValid) {
+                  const updatedSegmentList = [...(updatedState[teamKey][segment.id] || [])];
+                  updatedSegmentList[idx] = '';
+                  updatedState[teamKey][segment.id] = updatedSegmentList;
+                  changed = true;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return updatedState;
+    });
+  };
 
   // ── Inline edit ──
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
@@ -245,7 +430,7 @@ export default function MatchesPage() {
   });
 
   // ── Filters ──
-  const [selectedPhase, setSelectedPhase] = useState<'all' | 'group' | 'playoff'>('all');
+  const [selectedPhase, setSelectedPhase] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedCourtFilter, setSelectedCourtFilter] = useState<string>('all');
 
@@ -256,6 +441,10 @@ export default function MatchesPage() {
   const [matchToDelete, setMatchToDelete] = useState<MatchListItem | null>(null);
   const [lockModalOpen, setLockModalOpen] = useState(false);
   const [matchToLock, setMatchToLock] = useState<MatchListItem | null>(null);
+  // Publish gate — shown when user tries to start a match but tournament is not yet public
+  const [publishGateModalOpen, setPublishGateModalOpen] = useState(false);
+  const [publishGateLoading, setPublishGateLoading] = useState(false);
+  const [pendingStartMatch, setPendingStartMatch] = useState<MatchListItem | null>(null);
 
   // ─────────────────────────────────────────────────────────────────────────
   // UX context
@@ -266,8 +455,8 @@ export default function MatchesPage() {
       matchesCount: matches.length,
       lineupReadyCount: matches.filter((m) => m.status === 'LINEUP_READY' || m.status === 'READY').length,
       scoringReadyCount: matches.filter((m) => m.status === 'READY').length,
-      completedMatches: matches.filter((m) => m.status === 'COMPLETED' || m.status === 'CONFIRMED').length,
-      resultConfirmedMatches: matches.filter((m) => m.status === 'CONFIRMED').length,
+      completedMatches: matches.filter((m) => ['COMPLETED', 'CONFIRMED', 'RESULT_CONFIRMED'].includes(m.status)).length,
+      resultConfirmedMatches: matches.filter((m) => ['CONFIRMED', 'RESULT_CONFIRMED'].includes(m.status)).length,
     },
   });
 
@@ -293,6 +482,19 @@ export default function MatchesPage() {
     }
   }, [toast, tournament]);
 
+  const fetchStandings = useCallback(async () => {
+    if (!tournament) return;
+    try {
+      const groupData = await apiFetch(`/tournaments/${tournament.id}/groups`);
+      setStandingsGroups(groupData || []);
+
+      const standingsData = await apiFetch(`/tournaments/${tournament.id}/standings`);
+      setStandingsData(standingsData || []);
+    } catch (e) {
+      console.error('Lỗi tải BXH cho trang trận đấu:', e);
+    }
+  }, [tournament]);
+
   const fetchCourts = useCallback(async () => {
     if (!tournament) return;
     try {
@@ -306,10 +508,48 @@ export default function MatchesPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchMatches();
+      fetchStandings();
       if (requireCourtConfig) fetchCourts();
     }, 0);
     return () => clearTimeout(timer);
-  }, [fetchMatches, fetchCourts, requireCourtConfig]);
+  }, [fetchMatches, fetchStandings, fetchCourts, requireCourtConfig]);
+
+  // WebSocket connection for real-time score updates
+  useEffect(() => {
+    if (!tournament) return;
+
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+    const socket = io(`${wsUrl}/ws`, {
+      transports: ['websocket'],
+    });
+
+    const joinRoom = () => {
+      socket.emit('joinTournament', { tournamentId: tournament.id });
+      console.log('Matches page connected to socket room:', `tournament:${tournament.id}`);
+    };
+
+    socket.on('connect', () => {
+      joinRoom();
+    });
+
+    socket.on('score.updated', (payload: any) => {
+      console.log('Realtime score update detected on matches page:', payload);
+      // Soft-reload data to show updated live scores and standings immediately!
+      void fetchMatches();
+      void fetchStandings();
+    });
+
+    if (socket.connected) {
+      joinRoom();
+    }
+
+    return () => {
+      if (socket) {
+        socket.emit('leaveTournament', { tournamentId: tournament.id });
+        socket.disconnect();
+      }
+    };
+  }, [tournament, fetchMatches, fetchStandings]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Match expansion & lineup data
@@ -429,8 +669,40 @@ export default function MatchesPage() {
   // Start match
   // ─────────────────────────────────────────────────────────────────────────
   const confirmStartMatch = (m: MatchListItem) => {
+    // Guard: if tournament is not published yet, show publish gate first
+    if (!tournament?.publicEnabled) {
+      setPendingStartMatch(m);
+      setPublishGateModalOpen(true);
+      return;
+    }
     setMatchToStart(m);
     setStartModalOpen(true);
+  };
+
+  const handlePublishAndContinue = async () => {
+    if (!tournament) return;
+    setPublishGateLoading(true);
+    try {
+      await apiFetch(`/tournaments/${tournament.id}/publish`, { method: 'POST' });
+      toast('Giải đã được công khai! Bạn có thể bắt đầu trận.', 'success');
+      reloadTournament();
+      setPublishGateModalOpen(false);
+      if (pendingStartMatch) {
+        // Proceed to the start match confirmation
+        setMatchToStart(pendingStartMatch);
+        setPendingStartMatch(null);
+        setStartModalOpen(true);
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Không thể công khai giải.', 'error');
+    } finally {
+      setPublishGateLoading(false);
+    }
+  };
+
+  const cancelPublishGate = () => {
+    setPublishGateModalOpen(false);
+    setPendingStartMatch(null);
   };
 
   const handleStartMatch = async () => {
@@ -515,74 +787,62 @@ export default function MatchesPage() {
   };
 
   const handleLockLineups = async () => {
-    if (!matchToLock) return;
+    if (!matchToLock || !matchDetails) return;
     setActionLoading(true);
     try {
-      await apiFetch(`/matches/${matchToLock.id}/lineups/lock`, { method: 'POST' });
-      toast('Đã khóa đội hình thi đấu!', 'success');
+      // 1. Gather and submit lineups for both teams to validate and save them
+      const teamLineups = [];
+
+      teamLineups.push({
+        teamId: matchDetails.teamAId,
+        segments: Object.keys(lineupsData.teamA).map((segmentId) => ({
+          segmentId,
+          playerIds: lineupsData.teamA[segmentId].filter(Boolean),
+        })),
+      });
+
+      teamLineups.push({
+        teamId: matchDetails.teamBId,
+        segments: Object.keys(lineupsData.teamB).map((segmentId) => ({
+          segmentId,
+          playerIds: lineupsData.teamB[segmentId].filter(Boolean),
+        })),
+      });
+
+      // Save lineups
+      await apiFetch(`/matches/${matchDetails.id}/lineups`, {
+        method: 'PUT',
+        body: { teamLineups },
+      });
+
+      // Lock lineups
+      await apiFetch(`/matches/${matchDetails.id}/lineups/lock`, {
+        method: 'POST',
+      });
+
+      toast('Đã lưu và khóa đội hình thi đấu thành công! Trận đấu đã sẵn sàng.', 'success');
       setLockModalOpen(false);
       setMatchToLock(null);
       fetchMatches();
       // Refresh expanded details if this is the expanded match
-      if (expandedMatchId === matchToLock.id) {
-        await handleExpandMatch(matchToLock.id);
+      if (expandedMatchId === matchDetails.id) {
+        await handleExpandMatch(matchDetails.id);
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Không thể khóa đội hình.', 'error');
+      toast(err instanceof Error ? err.message : 'Không thể khóa đội hình. Vui lòng kiểm tra lại thiết lập.', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Submit lineup
-  // ─────────────────────────────────────────────────────────────────────────
-  const handleSubmitLineup = async (teamKey: 'teamA' | 'teamB') => {
-    if (!matchDetails) return;
-    const teamId = teamKey === 'teamA' ? matchDetails.teamAId : matchDetails.teamBId;
-    if (!teamId) return;
-
-    const segmentsPayload = Object.keys(lineupsData[teamKey]).map((segmentId) => ({
-      segmentId,
-      playerIds: lineupsData[teamKey][segmentId].filter(Boolean),
-    }));
-
-    setActionLoading(true);
-    try {
-      await apiFetch(`/matches/${matchDetails.id}/lineups`, {
-        method: 'PUT',
-        body: {
-          teamLineups: [{ teamId, segments: segmentsPayload }],
-        },
-      });
-      toast(`Đã lưu đội hình ${teamKey === 'teamA' ? 'Đội A' : 'Đội B'}!`, 'success');
-      // Reload expanded details
-      const updated = await apiFetch<MatchDetails>(`/matches/${matchDetails.id}`);
-      setMatchDetails(updated);
-      const newLineups: LineupFormState = { teamA: {}, teamB: {} };
-      updated.segments.forEach((seg) => {
-        newLineups.teamA[seg.id] = updated.lineups
-          .find((l) => l.segmentId === seg.id && l.teamId === updated.teamAId)
-          ?.players.map((p) => p.playerProfileId) ?? [];
-        newLineups.teamB[seg.id] = updated.lineups
-          .find((l) => l.segmentId === seg.id && l.teamId === updated.teamBId)
-          ?.players.map((p) => p.playerProfileId) ?? [];
-      });
-      setLineupsData(newLineups);
-      fetchMatches();
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Không thể lưu đội hình.', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Filtered matches
   // ─────────────────────────────────────────────────────────────────────────
   const filteredMatches = matches.filter((m) => {
-    if (selectedPhase === 'group' && !m.group) return false;
-    if (selectedPhase === 'playoff' && m.group) return false;
+    if (selectedPhase === 'playoff') {
+      if (m.group) return false;
+    } else {
+      if (!m.group) return false;
+      if (selectedPhase !== 'all' && m.group.code !== selectedPhase) return false;
+    }
     if (selectedStatus !== 'all' && m.status !== selectedStatus) return false;
     if (requireCourtConfig && selectedCourtFilter !== 'all') {
       const courtLabel = m.court ? formatCourtLabel(m.court) : (m.courtName ?? '');
@@ -593,6 +853,10 @@ export default function MatchesPage() {
 
   const groupMatches = filteredMatches.filter((m) => m.group);
   const playoffMatches = filteredMatches.filter((m) => !m.group);
+
+  const groupsInMatches = useMemo(() => {
+    return Array.from(new Set(matches.map(m => m.group?.code).filter(Boolean))).sort() as string[];
+  }, [matches]);
 
   // Unique courts for filter
   const courtOptions = Array.from(
@@ -609,10 +873,14 @@ export default function MatchesPage() {
   const renderMatchCard = (m: MatchListItem) => {
     const isExpanded = expandedMatchId === m.id;
     const isEditing = editingMatchId === m.id;
-    const isRunningOrDone = ['RUNNING', 'COMPLETED', 'CONFIRMED'].includes(m.status);
+    const isLineupLocked = matchDetails && matchDetails.id === m.id
+      ? ['READY', 'RUNNING', 'SEGMENT_BREAK', 'COMPLETED', 'CONFIRMED', 'RESULT_CONFIRMED', 'CANCELLED', 'WALKOVER'].includes(matchDetails.status)
+      : ['READY', 'RUNNING', 'SEGMENT_BREAK', 'COMPLETED', 'CONFIRMED', 'RESULT_CONFIRMED', 'CANCELLED', 'WALKOVER'].includes(m.status);
+    const isRunningOrDone = ['RUNNING', 'SEGMENT_BREAK', 'COMPLETED', 'CONFIRMED', 'RESULT_CONFIRMED'].includes(m.status);
     const courtLabel = m.court ? formatCourtLabel(m.court) : (m.courtName ?? null);
     const canEditTeam = (teamKey: 'teamA' | 'teamB'): boolean => {
-      if (!matchDetails || matchDetails.status === 'READY') return false;
+      if (isLineupLocked) return false;
+      if (!matchDetails) return false;
       if (role === 'captain') {
         const ownedTeamIds = [matchDetails.teamAId, matchDetails.teamBId].filter(Boolean);
         const myTeamId = teamKey === 'teamA' ? matchDetails.teamAId : matchDetails.teamBId;
@@ -708,13 +976,16 @@ export default function MatchesPage() {
               )}
 
               {/* Link to scoring */}
-              {(m.status === 'RUNNING' || m.status === 'COMPLETED') && (
+              {['READY', 'RUNNING', 'SEGMENT_BREAK', 'COMPLETED', 'RESULT_CONFIRMED'].includes(m.status) && (
                 <Link
-                  href={`/admin/${tournament?.id}/scoring/${m.id}`}
+                  href={`/score/${m.id}`}
+                  target="_blank"
                   className="text-amber-400 hover:text-amber-300 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-xs flex items-center gap-1"
                 >
                   <Zap className="w-3.5 h-3.5" />
-                  {m.status === 'RUNNING' ? 'Ghi điểm' : 'Xác nhận KQ'}
+                  {['RUNNING', 'SEGMENT_BREAK'].includes(m.status) ? 'Ghi điểm' : 
+                   m.status === 'READY' ? 'Bàn Trọng Tài' :
+                   m.status === 'COMPLETED' ? 'Xác nhận KQ' : 'Xem kết quả'}
                 </Link>
               )}
 
@@ -845,27 +1116,21 @@ export default function MatchesPage() {
                     <Users className="w-3.5 h-3.5 text-amber-500" />
                     Đội hình thi đấu
                   </span>
-                  {canLockLineups && matchDetails.status !== 'READY' && (
-                    <button
-                      onClick={() => confirmLockLineup(m)}
-                      className="flex items-center gap-1 border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/20 transition-all"
-                      disabled={actionLoading}
-                    >
-                      <Lock className="w-3 h-3" />
-                      Khóa Đội Hình
-                    </button>
-                  )}
                 </div>
 
-                {matchDetails.status === 'READY' && (
+                {isLineupLocked && (
                   <div className="rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-2.5 py-1.5 text-[10px] text-emerald-350 flex items-start gap-1.5">
                     <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                    <span>Đội hình đã được BTC khóa. Trận đấu sẵn sàng thi đấu.</span>
+                    <span>
+                      {matchDetails.status === 'READY'
+                        ? 'Đội hình đã được BTC khóa. Trận đấu sẵn sàng thi đấu.'
+                        : 'Trận đấu đang diễn ra hoặc đã kết thúc. Đội hình được khóa cố định.'}
+                    </span>
                   </div>
                 )}
 
                 {/* Team lineups */}
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Team A */}
                   <div className="space-y-3">
                     <div className="font-semibold text-sky-400 border-b border-slate-800/60 pb-1 flex justify-between">
@@ -900,20 +1165,23 @@ export default function MatchesPage() {
                               <select
                                 key={idx}
                                 value={selectedPlayers[idx] ?? ''}
-                                onChange={(e) => {
-                                  setLineupsData((prev) => {
-                                    const list = [...(prev.teamA[segment.id] ?? [])];
-                                    list[idx] = e.target.value;
-                                    return { ...prev, teamA: { ...prev.teamA, [segment.id]: list } };
-                                  });
-                                }}
-                                disabled={!isTeamEditable || matchDetails.status === 'READY'}
+                                onChange={(e) => handlePlayerChange('teamA', segment.id, idx, e.target.value)}
+                                disabled={!isTeamEditable || ['READY', 'RUNNING', 'COMPLETED', 'CONFIRMED'].includes(matchDetails.status)}
                                 className="w-full rounded-lg border border-slate-700/60 bg-slate-950/60 px-2 py-1.5 text-[11px] text-slate-200 outline-none focus:border-amber-500/50 disabled:opacity-60"
                               >
                                 <option value="">-- Chọn VĐV --</option>
-                                {matchDetails.teamA?.members?.map((member) => (
+                                {getFilteredMembers(
+                                  matchDetails.teamA?.members || [],
+                                  segment.id,
+                                  segment.segmentKey,
+                                  idx,
+                                  'teamA',
+                                  lineupsData,
+                                  matchDetails.segments,
+                                  tournament?.ruleset
+                                ).map((member) => (
                                   <option key={member.playerProfile.id} value={member.playerProfile.id}>
-                                    {member.playerProfile.fullName} ({getMemberGender(member) === 'MALE' ? '♂' : '♀'})
+                                    {member.playerProfile.fullName} ({getMemberGender(member) === 'MALE' ? '♂ Nam' : '♀ Nữ'})
                                   </option>
                                 ))}
                               </select>
@@ -929,17 +1197,6 @@ export default function MatchesPage() {
                         </div>
                       );
                     })}
-
-                    {submitLineupAccess.allowed && matchDetails.status !== 'READY' && (
-                      <button
-                        onClick={() => handleSubmitLineup('teamA')}
-                        disabled={actionLoading}
-                        className="w-full flex items-center justify-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/8 text-sky-400 hover:bg-sky-500/15 text-[11px] font-bold py-1.5 transition-all disabled:opacity-50"
-                      >
-                        {actionLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                        Lưu Lineup Đội A
-                      </button>
-                    )}
                   </div>
 
                   {/* Team B */}
@@ -976,20 +1233,23 @@ export default function MatchesPage() {
                               <select
                                 key={idx}
                                 value={selectedPlayers[idx] ?? ''}
-                                onChange={(e) => {
-                                  setLineupsData((prev) => {
-                                    const list = [...(prev.teamB[segment.id] ?? [])];
-                                    list[idx] = e.target.value;
-                                    return { ...prev, teamB: { ...prev.teamB, [segment.id]: list } };
-                                  });
-                                }}
-                                disabled={!isTeamEditable || matchDetails.status === 'READY'}
+                                onChange={(e) => handlePlayerChange('teamB', segment.id, idx, e.target.value)}
+                                disabled={!isTeamEditable || ['READY', 'RUNNING', 'COMPLETED', 'CONFIRMED'].includes(matchDetails.status)}
                                 className="w-full rounded-lg border border-slate-700/60 bg-slate-950/60 px-2 py-1.5 text-[11px] text-slate-200 outline-none focus:border-amber-500/50 disabled:opacity-60"
                               >
                                 <option value="">-- Chọn VĐV --</option>
-                                {matchDetails.teamB?.members?.map((member) => (
+                                {getFilteredMembers(
+                                  matchDetails.teamB?.members || [],
+                                  segment.id,
+                                  segment.segmentKey,
+                                  idx,
+                                  'teamB',
+                                  lineupsData,
+                                  matchDetails.segments,
+                                  tournament?.ruleset
+                                ).map((member) => (
                                   <option key={member.playerProfile.id} value={member.playerProfile.id}>
-                                    {member.playerProfile.fullName} ({getMemberGender(member) === 'MALE' ? '♂' : '♀'})
+                                    {member.playerProfile.fullName} ({getMemberGender(member) === 'MALE' ? '♂ Nam' : '♀ Nữ'})
                                   </option>
                                 ))}
                               </select>
@@ -1005,29 +1265,39 @@ export default function MatchesPage() {
                         </div>
                       );
                     })}
-
-                    {submitLineupAccess.allowed && matchDetails.status !== 'READY' && (
-                      <button
-                        onClick={() => handleSubmitLineup('teamB')}
-                        disabled={actionLoading}
-                        className="w-full flex items-center justify-center gap-1 rounded-lg border border-rose-500/20 bg-rose-500/8 text-rose-400 hover:bg-rose-500/15 text-[11px] font-bold py-1.5 transition-all disabled:opacity-50"
-                      >
-                        {actionLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                        Lưu Lineup Đội B
-                      </button>
-                    )}
                   </div>
                 </div>
 
+                {/* Unified Lock Button */}
+                {canLockLineups && !isLineupLocked && (
+                  <div className="flex justify-center pt-4 border-t border-slate-800/60">
+                    <button
+                      onClick={() => confirmLockLineup(m)}
+                      disabled={actionLoading}
+                      className="w-full sm:w-auto px-10 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50 text-slate-950 font-bold text-xs sm:text-sm rounded-xl cursor-pointer shadow-lg shadow-emerald-500/15 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] mx-auto"
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Lock className="w-4 h-4" />
+                      )}
+                      Xác Nhận & Khóa Đội Hình Thi Đấu
+                    </button>
+                  </div>
+                )}
+
                 {/* Scoring link */}
-                {(m.status === 'RUNNING' || m.status === 'COMPLETED') && (
+                {['READY', 'RUNNING', 'SEGMENT_BREAK', 'COMPLETED', 'RESULT_CONFIRMED'].includes(m.status) && (
                   <div className="pt-2 border-t border-slate-800">
                     <Link
-                      href={`/admin/${tournament?.id}/scoring/${m.id}`}
+                      href={`/score/${m.id}`}
+                      target="_blank"
                       className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-500/15 border border-amber-500/25 text-amber-400 hover:bg-amber-500/25 text-xs font-bold py-2 transition-all"
                     >
                       <Zap className="w-3.5 h-3.5" />
-                      {m.status === 'RUNNING' ? 'Vào bảng ghi điểm' : 'Xem / Xác nhận kết quả'}
+                      {['RUNNING', 'SEGMENT_BREAK'].includes(m.status) ? 'Vào bảng ghi điểm' :
+                       m.status === 'READY' ? 'Mở bàn trọng tài' :
+                       m.status === 'COMPLETED' ? 'Xem / Xác nhận kết quả' : 'Xem chi tiết kết quả'}
                     </Link>
                   </div>
                 )}
@@ -1055,8 +1325,8 @@ export default function MatchesPage() {
   // ─────────────────────────────────────────────────────────────────────────
   const stats = [
     { label: 'Tổng trận', value: matches.length, icon: Target, color: 'text-amber-400' },
-    { label: 'Hoàn thành', value: matches.filter((m) => ['COMPLETED', 'CONFIRMED'].includes(m.status)).length, icon: Check, color: 'text-emerald-400' },
-    { label: 'Đang đấu', value: matches.filter((m) => m.status === 'RUNNING').length, icon: Play, color: 'text-yellow-400' },
+    { label: 'Hoàn thành', value: matches.filter((m) => ['COMPLETED', 'CONFIRMED', 'RESULT_CONFIRMED'].includes(m.status)).length, icon: Check, color: 'text-emerald-400' },
+    { label: 'Đang đấu', value: matches.filter((m) => ['RUNNING', 'SEGMENT_BREAK'].includes(m.status)).length, icon: Play, color: 'text-yellow-400' },
     { label: 'Chờ lineup', value: matches.filter((m) => ['LINEUP_PENDING', 'LINEUP_READY', 'READY'].includes(m.status)).length, icon: ClipboardList, color: 'text-violet-400' },
   ];
 
@@ -1096,116 +1366,233 @@ export default function MatchesPage() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Phase filter */}
-        <div className="flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/50 p-1">
-          {(['all', 'group', 'playoff'] as const).map((phase) => (
-            <button
-              key={phase}
-              onClick={() => setSelectedPhase(phase)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${selectedPhase === phase ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              {phase === 'all' ? 'Tất cả' : phase === 'group' ? 'Vòng bảng' : 'Playoff'}
-            </button>
-          ))}
-        </div>
+      {/* Main Grid View */}
+      <div className={`grid grid-cols-1 gap-6 ${selectedPhase !== 'playoff' ? 'lg:grid-cols-3' : ''}`}>
+        {/* Left Column: Matches list & Filters */}
+        <div className={`space-y-6 ${selectedPhase !== 'playoff' ? 'lg:col-span-2' : ''}`}>
+          {/* Filters */}
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Primary Stage filter */}
+              <div className="flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/50 p-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPhase('all')}
+                  className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${selectedPhase !== 'playoff' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Vòng Bảng
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPhase('playoff')}
+                  className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${selectedPhase === 'playoff' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Playoffs
+                </button>
+              </div>
 
-        {/* Status filter */}
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          className="rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-1.5 text-xs text-slate-300 outline-none focus:border-amber-500/50"
-        >
-          <option value="all">Mọi trạng thái</option>
-          <option value="SCHEDULED">Đã lên lịch</option>
-          <option value="LINEUP_PENDING">Chờ lineup</option>
-          <option value="LINEUP_READY">Lineup xong</option>
-          <option value="READY">Sẵn sàng</option>
-          <option value="RUNNING">Đang đấu</option>
-          <option value="COMPLETED">Hoàn thành</option>
-          <option value="CONFIRMED">Đã xác nhận</option>
-        </select>
+              {/* Status filter */}
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-1.5 text-xs text-slate-300 outline-none focus:border-amber-500/50"
+              >
+                <option value="all">Mọi trạng thái</option>
+                <option value="SCHEDULED">Đã lên lịch</option>
+                <option value="LINEUP_PENDING">Chờ lineup</option>
+                <option value="LINEUP_READY">Lineup xong</option>
+                <option value="READY">Sẵn sàng</option>
+                <option value="RUNNING">Đang đấu</option>
+                <option value="COMPLETED">Hoàn thành</option>
+                <option value="CONFIRMED">Đã xác nhận</option>
+              </select>
 
-        {/* Court filter - only if requireCourtConfig */}
-        {requireCourtConfig && courtOptions.length > 0 && (
-          <select
-            value={selectedCourtFilter}
-            onChange={(e) => setSelectedCourtFilter(e.target.value)}
-            className="rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-1.5 text-xs text-slate-300 outline-none focus:border-amber-500/50"
-          >
-            <option value="all">Mọi sân</option>
-            {courtOptions.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        )}
+              {/* Court filter - only if requireCourtConfig */}
+              {requireCourtConfig && courtOptions.length > 0 && (
+                <select
+                  value={selectedCourtFilter}
+                  onChange={(e) => setSelectedCourtFilter(e.target.value)}
+                  className="rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-1.5 text-xs text-slate-300 outline-none focus:border-amber-500/50"
+                >
+                  <option value="all">Mọi sân</option>
+                  {courtOptions.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
 
-        {/* Refresh */}
-        <button
-          onClick={() => fetchMatches()}
-          className="rounded-xl border border-slate-800 bg-slate-900/50 p-1.5 text-slate-500 hover:text-amber-400 transition-all"
-          title="Tải lại"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+              {/* Refresh */}
+              <button
+                onClick={() => { void fetchMatches(); void fetchStandings(); }}
+                className="rounded-xl border border-slate-800 bg-slate-900/50 p-1.5 text-slate-500 hover:text-amber-400 transition-all"
+                title="Tải lại"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
 
-        <div className="ml-auto text-xs text-slate-500">
-          {filteredMatches.length} / {matches.length} trận
-        </div>
-      </div>
+              <div className="ml-auto text-xs text-slate-500">
+                {filteredMatches.length} / {matches.length} trận
+              </div>
+            </div>
 
-      {/* Match lists */}
-      {matches.length === 0 ? (
-        <div className="p-10 bg-slate-800/10 border border-dashed border-slate-800 rounded-3xl text-center space-y-3">
-          <Calendar className="w-10 h-10 text-slate-700 mx-auto" />
-          <div className="text-slate-500 text-sm font-medium">Chưa có trận đấu nào</div>
-          <div className="text-slate-600 text-xs">
-            BTC cần sinh lịch thi đấu vòng bảng hoặc bảng đấu chưa được thiết lập.
+            {/* Level 2: Sub-tabs for Group Stage (only visible when Vòng Bảng is active) */}
+            {selectedPhase !== 'playoff' && (
+              <div className="flex flex-wrap items-center gap-1 bg-slate-900/20 p-1 rounded-xl border border-slate-800/40 max-w-max transition-all animate-scale-in">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPhase('all')}
+                  className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${selectedPhase === 'all' ? 'bg-slate-800 text-amber-400 border border-slate-700/50 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  Tất cả
+                </button>
+                {groupsInMatches.map((groupCode) => (
+                  <button
+                    key={groupCode}
+                    type="button"
+                    onClick={() => setSelectedPhase(groupCode)}
+                    className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${selectedPhase === groupCode ? 'bg-slate-800 text-amber-400 border border-slate-700/50 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    Bảng {groupCode}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          {isBtcAdmin && (
-            <button
-              onClick={() => setGenerateModalOpen(true)}
-              className="mt-2 btn btn-primary text-sm inline-flex items-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Sinh lịch thi đấu vòng bảng
-            </button>
-          )}
-        </div>
-      ) : filteredMatches.length === 0 ? (
-        <div className="p-8 bg-slate-800/10 border border-dashed border-slate-800 rounded-3xl text-center text-xs text-slate-500 italic py-10">
-          Không tìm thấy trận đấu nào phù hợp với bộ lọc.
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Group stage */}
-          {groupMatches.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
-                <BarChart3 className="w-4 h-4 text-amber-500" />
-                Vòng bảng ({groupMatches.length} trận)
-              </div>
-              <div className="space-y-2">
-                {groupMatches.map(renderMatchCard)}
-              </div>
-            </div>
-          )}
 
-          {/* Playoffs */}
-          {playoffMatches.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                Playoffs ({playoffMatches.length} trận)
+          {/* Match lists */}
+          {matches.length === 0 ? (
+            <div className="p-10 bg-slate-800/10 border border-dashed border-slate-800 rounded-3xl text-center space-y-3">
+              <Calendar className="w-10 h-10 text-slate-700 mx-auto" />
+              <div className="text-slate-500 text-sm font-medium">Chưa có trận đấu nào</div>
+              <div className="text-slate-600 text-xs">
+                BTC cần sinh lịch thi đấu vòng bảng hoặc bảng đấu chưa được thiết lập.
               </div>
-              <div className="space-y-2">
-                {playoffMatches.map(renderMatchCard)}
-              </div>
+              {isBtcAdmin && (
+                <button
+                  onClick={() => setGenerateModalOpen(true)}
+                  className="mt-2 btn btn-primary text-sm inline-flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Sinh lịch thi đấu vòng bảng
+                </button>
+              )}
+            </div>
+          ) : filteredMatches.length === 0 ? (
+            <div className="p-8 bg-slate-800/10 border border-dashed border-slate-800 rounded-3xl text-center text-xs text-slate-500 italic py-10">
+              Không tìm thấy trận đấu nào phù hợp với bộ lọc.
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Group stage */}
+              {groupMatches.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+                    <BarChart3 className="w-4 h-4 text-amber-500" />
+                    Vòng bảng {selectedPhase !== 'all' && selectedPhase !== 'playoff' ? `· Bảng ${selectedPhase}` : ''} ({groupMatches.length} trận)
+                  </div>
+                  <div className="space-y-2">
+                    {groupMatches.map(renderMatchCard)}
+                  </div>
+                </div>
+              )}
+
+              {/* Playoffs */}
+              {playoffMatches.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+                    <Trophy className="w-4 h-4 text-amber-500" />
+                    Playoffs ({playoffMatches.length} trận)
+                  </div>
+                  <div className="space-y-2">
+                    {playoffMatches.map(renderMatchCard)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+
+        {/* Right Column: Real-time Standings — hidden in Playoffs tab */}
+        {selectedPhase !== 'playoff' && (
+        <div className="space-y-6 lg:border-l lg:border-slate-850/60 lg:pl-6">
+          <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+            <h3 className="font-bold text-xs sm:text-sm text-slate-100 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-amber-500" />
+              BXH Cập Nhật Real-time
+            </h3>
+            <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Live
+            </span>
+          </div>
+
+          {standingsGroups.length > 0 ? (
+            standingsGroups.map(group => {
+              const groupStds = standingsData.filter(s => s.groupId === group.id).sort((a, b) => a.rank - b.rank);
+              return (
+                <div key={group.id} className="card p-4 space-y-3 shadow-md bg-slate-900/30 border border-slate-850/60">
+                  <div className="flex items-center justify-between border-b border-slate-850 pb-2">
+                    <div className="font-bold text-xs text-amber-500">{group.name}</div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-[11px]">
+                      <thead>
+                        <tr className="border-b border-slate-850/50 text-slate-500 font-semibold">
+                          <th className="py-2 w-7 text-center">#</th>
+                          <th className="px-2">Đội</th>
+                          <th className="text-center px-1">Trận</th>
+                          <th className="text-center px-1">T</th>
+                          <th className="text-center px-1">B</th>
+                          <th className="text-center px-1">HS</th>
+                          <th className="text-right py-2 px-1">Đ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-850/30 text-slate-300">
+                        {groupStds.length > 0 ? (
+                          groupStds.map((s, index) => (
+                            <tr key={s.id} className="hover:bg-slate-800/10 transition-colors">
+                              <td className="py-2 text-center">
+                                <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold ${
+                                  index === 0 ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30' : 
+                                  index === 1 ? 'bg-slate-300/15 text-slate-355 border border-slate-300/30' :
+                                  'bg-slate-800 text-slate-500'
+                                }`}>
+                                  {s.rank}
+                                </span>
+                              </td>
+                              <td className="font-semibold text-slate-200 px-2 truncate max-w-[120px]" title={s.team?.name || ''}>
+                                {s.team?.name || '—'}
+                              </td>
+                              <td className="text-center text-slate-400 px-1">{s.matchesPlayed}</td>
+                              <td className="text-center text-emerald-500 font-medium px-1">{s.wins}</td>
+                              <td className="text-center text-rose-500 font-medium px-1">{s.losses}</td>
+                              <td className="text-center text-slate-450 font-mono px-1">
+                                {s.pointsFor - s.pointsAgainst > 0 ? `+${s.pointsFor - s.pointsAgainst}` : s.pointsFor - s.pointsAgainst}
+                              </td>
+                              <td className="text-right font-mono font-bold text-slate-200 py-2 px-1">{s.points}đ</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={7} className="text-center text-slate-500 italic py-4 text-[10px]">
+                              Chưa có đội tuyển trong bảng đấu
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-6 bg-slate-800/10 border border-dashed border-slate-800 rounded-2xl text-center text-xs text-slate-500 italic">
+              Chưa thiết lập bảng xếp hạng.
+            </div>
+          )}
+        </div>
+        )}
+      </div>
 
       {/* ── Modals ── */}
 
@@ -1277,7 +1664,78 @@ export default function MatchesPage() {
         </div>
       )}
 
+      {/* Publish gate modal — shown when starting a match but tournament is not yet public */}
+      {publishGateModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-emerald-500/20 bg-slate-900 shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-start gap-4 p-6 pb-4">
+              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-2xl">
+                🌐
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg font-bold text-slate-100">
+                  Giải chưa được công khai
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-slate-400">
+                  Để bắt đầu trận đấu, giải cần được công khai trước để khán giả và hệ thống có thể theo dõi realtime.
+                </p>
+              </div>
+            </div>
+
+            {/* Match info */}
+            {pendingStartMatch && (
+              <div className="mx-6 mb-4 rounded-xl border border-slate-700/60 bg-slate-800/50 px-4 py-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                  Trận chờ bắt đầu
+                </div>
+                <div className="text-sm font-semibold text-slate-200">
+                  {pendingStartMatch.teamA?.name ?? 'Đội A'} vs {pendingStartMatch.teamB?.name ?? 'Đội B'}
+                </div>
+              </div>
+            )}
+
+            {/* Note */}
+            <div className="mx-6 mb-5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+              <p className="text-xs leading-relaxed text-amber-300">
+                Công khai giải cho phép khán giả xem lịch thi đấu và theo dõi điểm số theo thời gian thực. Bạn vẫn có thể quản lý giải sau khi đã công khai.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-800 px-6 py-4">
+              <button
+                type="button"
+                onClick={cancelPublishGate}
+                disabled={publishGateLoading}
+                className="btn btn-ghost btn-sm"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handlePublishAndContinue}
+                disabled={publishGateLoading}
+                className="btn btn-sm inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-sm font-bold text-white hover:from-emerald-400 hover:to-teal-400 disabled:opacity-60 transition-all"
+              >
+                {publishGateLoading ? (
+                  <>
+                    <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    Đang công khai...
+                  </>
+                ) : (
+                  <>
+                    🌐 Công khai &amp; Bắt đầu trận
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Start match modal */}
+
       <ConfirmModal
         open={startModalOpen}
         title="Bắt đầu trận đấu?"

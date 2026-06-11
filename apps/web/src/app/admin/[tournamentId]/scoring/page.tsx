@@ -45,6 +45,23 @@ function filterScoringMatches(data: MatchListItem[]): MatchListItem[] {
   return data.filter((match) => filterStates.includes(match.status));
 }
 
+function getMatchStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    SCHEDULED: 'Chưa bắt đầu',
+    LINEUP_PENDING: 'Chờ lineup',
+    LINEUP_READY: 'Đã nộp lineup',
+    READY: 'Sẵn sàng',
+    RUNNING: 'Đang đấu',
+    SEGMENT_BREAK: 'Nghỉ chặng',
+    COMPLETED: 'Chờ xác nhận',
+    RESULT_CONFIRMED: 'Đã kết thúc',
+    CANCELLED: 'Đã hủy',
+    WALKOVER: 'Bỏ cuộc',
+  };
+  return map[status] ?? status;
+}
+
+
 export default function AdminScoringPage() {
   const { tournament, loading: tLoading } = useActiveTournament();
   const { toast } = useToast();
@@ -268,7 +285,7 @@ export default function AdminScoringPage() {
                         match.status === 'RUNNING' ? 'animate-pulse border-sky-500/20 bg-sky-500/10 text-sky-400' :
                         'border-slate-700 bg-slate-800 text-slate-400'
                       }`}>
-                        {match.status}
+                        {getMatchStatusLabel(match.status)}
                       </span>
                     </td>
                     <td className="px-4 font-mono text-base font-bold text-slate-200">

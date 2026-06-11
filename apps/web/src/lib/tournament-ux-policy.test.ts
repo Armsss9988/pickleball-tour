@@ -189,7 +189,7 @@ describe('tournament UX policy', () => {
     expect(access.allowed).toBe(true);
   });
 
-  it('keeps publish readiness blocked while tournament is still running', () => {
+  it('allows publish readiness while tournament is still running', () => {
     const readiness = getPublishReadiness({
       ...baseContext,
       hasTournamentInfo: true,
@@ -210,11 +210,11 @@ describe('tournament UX policy', () => {
       status: 'RUNNING',
     });
 
-    expect(readiness.ready).toBe(false);
-    expect(readiness.missing).toContain('trạng thái hoàn tất');
+    expect(readiness.ready).toBe(true);
+    expect(readiness.missing).toEqual([]);
   });
 
-  it('reports only the Task 1 publish blockers from the plan', () => {
+  it('reports only the basic publish blockers', () => {
     const readiness = getPublishReadiness({
       ...baseContext,
       status: 'KNOCKOUT_RUNNING',
@@ -228,10 +228,6 @@ describe('tournament UX policy', () => {
     expect(readiness.missing).toEqual([
       'thông tin giải',
       'ruleset',
-      'đội thi đấu',
-      'kết quả trận đấu',
-      'vòng knockout hoàn tất',
-      'trạng thái hoàn tất',
     ]);
   });
 

@@ -27,4 +27,40 @@ describe('Bracket Generator Service', () => {
     const advanceResult = BracketGeneratorService.calculateAdvance(p1, 'team-a2', sf2);
     expect(advanceResult?.teamBId).toBe('team-a2'); // Since sf2 sourceB is 'W:P1'
   });
+
+  it('should generate correct initial nodes for 4 groups', () => {
+    const seeds = { A1: 'team-a1', B1: 'team-b1', C1: 'team-c1', D1: 'team-d1' };
+    const nodes = BracketGeneratorService.generateInitialNodes('org-1', 'tour-1', 'stage-playoff', seeds, 4);
+
+    expect(nodes).toHaveLength(3);
+    const sf1 = nodes.find((n) => n.nodeKey === 'SF1');
+    expect(sf1?.teamAId).toBe('team-a1');
+    expect(sf1?.teamBId).toBe('team-b1');
+
+    const sf2 = nodes.find((n) => n.nodeKey === 'SF2');
+    expect(sf2?.teamAId).toBe('team-c1');
+    expect(sf2?.teamBId).toBe('team-d1');
+
+    const f = nodes.find((n) => n.nodeKey === 'F');
+    expect(f?.teamAId).toBeNull();
+    expect(f?.teamBId).toBeNull();
+  });
+
+  it('should generate correct initial nodes for 1 group', () => {
+    const seeds = { T1: 'team-1st', T2: 'team-2nd', T3: 'team-3rd', T4: 'team-4th' };
+    const nodes = BracketGeneratorService.generateInitialNodes('org-1', 'tour-1', 'stage-playoff', seeds, 1);
+
+    expect(nodes).toHaveLength(3);
+    const sf1 = nodes.find((n) => n.nodeKey === 'SF1');
+    expect(sf1?.teamAId).toBe('team-1st');
+    expect(sf1?.teamBId).toBe('team-4th');
+
+    const sf2 = nodes.find((n) => n.nodeKey === 'SF2');
+    expect(sf2?.teamAId).toBe('team-2nd');
+    expect(sf2?.teamBId).toBe('team-3rd');
+
+    const f = nodes.find((n) => n.nodeKey === 'F');
+    expect(f?.teamAId).toBeNull();
+    expect(f?.teamBId).toBeNull();
+  });
 });
