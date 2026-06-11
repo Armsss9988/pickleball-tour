@@ -23,6 +23,7 @@ import { SegmentsSection } from './components/SegmentsSection';
 import { OverlapsSection } from './components/OverlapsSection';
 import { ValidationPanel } from './components/ValidationPanel';
 import { RulesetView } from './components/RulesetView';
+import { BracketPreview } from './components/BracketPreview';
 
 interface DependencyStats {
   playersCount: number;
@@ -674,6 +675,13 @@ export default function RulesetSettingsPage() {
                       </div>
                     )}
                   </div>
+
+                  <BracketPreview
+                    knockoutBracketSize={knockoutBracketSize}
+                    knockoutSeedSlots={knockoutSeedSlots}
+                    groupCount={groupCount}
+                    advancePerGroup={advancePerGroup}
+                  />
                 </div>
               )}
 
