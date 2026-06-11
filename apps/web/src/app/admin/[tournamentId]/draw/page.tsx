@@ -941,6 +941,7 @@ export default function DrawPage() {
                 && team.players.length === composition.teamSize
                 && (composition.maleCount === 0 || males === composition.maleCount)
                 && (composition.femaleCount === 0 || females === composition.femaleCount);
+              const isEditing = editingTeamId === team.id || editingTeamId === team.code;
 
               return (
                 <div
@@ -1139,6 +1140,7 @@ export default function DrawPage() {
                     && team.players.length === composition.teamSize
                     && (composition.maleCount === 0 || team.malesCount === composition.maleCount)
                     && (composition.femaleCount === 0 || team.femalesCount === composition.femaleCount);
+                  const isEditing = editingManualTeamCode === team.code;
 
                   return (
                     <div
