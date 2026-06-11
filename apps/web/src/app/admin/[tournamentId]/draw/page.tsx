@@ -124,6 +124,9 @@ export default function DrawPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState<string>('');
+  const [editingManualTeamCode, setEditingManualTeamCode] = useState<string | null>(null);
+  const [editingManualTeamName, setEditingManualTeamName] = useState<string>('');
+  const [manualTeamNames, setManualTeamNames] = useState<Record<string, string>>({});
   const currentUser = useMemo(() => getCurrentUser(), []);
 
   const [teamsState, setTeamsState] = useState<any[]>([]);
@@ -157,6 +160,21 @@ export default function DrawPage() {
       return;
     }
 
+    const isOfficial = officialTeams.some(t => t.id === teamId);
+    if (!isOfficial) {
+      setTeamsState(prev => prev.map(t => {
+        if (t.id === teamId || t.code === teamId) {
+          return { ...t, name: trimmedName };
+        }
+        return t;
+      }));
+      setHasChanges(true);
+      setEditingTeamId(null);
+      setEditingTeamName('');
+      toast('Cập nhật tên đội tạm thời thành công! Vui lòng lưu thay đổi.', 'success');
+      return;
+    }
+
     try {
       setActionLoading(true);
       await apiFetch(`/teams/${teamId}`, {
@@ -176,6 +194,30 @@ export default function DrawPage() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleStartEditManualTeam = (code: string, currentName: string) => {
+    setEditingManualTeamCode(code);
+    setEditingManualTeamName(currentName);
+  };
+
+  const handleCancelEditManualTeam = () => {
+    setEditingManualTeamCode(null);
+    setEditingManualTeamName('');
+  };
+
+  const handleUpdateManualTeamName = (code: string) => {
+    const trimmed = editingManualTeamName.trim();
+    if (!trimmed) {
+      toast('Tên đội không được để trống.', 'error');
+      return;
+    }
+    setManualTeamNames(prev => ({
+      ...prev,
+      [code]: trimmed
+    }));
+    setEditingManualTeamCode(null);
+    setEditingManualTeamName('');
   };
 
   const handleTeamDragStart = useCallback((event: React.DragEvent, playerId: string, sourceTeamCode: string) => {
@@ -387,13 +429,13 @@ export default function DrawPage() {
 
     return {
       code,
-      name: `Đội ${code}`,
+      name: manualTeamNames[code] || `Đội ${code}`,
       index,
       players: teamPlayers,
       malesCount,
       femalesCount,
     };
-  }), [manualAssignments, manualTeamCodes, players]);
+  }), [manualAssignments, manualTeamCodes, players, manualTeamNames]);
 
   const unassignedPlayers = useMemo(
     () => players.filter((player) => !manualAssignments[player.id]),
@@ -473,6 +515,7 @@ export default function DrawPage() {
 
   const handleClearManualAssignments = useCallback(() => {
     setManualAssignments({});
+    setManualTeamNames({});
   }, []);
 
   const handleSubmitManualAssignment = useCallback(async () => {
@@ -910,9 +953,60 @@ export default function DrawPage() {
                       : 'border-red-500/25 bg-red-500/5'
                   }`}
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <div className="font-bold text-sm text-amber-400">{team.name}</div>
-                    <div className="text-xs font-mono bg-slate-900 px-2 py-0.5 rounded text-slate-400 border border-slate-800">{team.code}</div>
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2 gap-2">
+                    {isEditing ? (
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <input
+                          type="text"
+                          value={editingTeamName}
+                          onChange={(e) => setEditingTeamName(e.target.value)}
+                          className="premium-input text-xs py-1 px-2 flex-1 min-w-0 bg-slate-900 border-slate-700 text-slate-100 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              void handleUpdateTeamName(team.id || team.code);
+                            } else if (e.key === 'Escape') {
+                              handleCancelEditTeam();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateTeamName(team.id || team.code)}
+                          disabled={actionLoading}
+                          className="p-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 transition-all cursor-pointer"
+                          title="Lưu"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditTeam}
+                          disabled={actionLoading}
+                          className="p-1 rounded bg-slate-800 border border-slate-700 text-slate-400 hover:bg-slate-700 transition-all cursor-pointer"
+                          title="Hủy"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="min-w-0 flex-1 group/team">
+                        <div className="flex items-center gap-1.5">
+                          <div className="truncate text-sm font-bold text-amber-400">{team.name}</div>
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditTeam(team.id || team.code, team.name)}
+                            className="opacity-0 group-hover/team:opacity-100 transition-opacity p-0.5 rounded text-slate-500 hover:text-amber-500 hover:bg-slate-900 cursor-pointer"
+                            title="Đổi tên đội"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <span className="rounded border border-slate-800 bg-slate-900 px-2 py-0.5 text-xs font-mono text-slate-400 flex-shrink-0">
+                      {team.code}
+                    </span>
                   </div>
                   
                   <div className="space-y-2">
@@ -1059,9 +1153,56 @@ export default function DrawPage() {
                           : 'border-slate-800 bg-slate-950/35'
                       }`}
                     >
-                      <div className="mb-2 flex items-center justify-between">
-                        <div className="text-sm font-bold text-slate-100">{team.name}</div>
-                        <div className={`text-[10px] font-bold ${teamValid ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        {isEditing ? (
+                          <div className="flex items-center gap-1 flex-1 min-w-0">
+                            <input
+                              type="text"
+                              value={editingManualTeamName}
+                              onChange={(e) => setEditingManualTeamName(e.target.value)}
+                              className="premium-input text-xs py-0.5 px-1.5 flex-1 min-w-0 bg-slate-900 border-slate-700 text-slate-100 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleUpdateManualTeamName(team.code);
+                                } else if (e.key === 'Escape') {
+                                  handleCancelEditManualTeam();
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateManualTeamName(team.code)}
+                              disabled={actionLoading}
+                              className="p-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 transition-all cursor-pointer"
+                              title="Lưu"
+                            >
+                              <Save className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEditManualTeam}
+                              disabled={actionLoading}
+                              className="p-1 rounded bg-slate-800 border border-slate-700 text-slate-450 hover:bg-slate-700 transition-all cursor-pointer"
+                              title="Hủy"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1 group/mteam">
+                            <div className="text-sm font-bold text-slate-100 truncate">{team.name}</div>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditManualTeam(team.code, team.name)}
+                              className="opacity-0 group-hover/mteam:opacity-100 transition-opacity p-0.5 rounded text-slate-500 hover:text-amber-500 hover:bg-slate-900 cursor-pointer"
+                              title="Đổi tên đội"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                        <div className={`text-[10px] font-bold shrink-0 ${teamValid ? 'text-emerald-400' : 'text-amber-400'}`}>
                           {team.players.length}/{teamComposition?.teamSize ?? 0}
                         </div>
                       </div>
