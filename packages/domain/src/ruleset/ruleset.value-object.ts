@@ -56,12 +56,32 @@ export class Ruleset extends ValueObject<CreateRulesetDto> {
     return this.props.requireScheduleConfig ?? true;
   }
 
+  get thirdPlaceMatchEnabled(): boolean {
+    return this.props.thirdPlaceMatchEnabled ?? false;
+  }
+
+  get quickScoreEntryEnabled(): boolean {
+    return this.props.quickScoreEntryEnabled ?? false;
+  }
+
+  get requireLineup(): boolean {
+    return this.props.requireLineup ?? true;
+  }
+
   get groupCount(): number {
     return this.props.groupCount ?? 2;
   }
 
   get advancePerGroup(): number {
     return this.props.advancePerGroup ?? 1;
+  }
+
+  get knockoutBracketSize(): number | null {
+    return this.props.knockoutBracketSize ?? null;
+  }
+
+  get knockoutSeedSlots() {
+    return this.props.knockoutSeedSlots || [];
   }
 
   /**

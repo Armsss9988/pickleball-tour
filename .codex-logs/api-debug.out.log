@@ -1,0 +1,742 @@
+
+> @golab/api@0.0.1 dev D:\AMWork\ai\golab-tournament-pickleball\apps\api
+> nest start --watch
+
+[2J[3J[H[[90m12:27:24 AM[0m] Starting compilation in watch mode...
+
+[[90m12:27:29 AM[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +16ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +4ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOrganizationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRegistrationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAwardModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +18ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEventEmitterModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPublicModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuditModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScoringModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLineupModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRankingModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBracketModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTournamentModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRulesetModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPlayerModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTeamModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mGroupModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCourtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMatchModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinMatch" message[39m[38;5;3m +32ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveMatch" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAppController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/refresh, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/logout, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/me, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTournamentController {/api/tournaments}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/publish, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/unpublish, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/reset, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/status, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuditController {/api/tournaments/:tournamentId/audit-logs}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/audit-logs, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRulesetController {/api/tournaments/:tournamentId/ruleset}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPlayerController {/api/tournaments/:tournamentId/players}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/import, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/validate, POST} route[39m[38;5;3m +5ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/:playerId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTeamController {/api}:[39m[38;5;3m +3ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teams/:teamId, PATCH} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/preview, POST} route[39m[38;5;3m +4ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/:drawId/confirm, POST} route[39m[38;5;3m +4ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/manual-assignment, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/:teamId/replace-member, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/swap-players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mGroupController {/api/tournaments/:tournamentId/groups}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/init, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/assignment, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/random-assignment, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScheduleController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/schedule/generate-group-stage, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/schedule, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMatchController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/matches, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/start, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScoringController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-latest, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-team, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/start-next, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/confirm-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/quick-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/override-result, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/override-score, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLineupController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/draw-order, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/order, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups/lock, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRankingController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings/recalculate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/:groupId/resolve-tie, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mBracketController {/api/tournaments/:tournamentId/bracket}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/seed-candidates, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/generate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPublicController {/api/public/tournaments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/by-id/:tournamentId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/:slug, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mCourtController {/api/tournaments/:tournamentId/courts}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/conflicts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 18012  - [39m06/12/2026, 12:27:30 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +20ms[39m
+🚀 NestJS API started on http://localhost:3001/api
+📖 Swagger API Docs available on http://localhost:3001/api/docs
+WebSocket client connected: JNzaOvdSSs10aHTbAAAB
+Client JNzaOvdSSs10aHTbAAAB joined room tournament:316b7069-63dc-4025-9888-d355a11805e7
+Client JNzaOvdSSs10aHTbAAAB left room tournament:316b7069-63dc-4025-9888-d355a11805e7
+WebSocket client disconnected: JNzaOvdSSs10aHTbAAAB
+WebSocket client connected: ajcQDWd-tS1MY0owAAAD
+Client ajcQDWd-tS1MY0owAAAD joined room tournament:316b7069-63dc-4025-9888-d355a11805e7
+Client ajcQDWd-tS1MY0owAAAD left room tournament:316b7069-63dc-4025-9888-d355a11805e7
+WebSocket client disconnected: ajcQDWd-tS1MY0owAAAD
+WebSocket client connected: AjqXr0DgCKQbuHslAAAG
+Client AjqXr0DgCKQbuHslAAAG joined room tournament:316b7069-63dc-4025-9888-d355a11805e7
+Client AjqXr0DgCKQbuHslAAAG left room tournament:316b7069-63dc-4025-9888-d355a11805e7
+WebSocket client disconnected: AjqXr0DgCKQbuHslAAAG
+WebSocket client connected: iGp6bbcGbq1jHTd5AAAJ
+Client iGp6bbcGbq1jHTd5AAAJ joined room tournament:316b7069-63dc-4025-9888-d355a11805e7
+Client iGp6bbcGbq1jHTd5AAAJ left room tournament:316b7069-63dc-4025-9888-d355a11805e7
+WebSocket client disconnected: iGp6bbcGbq1jHTd5AAAJ
+WebSocket client connected: De3gOcpJSYNT-LKgAAAL
+Client De3gOcpJSYNT-LKgAAAL joined room tournament:316b7069-63dc-4025-9888-d355a11805e7
+Client De3gOcpJSYNT-LKgAAAL left room tournament:316b7069-63dc-4025-9888-d355a11805e7
+WebSocket client disconnected: De3gOcpJSYNT-LKgAAAL
+[2J[3J[H[[90m1:04:57 AM[0m] File change detected. Starting incremental compilation...
+
+[[90m1:04:59 AM[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +30ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOrganizationModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRegistrationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAwardModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +40ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEventEmitterModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPublicModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuditModule dependencies initialized[39m[38;5;3m +3ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScoringModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLineupModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRankingModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBracketModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTournamentModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRulesetModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPlayerModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTeamModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mGroupModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCourtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMatchModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinMatch" message[39m[38;5;3m +43ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveMatch" message[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAppController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +2ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/refresh, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/logout, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/me, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTournamentController {/api/tournaments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/publish, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/unpublish, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/reset, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/status, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuditController {/api/tournaments/:tournamentId/audit-logs}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/audit-logs, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRulesetController {/api/tournaments/:tournamentId/ruleset}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, PUT} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPlayerController {/api/tournaments/:tournamentId/players}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/import, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/:playerId, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTeamController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teams/:teamId, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/preview, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/:drawId/confirm, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/manual-assignment, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/:teamId/replace-member, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/swap-players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mGroupController {/api/tournaments/:tournamentId/groups}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/init, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/assignment, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/random-assignment, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScheduleController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/schedule/generate-group-stage, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/schedule, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMatchController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/matches, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/start, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScoringController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-latest, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-team, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/start-next, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/confirm-result, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/quick-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/override-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/override-score, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLineupController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/draw-order, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/order, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups/lock, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRankingController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings/recalculate, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/:groupId/resolve-tie, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mBracketController {/api/tournaments/:tournamentId/bracket}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/seed-candidates, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/generate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPublicController {/api/public/tournaments}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/by-id/:tournamentId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/:slug, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mCourtController {/api/tournaments/:tournamentId/courts}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/conflicts, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, DELETE} route[39m[38;5;3m +1ms[39m
+[2J[3J[H[[90m1:05:00 AM[0m] File change detected. Starting incremental compilation...
+
+[32m[Nest] 34748  - [39m06/12/2026, 1:05:00 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +55ms[39m
+🚀 NestJS API started on http://localhost:3001/api
+📖 Swagger API Docs available on http://localhost:3001/api/docs
+[[90m1:05:01 AM[0m] Found 0 errors. Watching for file changes.
+
+[2J[3J[H[[90m1:05:01 AM[0m] File change detected. Starting incremental compilation...
+
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +14ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOrganizationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRegistrationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAwardModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +8ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEventEmitterModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPublicModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuditModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScoringModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLineupModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRankingModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBracketModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTournamentModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRulesetModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPlayerModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTeamModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mGroupModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCourtModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMatchModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinMatch" message[39m[38;5;3m +27ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveMatch" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveTournament" message[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAppController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/refresh, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/logout, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/me, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTournamentController {/api/tournaments}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/publish, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/unpublish, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/validate, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/reset, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/status, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuditController {/api/tournaments/:tournamentId/audit-logs}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/audit-logs, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRulesetController {/api/tournaments/:tournamentId/ruleset}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPlayerController {/api/tournaments/:tournamentId/players}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/import, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/:playerId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTeamController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teams/:teamId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/preview, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/:drawId/confirm, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/manual-assignment, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/:teamId/replace-member, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/swap-players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mGroupController {/api/tournaments/:tournamentId/groups}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/init, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/assignment, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/random-assignment, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScheduleController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/schedule/generate-group-stage, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/schedule, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMatchController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/matches, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/start, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScoringController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-latest, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-team, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/start-next, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/confirm-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/quick-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/override-result, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/override-score, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLineupController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/draw-order, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/order, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups/lock, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRankingController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings/recalculate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/:groupId/resolve-tie, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mBracketController {/api/tournaments/:tournamentId/bracket}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/seed-candidates, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/generate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPublicController {/api/public/tournaments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/by-id/:tournamentId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/:slug, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mCourtController {/api/tournaments/:tournamentId/courts}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/conflicts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19352  - [39m06/12/2026, 1:05:02 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +18ms[39m
+🚀 NestJS API started on http://localhost:3001/api
+📖 Swagger API Docs available on http://localhost:3001/api/docs
+[[90m1:05:02 AM[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +11ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOrganizationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRegistrationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAwardModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +6ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEventEmitterModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPublicModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuditModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScoringModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLineupModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRankingModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBracketModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTournamentModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRulesetModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPlayerModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTeamModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mGroupModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCourtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMatchModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinMatch" message[39m[38;5;3m +24ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveMatch" message[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveTournament" message[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAppController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/refresh, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/logout, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/me, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTournamentController {/api/tournaments}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/publish, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/unpublish, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/reset, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/status, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuditController {/api/tournaments/:tournamentId/audit-logs}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/audit-logs, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRulesetController {/api/tournaments/:tournamentId/ruleset}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset/validate, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPlayerController {/api/tournaments/:tournamentId/players}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/import, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/:playerId, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTeamController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teams/:teamId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/preview, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/:drawId/confirm, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/manual-assignment, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/:teamId/replace-member, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/swap-players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mGroupController {/api/tournaments/:tournamentId/groups}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/init, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/assignment, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/random-assignment, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScheduleController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/schedule/generate-group-stage, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/schedule, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMatchController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/matches, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/start, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScoringController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-latest, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-team, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/start-next, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/confirm-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/quick-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/override-result, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/override-score, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLineupController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/draw-order, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/order, PUT} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups/lock, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRankingController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings/recalculate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/:groupId/resolve-tie, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mBracketController {/api/tournaments/:tournamentId/bracket}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/seed-candidates, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/generate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPublicController {/api/public/tournaments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/by-id/:tournamentId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/:slug, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mCourtController {/api/tournaments/:tournamentId/courts}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/conflicts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 26920  - [39m06/12/2026, 1:05:03 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +16ms[39m
+[2J[3J[H[[90m1:05:22 AM[0m] File change detected. Starting incremental compilation...
+
+[[90m1:05:23 AM[0m] Found 0 errors. Watching for file changes.
+
+[2J[3J[H[[90m1:14:47 AM[0m] File change detected. Starting incremental compilation...
+
+[[90m1:14:50 AM[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +12ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOrganizationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRegistrationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAwardModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +9ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEventEmitterModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPublicModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuditModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScoringModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLineupModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRankingModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBracketModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTournamentModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRulesetModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPlayerModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTeamModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mGroupModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCourtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMatchModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:50 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinMatch" message[39m[38;5;3m +31ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveMatch" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAppController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/refresh, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/logout, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/me, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTournamentController {/api/tournaments}:[39m[38;5;3m +3ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/publish, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/unpublish, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/reset, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/status, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuditController {/api/tournaments/:tournamentId/audit-logs}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/audit-logs, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRulesetController {/api/tournaments/:tournamentId/ruleset}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, PUT} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPlayerController {/api/tournaments/:tournamentId/players}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, GET} route[39m[38;5;3m +3ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/import, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/validate, POST} route[39m[38;5;3m +3ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/:playerId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTeamController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teams/:teamId, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/preview, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/:drawId/confirm, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/manual-assignment, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/:teamId/replace-member, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/swap-players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mGroupController {/api/tournaments/:tournamentId/groups}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/init, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/assignment, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/random-assignment, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScheduleController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/schedule/generate-group-stage, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/schedule, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMatchController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/matches, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/start, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScoringController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-latest, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-team, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/start-next, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/confirm-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/quick-result, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/override-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/override-score, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLineupController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/draw-order, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/order, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups/lock, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRankingController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings/recalculate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/:groupId/resolve-tie, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mBracketController {/api/tournaments/:tournamentId/bracket}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/seed-candidates, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/generate, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPublicController {/api/public/tournaments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/by-id/:tournamentId, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/:slug, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mCourtController {/api/tournaments/:tournamentId/courts}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/conflicts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 19744  - [39m06/12/2026, 1:14:51 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +16ms[39m
+[2J[3J[H[[90m1:14:53 AM[0m] File change detected. Starting incremental compilation...
+
+[[90m1:14:54 AM[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPrismaModule dependencies initialized[39m[38;5;3m +13ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mOrganizationModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRegistrationModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAwardModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +6ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEventEmitterModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPublicModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuditModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScoringModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLineupModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRankingModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBracketModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTournamentModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mRulesetModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPlayerModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTeamModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mGroupModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCourtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mMatchModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinMatch" message[39m[38;5;3m +26ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveMatch" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "joinTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[WebSocketsController] [39m[32mScoreGateway subscribed to the "leaveTournament" message[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAppController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/refresh, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/logout, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/me, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTournamentController {/api/tournaments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/publish, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/unpublish, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/reset, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/status, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuditController {/api/tournaments/:tournamentId/audit-logs}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/audit-logs, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRulesetController {/api/tournaments/:tournamentId/ruleset}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/ruleset/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPlayerController {/api/tournaments/:tournamentId/players}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/import, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/validate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/players/:playerId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTeamController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teams/:teamId, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/preview, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/team-draws/:drawId/confirm, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/manual-assignment, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/:teamId/replace-member, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/teams/swap-players, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mGroupController {/api/tournaments/:tournamentId/groups}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/init, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/assignment, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/random-assignment, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScheduleController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/schedule/generate-group-stage, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/schedule, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mMatchController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/matches, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/start, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mScoringController {/api}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-latest, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/score-events/undo-team, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/start-next, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/confirm-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/quick-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/override-result, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/:segmentId/override-score, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mLineupController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/draw-order, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/segments/order, PUT} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups, PUT} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/matches/:matchId/lineups/lock, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mRankingController {/api}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/standings/recalculate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/groups/:groupId/resolve-tie, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mBracketController {/api/tournaments/:tournamentId/bracket}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/seed-candidates, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/bracket/generate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPublicController {/api/public/tournaments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/by-id/:tournamentId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/public/tournaments/:slug, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mCourtController {/api/tournaments/:tournamentId/courts}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/conflicts, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tournaments/:tournamentId/courts/:courtId, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 42344  - [39m06/12/2026, 1:14:54 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +16ms[39m

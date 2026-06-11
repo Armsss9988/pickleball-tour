@@ -15,8 +15,13 @@ export class RulesetMapper {
       competitionFormat: raw.competitionFormat || 'GROUP_STAGE_KNOCKOUT',
       requireCourtConfig: raw.requireCourtConfig ?? true,
       requireScheduleConfig: raw.requireScheduleConfig ?? true,
+      thirdPlaceMatchEnabled: raw.thirdPlaceMatchEnabled ?? false,
+      quickScoreEntryEnabled: raw.quickScoreEntryEnabled ?? false,
+      requireLineup: raw.requireLineup ?? true,
       groupCount: raw.groupCount ?? 2,
       advancePerGroup: raw.advancePerGroup ?? 1,
+      knockoutBracketSize: raw.knockoutBracketSize ?? null,
+      knockoutSeedSlots: raw.knockoutSeedSlots ? (raw.knockoutSeedSlots as any) : [],
       segments: (raw.segmentDefinitions || []).map((s: any) => ({
         segmentKey: s.segmentKey,
         name: s.name,

@@ -56,6 +56,21 @@ export class ScoringController {
     return this.scoringService.confirmResult(matchId, req.user.id);
   }
 
+  @Post('matches/:matchId/quick-result')
+  @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin', 'SCORER')
+  async quickResult(
+    @Param('matchId') matchId: string,
+    @Request() req: any,
+    @Body('teamAScore') teamAScore: number,
+    @Body('teamBScore') teamBScore: number
+  ) {
+    return this.scoringService.quickResult(
+      matchId,
+      { teamAScore, teamBScore },
+      req.user.id
+    );
+  }
+
   @Post('matches/:matchId/override-result')
   @Roles('SUPER_ADMIN', 'platform_owner', 'organization_admin', 'tournament_admin')
   async overrideResult(

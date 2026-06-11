@@ -42,6 +42,7 @@ interface SegmentDefinitionUI {
   targetScore: number;
   playerCount: number;
   genderRule: 'mixed' | 'male_only' | 'female_only' | 'any';
+  isDrawable?: boolean;
 }
 
 interface OverlapRuleUI {
@@ -85,6 +86,44 @@ export default function RulesetSettingsPage() {
   // Flexibility Toggles
   const [requireCourtConfig, setRequireCourtConfig] = useState(true);
   const [requireScheduleConfig, setRequireScheduleConfig] = useState(true);
+  const [thirdPlaceMatchEnabled, setThirdPlaceMatchEnabled] = useState(false);
+  const [quickScoreEntryEnabled, setQuickScoreEntryEnabled] = useState(false);
+  const [requireLineup, setRequireLineup] = useState(true);
+
+  // Knockout Bracket Config State
+  const [knockoutBracketSize, setKnockoutBracketSize] = useState<number | null>(null);
+  const [knockoutSeedSlots, setKnockoutSeedSlots] = useState<{ slotNo: number; sourceKey: string | null }[]>([]);
+
+  const handleBracketSizeChange = (size: number | null) => {
+    setKnockoutBracketSize(size);
+    if (!size) {
+      setKnockoutSeedSlots([]);
+      return;
+    }
+
+    setKnockoutSeedSlots((prev) => {
+      const nextSlots = [...prev];
+      if (nextSlots.length > size) {
+        return nextSlots.slice(0, size);
+      }
+      while (nextSlots.length < size) {
+        nextSlots.push({ slotNo: nextSlots.length + 1, sourceKey: null });
+      }
+      return nextSlots.map((slot, idx) => ({ ...slot, slotNo: idx + 1 }));
+    });
+  };
+
+  const getAvailableSourceKeys = () => {
+    const keys: string[] = [];
+    const alphabet = 'ABCDEFGH';
+    for (let g = 0; g < groupCount; g++) {
+      const groupCode = alphabet[g] || String.fromCharCode(65 + g);
+      for (let r = 1; r <= advancePerGroup; r++) {
+        keys.push(`${groupCode}${r}`);
+      }
+    }
+    return keys;
+  };
 
   const [segmentsList, setSegmentsList] = useState<SegmentDefinitionUI[]>([
     { segmentKey: 'mixed_doubles', name: 'Đôi Nam Nữ', targetScore: 8, playerCount: 2, genderRule: 'mixed' },
@@ -207,6 +246,11 @@ export default function RulesetSettingsPage() {
 
         setRequireCourtConfig(data.requireCourtConfig ?? true);
         setRequireScheduleConfig(data.requireScheduleConfig ?? true);
+        setThirdPlaceMatchEnabled(data.thirdPlaceMatchEnabled ?? false);
+        setQuickScoreEntryEnabled(data.quickScoreEntryEnabled ?? false);
+        setRequireLineup(data.requireLineup ?? true);
+        setKnockoutBracketSize(data.knockoutBracketSize ?? null);
+        setKnockoutSeedSlots(data.knockoutSeedSlots || []);
       }
     } catch (error) {
       console.error('Failed to load ruleset:', error);
@@ -333,6 +377,16 @@ export default function RulesetSettingsPage() {
         advancePerGroup: Number(advancePerGroup),
         requireCourtConfig,
         requireScheduleConfig,
+        thirdPlaceMatchEnabled,
+        quickScoreEntryEnabled,
+        requireLineup,
+        knockoutBracketSize: competitionFormat === 'GROUP_STAGE_KNOCKOUT' ? knockoutBracketSize : null,
+        knockoutSeedSlots: competitionFormat === 'GROUP_STAGE_KNOCKOUT'
+          ? knockoutSeedSlots.map((slot) => ({
+              slotNo: slot.slotNo,
+              sourceKey: slot.sourceKey === 'Miễn đấu' || slot.sourceKey === 'Bye' ? null : slot.sourceKey,
+            }))
+          : [],
         segments: matchFormat === 'relay'
           ? segmentsList.map((s, idx) => ({
               segmentKey: s.segmentKey,
@@ -552,6 +606,77 @@ export default function RulesetSettingsPage() {
                 </div>
               )}
 
+              {/* Bước 2.7: Cấu hình vòng Knockout (Playoffs) */}
+              {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && (
+                <div className="space-y-4 border-t border-slate-800 pt-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400">Cấu hình sơ đồ Knockout (Playoffs)</label>
+                      <span className="text-[10px] text-slate-500 mt-0.5 block">
+                        Chọn quy mô sơ đồ đấu loại trực tiếp và gán nguồn hạt giống từ vòng bảng.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 bg-slate-950/30 p-4 rounded-xl border border-slate-800/80">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-slate-400">Quy mô sơ đồ (Bracket Size)</label>
+                      <select
+                        value={knockoutBracketSize === null ? '' : knockoutBracketSize}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          handleBracketSizeChange(val === '' ? null : parseInt(val, 10));
+                        }}
+                        className="w-full premium-input max-w-[200px]"
+                        disabled={saving}
+                      >
+                        <option value="">Tự động (Automatic)</option>
+                        <option value="4">4 Đội (Bán Kết → Chung Kết)</option>
+                        <option value="8">8 Đội (Tứ Kết → Chung Kết)</option>
+                        <option value="16">16 Đội (Vòng 1/8 → Chung Kết)</option>
+                      </select>
+                    </div>
+
+                    {knockoutBracketSize !== null && (
+                      <div className="space-y-3 pt-2">
+                        <label className="block text-xs font-semibold text-slate-300">Phân bổ nguồn hạt giống</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {knockoutSeedSlots.map((slot) => {
+                            const availableSources = getAvailableSourceKeys();
+                            return (
+                              <div key={slot.slotNo} className="flex items-center justify-between bg-slate-900/50 p-2.5 rounded-lg border border-slate-800/60">
+                                <span className="text-xs font-medium text-slate-400">Slot {slot.slotNo}</span>
+                                <select
+                                  value={slot.sourceKey || 'Miễn đấu'}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const sourceKey = val === 'Miễn đấu' ? null : val;
+                                    setKnockoutSeedSlots((prev) =>
+                                      prev.map((s) =>
+                                        s.slotNo === slot.slotNo ? { ...s, sourceKey } : s
+                                      )
+                                    );
+                                  }}
+                                  className="premium-input text-xs py-1 px-2 max-w-[150px]"
+                                  disabled={saving}
+                                >
+                                  <option value="Miễn đấu">Miễn đấu (Bye)</option>
+                                  {availableSources.map((key) => (
+                                    <option key={key} value={key}>
+                                      {key} (Hạng {key.slice(1)} Bảng {key[0]})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Bước 3: Thể thức tính điểm trận đấu */}
               {/* relay chỉ hiển thị khi TEAM_EVENT */}
               <div className="space-y-3">
@@ -671,6 +796,48 @@ export default function RulesetSettingsPage() {
                       <span className="text-[10px] text-slate-455 mt-0.5 block">Kiểm tra xem tất cả các trận đã được gán thời gian bắt đầu hay chưa.</span>
                     </div>
                   </label>
+
+                  <label className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-800/80 bg-slate-950/20 cursor-pointer hover:border-slate-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={thirdPlaceMatchEnabled}
+                      onChange={(e) => setThirdPlaceMatchEnabled(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500 mt-0.5"
+                      disabled={saving}
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-slate-200 block">Tổ chức trận tranh hạng 3</span>
+                      <span className="text-[10px] text-slate-455 mt-0.5 block">Bỏ tích để hai đội thua Bán kết đồng hạng 3.</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-800/80 bg-slate-950/20 cursor-pointer hover:border-slate-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={quickScoreEntryEnabled}
+                      onChange={(e) => setQuickScoreEntryEnabled(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500 mt-0.5"
+                      disabled={saving}
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-slate-200 block">Nhập nhanh tỷ số chung cuộc</span>
+                      <span className="text-[10px] text-slate-455 mt-0.5 block">Cho phép trọng tài nhập trực tiếp kết quả cuối trận.</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-800/80 bg-slate-950/20 cursor-pointer hover:border-slate-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={requireLineup}
+                      onChange={(e) => setRequireLineup(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500 mt-0.5"
+                      disabled={saving}
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-slate-200 block">Bắt buộc nhập lineup trước trận</span>
+                      <span className="text-[10px] text-slate-455 mt-0.5 block">Bỏ tích để trận có thể bắt đầu/chấm điểm ngay.</span>
+                    </div>
+                  </label>
                 </div>
               </div>
 
@@ -697,6 +864,11 @@ export default function RulesetSettingsPage() {
                 deuceMaxScore={deuceMaxScore}
                 requireCourtConfig={requireCourtConfig}
                 requireScheduleConfig={requireScheduleConfig}
+                thirdPlaceMatchEnabled={thirdPlaceMatchEnabled}
+                quickScoreEntryEnabled={quickScoreEntryEnabled}
+                requireLineup={requireLineup}
+                knockoutBracketSize={knockoutBracketSize}
+                knockoutSeedSlots={knockoutSeedSlots}
                 onValidationChange={setIsValid}
               />
 
@@ -741,6 +913,11 @@ export default function RulesetSettingsPage() {
               overlapRules={overlapsList}
               requireCourtConfig={requireCourtConfig}
               requireScheduleConfig={requireScheduleConfig}
+              thirdPlaceMatchEnabled={thirdPlaceMatchEnabled}
+              quickScoreEntryEnabled={quickScoreEntryEnabled}
+              requireLineup={requireLineup}
+              knockoutBracketSize={knockoutBracketSize}
+              knockoutSeedSlots={knockoutSeedSlots}
             />
           )}
         </div>

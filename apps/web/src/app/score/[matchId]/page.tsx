@@ -51,6 +51,10 @@ export default function RefereeScorerPage() {
     teamBSegmentScore: 0,
     reason: '',
   });
+  const [quickResultForm, setQuickResultForm] = useState({
+    teamAScore: 0,
+    teamBScore: 0,
+  });
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -123,6 +127,10 @@ export default function RefereeScorerPage() {
       setError('');
       const data = await apiFetch(`/matches/${matchId}`);
       setMatch(data);
+      setQuickResultForm({
+        teamAScore: data.result?.teamAScore ?? 0,
+        teamBScore: data.result?.teamBScore ?? 0,
+      });
       
       // Determine active segment (RUNNING or first PENDING/RUNNING segment)
       const currentSeg = data.segments.find((s: any) => s.status === 'RUNNING') || 
@@ -406,6 +414,47 @@ export default function RefereeScorerPage() {
     }
   };
 
+  const handleQuickResult = async () => {
+    if (!match || isSubmitting) return;
+    const teamAScore = Number(quickResultForm.teamAScore);
+    const teamBScore = Number(quickResultForm.teamBScore);
+
+    if (!Number.isInteger(teamAScore) || !Number.isInteger(teamBScore) || teamAScore < 0 || teamBScore < 0) {
+      setError('Tỷ số phải là số nguyên không âm.');
+      playSound('error');
+      return;
+    }
+
+    if (teamAScore === teamBScore) {
+      setError('Tỷ số chung cuộc không được hòa.');
+      playSound('error');
+      return;
+    }
+
+    const winnerName = teamAScore > teamBScore ? match.teamA?.name : match.teamB?.name;
+    if (!confirm(`Lưu tỷ số chung cuộc ${teamAScore}-${teamBScore} cho ${winnerName || 'đội thắng'}?`)) return;
+
+    setIsSubmitting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiFetch(`/matches/${matchId}/quick-result`, {
+        method: 'POST',
+        body: { teamAScore, teamBScore },
+      });
+      playSound('complete');
+      setSuccess('Đã nhập nhanh tỷ số chung cuộc. Vui lòng xác nhận kết quả nếu chính xác.');
+      loadMatchDetails(true);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || 'Lỗi nhập nhanh tỷ số.');
+      playSound('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-200">
@@ -432,8 +481,9 @@ export default function RefereeScorerPage() {
   // In the real-time scoring engine, we replay score events or use matches current values.
   const scoreEventsFiltered = match.scoreEvents || [];
   const latestEvent = scoreEventsFiltered[scoreEventsFiltered.length - 1];
-  const scoreA = latestEvent ? latestEvent.scoreAAfter : 0;
-  const scoreB = latestEvent ? latestEvent.scoreBAfter : 0;
+  const scoreA = latestEvent ? latestEvent.scoreAAfter : (match.result?.teamAScore ?? 0);
+  const scoreB = latestEvent ? latestEvent.scoreBAfter : (match.result?.teamBScore ?? 0);
+  const quickScoreEnabled = match.tournament?.ruleset?.quickScoreEntryEnabled === true;
 
   // Next target threshold visual mapping
   const activeTargetScore = activeSegment ? activeSegment.targetScore : 24;
@@ -535,6 +585,68 @@ export default function RefereeScorerPage() {
           </div>
         )}
 
+        {quickScoreEnabled ? (
+          <div className="max-w-3xl w-full mx-auto rounded-3xl border border-slate-800 bg-slate-900/50 p-6 shadow-2xl space-y-6">
+            <div className="flex flex-col gap-2 border-b border-slate-800 pb-4">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Nhập điểm nhanh</span>
+              <h2 className="text-xl font-black text-slate-100">Tỷ số chung cuộc</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-end">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-sky-400 block">{match.teamA?.name || 'Đội A'}</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={quickResultForm.teamAScore}
+                  onChange={(e) => setQuickResultForm((prev) => ({ ...prev, teamAScore: Number(e.target.value) }))}
+                  disabled={isSubmitting || match.status === 'RESULT_CONFIRMED' || match.status === 'CANCELLED'}
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-950/60 px-4 py-5 text-center text-5xl font-black font-mono text-sky-400 outline-none focus:border-sky-500"
+                />
+              </div>
+
+              <div className="hidden md:flex h-[76px] items-center justify-center text-slate-600 font-black text-2xl">-</div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-pink-400 block">{match.teamB?.name || 'Đội B'}</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={quickResultForm.teamBScore}
+                  onChange={(e) => setQuickResultForm((prev) => ({ ...prev, teamBScore: Number(e.target.value) }))}
+                  disabled={isSubmitting || match.status === 'RESULT_CONFIRMED' || match.status === 'CANCELLED'}
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-950/60 px-4 py-5 text-center text-5xl font-black font-mono text-pink-400 outline-none focus:border-pink-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button
+                onClick={handleQuickResult}
+                disabled={
+                  isSubmitting ||
+                  match.status === 'RESULT_CONFIRMED' ||
+                  match.status === 'CANCELLED' ||
+                  quickResultForm.teamAScore === quickResultForm.teamBScore
+                }
+                className="btn btn-primary py-3 font-black disabled:opacity-40"
+              >
+                ✓ Lưu tỷ số
+              </button>
+              <button
+                onClick={() => {
+                  if(confirm('Bạn muốn đóng bàn trọng tài này?')) {
+                    router.push(match?.tournamentId ? `/admin/${match.tournamentId}/scoring` : '/admin');
+                  }
+                }}
+                className="rounded-xl border border-slate-800 bg-slate-850 py-3 text-xs font-bold text-slate-300 hover:bg-slate-800"
+              >
+                Đóng Scorer Panel
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
         {/* Large Score panels */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
           
@@ -789,6 +901,8 @@ export default function RefereeScorerPage() {
           </div>
 
         </div>
+        </>
+        )}
 
       </main>
 

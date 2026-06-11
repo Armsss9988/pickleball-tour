@@ -160,7 +160,7 @@ export class ScheduleService {
               matchNo: matchNoCounter,
               roundNo: Math.floor(idx / 2) + 1,
               label: `${group.name} - Trận ${idx + 1}`,
-              status: 'SCHEDULED' as MatchStatus,
+              status: (ruleset.requireLineup === false ? 'READY' : 'SCHEDULED') as MatchStatus,
               courtId,
               courtName,
               scheduledTime,

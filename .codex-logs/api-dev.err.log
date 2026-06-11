@@ -1,0 +1,117 @@
+[31m[Nest] 18104  - [39m06/12/2026, 12:06:00 AM [31m  ERROR[39m [38;5;3m[NestApplication] [39m[31mError: listen EADDRINUSE: address already in use :::3001[39m[38;5;3m +2ms[39m
+node:net:1940
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at ExpressAdapter.listen (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+platform-express@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validat_wu7e7wzufb3wpv2rusgdsffwwy\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\@nestjs\core\nest-application.js:190:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\@nestjs\core\nest-application.js:180:16)
+    at async bootstrap (D:\AMWork\ai\golab-tournament-pickleball\apps\api\src\main.ts:28:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v24.13.1
+node:internal/modules/cjs/loader:1451
+  throw err;
+  ^
+
+Error: Cannot find module 'D:\AMWork\ai\golab-tournament-pickleball\apps\api\dist\main'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1448:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1234:25)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v24.13.1
+[31m[Nest] 34704  - [39m06/12/2026, 1:05:01 AM [31m  ERROR[39m [38;5;3m[NestApplication] [39m[31mError: listen EADDRINUSE: address already in use :::3001[39m[38;5;3m +2ms[39m
+node:net:1940
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at ExpressAdapter.listen (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+platform-express@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validat_wu7e7wzufb3wpv2rusgdsffwwy\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\@nestjs\core\nest-application.js:190:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\@nestjs\core\nest-application.js:180:16)
+    at async bootstrap (D:\AMWork\ai\golab-tournament-pickleball\apps\api\src\main.ts:28:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v24.13.1
+ERROR: The process "26568" not found.
+ERROR: The process "26568" not found.
+node:child_process:1000
+    throw err;
+    ^
+
+Error: Command failed: taskkill /pid 26568 /T /F
+ERROR: The process "26568" not found.
+
+    at genericNodeError (node:internal/errors:985:15)
+    at wrappedFn (node:internal/errors:539:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at execSync (node:child_process:997:15)
+    at treeKillSync (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+cli@11.0.21_@types+node@24.12.4_prettier@3.8.3\node_modules\@nestjs\cli\lib\utils\tree-kill.js:7:38)
+    at D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+cli@11.0.21_@types+node@24.12.4_prettier@3.8.3\node_modules\@nestjs\cli\actions\start.action.js:69:46
+    at Object.onWatchStatusChange (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+cli@11.0.21node:internal/modules/cjs/loader:1451
+  throw err;
+  ^
+
+Error: Cannot find module 'D:\AMWork\ai\golab-tournament-pickleball\apps\api\dist\main'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1448:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1234:25)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v24.13.1
+[31m[Nest] 58984  - [39m06/12/2026, 1:14:51 AM [31m  ERROR[39m [38;5;3m[NestApplication] [39m[31mError: listen EADDRINUSE: address already in use :::3001[39m[38;5;3m +1ms[39m
+node:net:1940
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at ExpressAdapter.listen (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+platform-express@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validat_wu7e7wzufb3wpv2rusgdsffwwy\node_modules\@nestjs\platform-express\adapters\express-adapter.js:115:32)
+    at D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\@nestjs\core\nest-application.js:190:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (D:\AMWork\ai\golab-tournament-pickleball\node_modules\.pnpm\@nestjs+core@11.1.24_@nestjs+common@11.1.24_class-transformer@0.5.1_class-validator@0.14.4_re_mr6q55fhc2ssowk5uubibse56i\node_modules\@nestjs\core\nest-application.js:180:16)
+    at async bootstrap (D:\AMWork\ai\golab-tournament-pickleball\apps\api\src\main.ts:28:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v24.13.1

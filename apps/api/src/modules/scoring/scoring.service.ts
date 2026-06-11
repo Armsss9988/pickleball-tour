@@ -5,6 +5,7 @@ import { AuditService } from '../audit/audit.service';
 import { ScoreGateway } from '../../gateways/score.gateway';
 import { ScoringEngine, MatchDomainInput } from '@golab/domain';
 import { MatchStatus, SegmentStatus } from '@golab/contracts';
+import { Prisma } from '@golab/db';
 
 @Injectable()
 export class ScoringService {
@@ -74,7 +75,7 @@ export class ScoringService {
         isUndone: e.isUndone,
         segmentId: e.segmentId,
       })),
-      lineupLocked: lineupCount === expectedLineupCount,
+      lineupLocked: ruleset.requireLineup === false || lineupCount === expectedLineupCount,
       matchFormat: format,
       gamePointScore: ruleset.scoringConfig.gamePointScore,
       setsToWin: ruleset.scoringConfig.setsToWin,
@@ -239,6 +240,124 @@ export class ScoringService {
         transitions: result.transitions,
       };
     });
+  }
+
+  /**
+   * Stores a direct final score as a draft result without creating point-by-point events.
+   * Confirmation remains a separate step so standings and bracket advancement use the
+   * same path as regular scoring.
+   */
+  async quickResult(
+    matchId: string,
+    dto: { teamAScore: number; teamBScore: number },
+    userId: string,
+  ) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: {
+        result: true,
+        tournament: {
+          include: {
+            ruleset: true,
+          },
+        },
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Không tìm thấy trận đấu.');
+    }
+
+    const ruleset = match.tournament?.ruleset;
+    if (!ruleset?.quickScoreEntryEnabled) {
+      throw new BadRequestException('Ruleset chưa bật chế độ nhập nhanh tỷ số.');
+    }
+
+    if (!match.teamAId || !match.teamBId) {
+      throw new BadRequestException('Trận đấu chưa đủ hai đội để nhập kết quả.');
+    }
+
+    if (match.status === 'RESULT_CONFIRMED' || match.status === 'CANCELLED') {
+      throw new BadRequestException('Không thể nhập nhanh kết quả cho trận đã xác nhận hoặc đã hủy.');
+    }
+
+    const teamAScore = Number(dto.teamAScore);
+    const teamBScore = Number(dto.teamBScore);
+    if (
+      !Number.isInteger(teamAScore) ||
+      !Number.isInteger(teamBScore) ||
+      teamAScore < 0 ||
+      teamBScore < 0
+    ) {
+      throw new BadRequestException('Điểm số nhập nhanh phải là số nguyên không âm.');
+    }
+
+    if (teamAScore === teamBScore) {
+      throw new BadRequestException('Tỷ số chung cuộc không được hòa.');
+    }
+
+    const winnerTeamId = teamAScore > teamBScore ? match.teamAId : match.teamBId;
+    const format = ruleset.matchFormat || 'relay';
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.match.update({
+        where: { id: matchId },
+        data: {
+          status: 'COMPLETED' as MatchStatus,
+          winnerTeamId,
+        },
+      });
+
+      const updatedResult = await tx.matchResult.upsert({
+        where: { matchId },
+        update: {
+          teamAScore,
+          teamBScore,
+          winnerTeamId,
+          setsWonA: format === 'best_of' ? teamAScore : null,
+          setsWonB: format === 'best_of' ? teamBScore : null,
+          setScores: Prisma.JsonNull,
+          confirmedById: null,
+          confirmedAt: null,
+        },
+        create: {
+          organizationId: match.organizationId,
+          tournamentId: match.tournamentId,
+          matchId,
+          teamAId: match.teamAId!,
+          teamBId: match.teamBId!,
+          teamAScore,
+          teamBScore,
+          winnerTeamId,
+          setsWonA: format === 'best_of' ? teamAScore : null,
+          setsWonB: format === 'best_of' ? teamBScore : null,
+          setScores: Prisma.JsonNull,
+        },
+      });
+
+      await this.auditService.log({
+        organizationId: match.organizationId,
+        tournamentId: match.tournamentId,
+        actorUserId: userId,
+        action: 'QUICK_RESULT_ENTERED',
+        entityType: 'Match',
+        entityId: matchId,
+        beforeData: match.result,
+        afterData: updatedResult,
+      });
+
+      return updatedResult;
+    });
+
+    this.scoreGateway.broadcastScoreUpdate(matchId, match.tournamentId, {
+      matchId,
+      status: 'COMPLETED',
+      winnerTeamId: result.winnerTeamId,
+      teamAScore: result.teamAScore,
+      teamBScore: result.teamBScore,
+    });
+
+    return result;
   }
 
   /**

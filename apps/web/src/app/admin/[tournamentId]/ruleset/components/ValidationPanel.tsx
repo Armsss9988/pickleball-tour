@@ -41,6 +41,11 @@ interface ValidationPanelProps {
   deuceMaxScore: number | null;
   requireCourtConfig: boolean;
   requireScheduleConfig: boolean;
+  thirdPlaceMatchEnabled: boolean;
+  quickScoreEntryEnabled: boolean;
+  requireLineup: boolean;
+  knockoutBracketSize: number | null;
+  knockoutSeedSlots: { slotNo: number; sourceKey: string | null }[];
   onValidationChange?: (isValid: boolean) => void;
 }
 
@@ -73,6 +78,11 @@ export function ValidationPanel({
   deuceMaxScore,
   requireCourtConfig,
   requireScheduleConfig,
+  thirdPlaceMatchEnabled,
+  quickScoreEntryEnabled,
+  requireLineup,
+  knockoutBracketSize,
+  knockoutSeedSlots,
   onValidationChange,
 }: ValidationPanelProps) {
   const [apiLoading, setApiLoading] = useState(false);
@@ -284,6 +294,14 @@ export function ValidationPanel({
       matchFormat: matchFormat,
       requireCourtConfig,
       requireScheduleConfig,
+      thirdPlaceMatchEnabled,
+      quickScoreEntryEnabled,
+      requireLineup,
+      knockoutBracketSize,
+      knockoutSeedSlots: knockoutSeedSlots.map((slot) => ({
+        slotNo: slot.slotNo,
+        sourceKey: slot.sourceKey === 'Miễn đấu' || slot.sourceKey === 'Bye' ? null : slot.sourceKey,
+      })),
       segments: matchFormat === 'relay'
         ? segmentsList.map((s, idx) => ({
             segmentKey: s.segmentKey,
@@ -383,6 +401,11 @@ export function ValidationPanel({
     onValidationChange,
     requireCourtConfig,
     requireScheduleConfig,
+    thirdPlaceMatchEnabled,
+    quickScoreEntryEnabled,
+    requireLineup,
+    knockoutBracketSize,
+    knockoutSeedSlots,
   ]);
 
   const failedItems = checklist.filter((item) => item.status === 'failed');

@@ -42,15 +42,29 @@ interface BracketNode {
   } | null;
 }
 
+interface SeedCandidate {
+  teamId: string;
+  teamName: string | null;
+  teamCode: string | null;
+  groupCode: string;
+  rank: number;
+  sourceLabel: string;
+  qualifiedByRule: boolean;
+  requiresAdminDecision: boolean;
+}
+
 /* ────────────────────────────────────────────────────────────────
    Helpers
 ──────────────────────────────────────────────────────────────── */
 function getTeamLabel(team: { name: string } | null | undefined, source: string | null | undefined): string {
   if (team) return team.name;
   if (!source) return 'Chưa xác định';
-  if (source.startsWith('SF')) return `Thắng BK ${source.replace('SF', '')}`;
-  if (source.startsWith('QF')) return `Thắng Tứ Kết ${source.replace('QF', '')}`;
-  if (source.startsWith('P')) return `Thắng Vòng Nhánh ${source.replace('P', '')}`;
+  if (source.startsWith('W:SF')) return `Thắng BK ${source.replace('W:SF', '')}`;
+  if (source.startsWith('L:SF')) return `Thua BK ${source.replace('L:SF', '')}`;
+  if (source.startsWith('W:QF')) return `Thắng Tứ Kết ${source.replace('W:QF', '')}`;
+  if (source.startsWith('W:P')) return `Thắng Vòng Nhánh ${source.replace('W:P', '')}`;
+  if (source.startsWith('BYE:')) return 'Miễn đấu';
+  if (source.startsWith('S:')) return `Seed ${source.replace('S:', '')}`;
   return `(${source})`;
 }
 
@@ -325,6 +339,10 @@ export default function BracketPage() {
   const [loading, setLoading] = useState(true);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [seedCandidates, setSeedCandidates] = useState<SeedCandidate[]>([]);
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [bracketSize, setBracketSize] = useState<4 | 8>(4);
+  const [seedSlots, setSeedSlots] = useState<Record<number, string>>({});
 
   const loadBracket = async () => {
     if (!tournament) return;
@@ -340,7 +358,24 @@ export default function BracketPage() {
     }
   };
 
+  const loadSeedCandidates = async () => {
+    if (!tournament) return;
+    try {
+      setSeedLoading(true);
+      const data = await apiFetch<{ candidates: SeedCandidate[] }>(`/tournaments/${tournament.id}/bracket/seed-candidates`);
+      setSeedCandidates(data.candidates || []);
+    } catch (e: any) {
+      console.error(e);
+      toast(e.message || 'Lỗi tải danh sách đội seed.', 'error');
+    } finally {
+      setSeedLoading(false);
+    }
+  };
+
   useEffect(() => { loadBracket(); }, [tournament]);
+  useEffect(() => {
+    if (tournament && nodes.length === 0) void loadSeedCandidates();
+  }, [tournament, nodes.length]);
 
   // WebSocket real-time updates
   useEffect(() => {
@@ -354,12 +389,24 @@ export default function BracketPage() {
     return () => { socket.emit('leaveTournament', { tournamentId: tournament.id }); socket.disconnect(); };
   }, [tournament]);
 
-  const handleGenerateBracket = async () => {
+  const handleGenerateManualBracket = async () => {
     if (!tournament) return;
     setActionLoading(true);
     try {
-      await apiFetch(`/tournaments/${tournament.id}/bracket/generate`, { method: 'POST' });
-      toast('Đã sinh thành công nhánh đấu loại trực tiếp Playoffs!', 'success');
+      await apiFetch(`/tournaments/${tournament.id}/bracket/generate`, {
+        method: 'POST',
+        body: {
+          bracketSize,
+          slots: Array.from({ length: bracketSize }, (_, idx) => {
+            const slotNo = idx + 1;
+            return {
+              slotNo,
+              teamId: seedSlots[slotNo] || null,
+            };
+          }),
+        },
+      });
+      toast('Đã sinh thành công nhánh đấu Playoffs theo seed BTC chọn!', 'success');
       setConfirmModalOpen(false);
       loadBracket();
       reloadTournament();
@@ -378,8 +425,10 @@ export default function BracketPage() {
   const leftSF = nodes.find(n => n.nodeKey === 'SF1');
   const rightSF = nodes.find(n => n.nodeKey === 'SF2');
   const rightR1 = nodes.filter(n => ['QF3', 'QF4', 'P2'].includes(n.nodeKey));
+  const thirdPlaceNode = nodes.find(n => n.nodeKey === '3P');
 
   const hasBracket = nodes.length > 0;
+  const selectedTeamIds = new Set(Object.values(seedSlots).filter(Boolean));
 
   return (
     <div className="premium-container space-y-6 animate-scale-in">
@@ -387,18 +436,6 @@ export default function BracketPage() {
         title="Nhánh Đấu Loại Trực Tiếp"
         description="Sơ đồ thi đấu Playoffs Knockout — các nhánh rẽ vào trận Chung Kết trung tâm."
         icon={GitBranch}
-        actions={
-          !hasBracket && (
-            <button
-              onClick={() => setConfirmModalOpen(true)}
-              className="btn btn-primary flex items-center gap-2 font-semibold"
-              disabled={actionLoading}
-            >
-              <GitBranch className="w-4 h-4" />
-              Sinh Nhánh Đấu Playoff
-            </button>
-          )
-        }
       />
 
       {hasBracket ? (
@@ -451,6 +488,14 @@ export default function BracketPage() {
                   Chưa có dữ liệu
                 </div>
               )}
+              {thirdPlaceNode && (
+                <div className="mt-8 flex flex-col items-center gap-2">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    Tranh Hạng 3
+                  </div>
+                  <MatchCard node={thirdPlaceNode} />
+                </div>
+              )}
             </div>
 
             {/* RIGHT BRANCH */}
@@ -476,22 +521,42 @@ export default function BracketPage() {
           </div>
         </div>
       ) : (
-        <EmptyState
-          icon={GitBranch}
-          title="Chưa khởi tạo sơ đồ Playoffs"
-          description="Vui lòng kết thúc tất cả trận đấu vòng bảng và bấm nút 'Sinh Nhánh Đấu Playoff' để ghép cặp thi đấu loại trực tiếp."
-        />
+        <div className="space-y-4">
+          <div className="card p-8 space-y-5 flex flex-col items-center text-center max-w-xl mx-auto border border-slate-800 bg-slate-900/30 rounded-2xl shadow-xl">
+            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shadow-lg shadow-amber-500/5 mb-2">
+              <GitBranch className="w-8 h-8 text-amber-500" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-slate-100">Khởi tạo sơ đồ Playoffs Knockout</h3>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+                Hệ thống sẽ tự động khởi tạo nhánh đấu loại trực tiếp dựa trên cấu hình hạt giống đã thiết lập trong Luật thi đấu (Ruleset) và bảng xếp hạng vòng bảng hiện tại.
+              </p>
+            </div>
+            
+            <div className="pt-4 border-t border-slate-800/60 w-full flex justify-center">
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(true)}
+                disabled={actionLoading}
+                className="btn btn-primary flex items-center justify-center gap-2 font-semibold px-6 py-2.5 rounded-xl shadow-lg shadow-amber-500/10"
+              >
+                <GitBranch className="w-4 h-4" />
+                Khởi tạo nhánh đấu Knockout
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmModal
         open={confirmModalOpen}
-        title="Sinh sơ đồ Playoffs tự động?"
-        description="Hệ thống sẽ dựa trên BXH Vòng Bảng hiện tại để tự động lập nhánh Playoffs Knockout. Hãy đảm bảo mọi kết quả vòng bảng đã được BTC xác nhận chính thức!"
-        confirmLabel="Sinh Bracket"
+        title="Khởi tạo sơ đồ Playoffs?"
+        description="Hệ thống sẽ tạo bracket tự động dựa trên cấu hình hạt giống trong Luật thi đấu và bảng xếp hạng vòng bảng hiện tại. Nếu có bất kỳ đội nào được miễn đấu (Miễn đấu), họ sẽ tự động tiến vào vòng tiếp theo."
+        confirmLabel="Khởi tạo"
         cancelLabel="Hủy"
         variant="warning"
         loading={actionLoading}
-        onConfirm={handleGenerateBracket}
+        onConfirm={handleGenerateManualBracket}
         onCancel={() => setConfirmModalOpen(false)}
       />
     </div>

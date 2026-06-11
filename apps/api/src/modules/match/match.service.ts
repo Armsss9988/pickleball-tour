@@ -120,8 +120,9 @@ export class MatchService {
     const format = match.tournament?.ruleset?.matchFormat || 'relay';
     const expectedLineupCount = format === 'relay' ? match.segments.length * 2 : 2;
     const allLocked = lineups.length === expectedLineupCount && lineups.every((l) => l.status === 'LOCKED');
+    const requireLineup = match.tournament?.ruleset?.requireLineup ?? true;
 
-    if (!allLocked) {
+    if (requireLineup && !allLocked) {
       throw new BadRequestException(
         `Đội hình (lineup) chưa sẵn sàng. Cần phải khóa (lock) đội hình của cả 2 đội.`
       );

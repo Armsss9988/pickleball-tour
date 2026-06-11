@@ -39,8 +39,13 @@ interface RulesetViewProps {
   overlapRules: any[];
   requireCourtConfig?: boolean;
   requireScheduleConfig?: boolean;
+  thirdPlaceMatchEnabled?: boolean;
+  quickScoreEntryEnabled?: boolean;
+  requireLineup?: boolean;
   groupCount?: number;
   advancePerGroup?: number;
+  knockoutBracketSize?: number | null;
+  knockoutSeedSlots?: any[];
 }
 
 export function RulesetView({
@@ -54,8 +59,13 @@ export function RulesetView({
   overlapRules = [],
   requireCourtConfig = true,
   requireScheduleConfig = true,
+  thirdPlaceMatchEnabled = false,
+  quickScoreEntryEnabled = false,
+  requireLineup = true,
   groupCount = 2,
   advancePerGroup = 1,
+  knockoutBracketSize = null,
+  knockoutSeedSlots = [],
 }: RulesetViewProps) {
   const isStrict = (teamComposition?.maleCount ?? 0) > 0 || (teamComposition?.femaleCount ?? 0) > 0;
 
@@ -161,8 +171,49 @@ export function RulesetView({
               Xếp giờ lịch thi đấu: {requireScheduleConfig ? 'Bắt buộc (Kiểm tra gán giờ)' : 'Linh hoạt (Bỏ qua kiểm tra gán giờ)'}
             </span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${thirdPlaceMatchEnabled ? 'bg-amber-500' : 'bg-slate-650'}`} />
+            <span className="text-slate-300 font-medium">
+              Hạng 3: {thirdPlaceMatchEnabled ? 'Có trận tranh hạng 3' : 'Đồng hạng 3 cho hai đội thua Bán kết'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${quickScoreEntryEnabled ? 'bg-sky-500' : 'bg-slate-650'}`} />
+            <span className="text-slate-300 font-medium">
+              Nhập điểm: {quickScoreEntryEnabled ? 'Nhập nhanh tỷ số chung cuộc' : 'Chấm điểm chi tiết từng điểm/chặng'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${requireLineup ? 'bg-emerald-500' : 'bg-slate-650'}`} />
+            <span className="text-slate-300 font-medium">
+              Lineup: {requireLineup ? 'Bắt buộc trước khi thi đấu' : 'Không bắt buộc khi vận hành trận'}
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Knockout Bracket Seeding Preview */}
+      {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && knockoutBracketSize && (
+        <div className="p-5 bg-slate-900/50 border border-slate-800 rounded-xl space-y-3">
+          <div className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-amber-500" />
+            Cấu hình xếp hạt giống Knockout
+          </div>
+          <div className="text-xs text-slate-300 font-medium">
+            Quy mô nhánh đấu: <span className="text-amber-500 font-bold">{knockoutBracketSize} đội</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+            {(knockoutSeedSlots || []).map((slot: any) => (
+              <div key={slot.slotNo} className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800/80 flex flex-col gap-1">
+                <span className="text-[10px] text-slate-555 font-semibold uppercase">Slot {slot.slotNo}</span>
+                <span className="text-xs text-slate-200 font-bold">
+                  {slot.sourceKey ? `${slot.sourceKey} (Hạng ${slot.sourceKey.slice(1)} Bảng ${slot.sourceKey[0]})` : 'Miễn đấu'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Format-specific details */}
       {matchFormat === 'relay' ? (

@@ -146,6 +146,53 @@ describe('Ruleset Value Object', () => {
     expect(ruleset.scoringConfig.setsToWin).toBe(2);
   });
 
+  it('defaults new operational toggles to safe values', () => {
+    const ruleset = new Ruleset(rulesetStandard as any);
+
+    expect(ruleset.thirdPlaceMatchEnabled).toBe(false);
+    expect(ruleset.quickScoreEntryEnabled).toBe(false);
+    expect(ruleset.requireLineup).toBe(true);
+  });
+
+  it('exposes configured operational toggles', () => {
+    const ruleset = new Ruleset({
+      ...rulesetStandard,
+      thirdPlaceMatchEnabled: true,
+      quickScoreEntryEnabled: true,
+      requireLineup: false,
+    } as any);
+
+    expect(ruleset.thirdPlaceMatchEnabled).toBe(true);
+    expect(ruleset.quickScoreEntryEnabled).toBe(true);
+    expect(ruleset.requireLineup).toBe(false);
+  });
+
+  it('defaults knockout bracket config to automatic source seeding', () => {
+    const ruleset = new Ruleset(rulesetStandard as any);
+
+    expect(ruleset.knockoutBracketSize).toBeNull();
+    expect(ruleset.knockoutSeedSlots).toEqual([]);
+  });
+
+  it('exposes configured knockout source slots', () => {
+    const ruleset = new Ruleset({
+      ...rulesetStandard,
+      knockoutBracketSize: 8,
+      knockoutSeedSlots: [
+        { slotNo: 1, sourceKey: 'A1' },
+        { slotNo: 8, sourceKey: 'B2' },
+        { slotNo: 4, sourceKey: null },
+      ],
+    } as any);
+
+    expect(ruleset.knockoutBracketSize).toBe(8);
+    expect(ruleset.knockoutSeedSlots).toEqual([
+      { slotNo: 1, sourceKey: 'A1' },
+      { slotNo: 8, sourceKey: 'B2' },
+      { slotNo: 4, sourceKey: null },
+    ]);
+  });
+
   it('should throw validation error for best_of ruleset with invalid setsToWin', () => {
     const invalidBestOf = {
       name: 'BO3 Sets lỗi',
@@ -172,4 +219,3 @@ describe('Ruleset Value Object', () => {
     expect(() => new Ruleset(invalidBestOf as any)).toThrow('Số set cần thắng để thắng trận đấu phải từ 1 đến 5.');
   });
 });
-
