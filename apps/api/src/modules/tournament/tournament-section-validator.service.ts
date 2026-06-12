@@ -62,6 +62,8 @@ export class TournamentSectionValidatorService {
           matchFormat: tournament.ruleset.matchFormat,
           requireCourtConfig: tournament.ruleset.requireCourtConfig,
           requireScheduleConfig: tournament.ruleset.requireScheduleConfig,
+          competitionFormat: tournament.ruleset.competitionFormat,
+          groupCount: tournament.ruleset.groupCount ?? 2,
         }
       : null;
 

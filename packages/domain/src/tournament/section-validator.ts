@@ -20,6 +20,8 @@ export interface TournamentSectionData {
     matchFormat?: string;
     requireCourtConfig?: boolean;
     requireScheduleConfig?: boolean;
+    competitionFormat?: string;
+    groupCount?: number;
   } | null;
   players: {
     total: number;
@@ -92,16 +94,19 @@ export function validatePlayers(data: TournamentSectionData): SectionValidationR
   if (players.total === 0) {
     errors.push('Chưa nhập danh sách vận động viên');
   } else if (ruleset && ruleset.exists) {
-    // Check if we have enough players to form at least 2 teams of ruleset size
-    const minRequired = ruleset.teamSize * 2;
+    // Check if we have enough players to form at least the minimum required teams
+    const isGroupStage = ruleset.competitionFormat === 'GROUP_STAGE_KNOCKOUT';
+    const minRequiredTeams = isGroupStage ? (ruleset.groupCount ?? 2) * 2 : 2;
+    const minRequired = ruleset.teamSize * minRequiredTeams;
+    
     if (players.total < minRequired) {
-      errors.push(`Số lượng VĐV (${players.total}) không đủ để lập tối thiểu 2 đội (yêu cầu tối thiểu ${minRequired} VĐV)`);
+      errors.push(`Số lượng VĐV (${players.total}) không đủ để lập tối thiểu ${minRequiredTeams} đội (yêu cầu tối thiểu ${minRequired} VĐV cho ${ruleset.groupCount ?? 2} bảng)`);
     }
-    if (ruleset.maleCount > 0 && players.males < ruleset.maleCount * 2) {
-      errors.push(`Số lượng VĐV Nam (${players.males}) không đủ cho 2 đội (yêu cầu tối thiểu ${ruleset.maleCount * 2})`);
+    if (ruleset.maleCount > 0 && players.males < ruleset.maleCount * minRequiredTeams) {
+      errors.push(`Số lượng VĐV Nam (${players.males}) không đủ cho ${minRequiredTeams} đội (yêu cầu tối thiểu ${ruleset.maleCount * minRequiredTeams})`);
     }
-    if (ruleset.femaleCount > 0 && players.females < ruleset.femaleCount * 2) {
-      errors.push(`Số lượng VĐV Nữ (${players.females}) không đủ cho 2 đội (yêu cầu tối thiểu ${ruleset.femaleCount * 2})`);
+    if (ruleset.femaleCount > 0 && players.females < ruleset.femaleCount * minRequiredTeams) {
+      errors.push(`Số lượng VĐV Nữ (${players.females}) không đủ cho ${minRequiredTeams} đội (yêu cầu tối thiểu ${ruleset.femaleCount * minRequiredTeams})`);
     }
   }
 
@@ -117,11 +122,14 @@ export function validateTeams(data: TournamentSectionData): SectionValidationRes
   const ruleset = data.ruleset;
   const teams = data.teams;
 
-  if (teams.count < 2) {
-    errors.push('Giải đấu phải có tối thiểu 2 đội thi đấu');
-  }
-
   if (ruleset && ruleset.exists) {
+    const isGroupStage = ruleset.competitionFormat === 'GROUP_STAGE_KNOCKOUT';
+    const minRequiredTeams = isGroupStage ? (ruleset.groupCount ?? 2) * 2 : 2;
+
+    if (teams.count < minRequiredTeams) {
+      errors.push(`Giải đấu phải có tối thiểu ${minRequiredTeams} đội thi đấu (yêu cầu tối thiểu 2 đội mỗi bảng cho ${ruleset.groupCount ?? 2} bảng)`);
+    }
+
     teams.membersCounts.forEach((count, idx) => {
       if (count !== ruleset.teamSize) {
         errors.push(`Đội thứ ${idx + 1} có ${count} thành viên (yêu cầu chính xác ${ruleset.teamSize} thành viên)`);
@@ -136,6 +144,10 @@ export function validateTeams(data: TournamentSectionData): SectionValidationRes
         errors.push(`Đội thứ ${idx + 1} không đủ VĐV Nữ (có ${g.females}/${ruleset.femaleCount} Nữ)`);
       }
     });
+  } else {
+    if (teams.count < 2) {
+      errors.push('Giải đấu phải có tối thiểu 2 đội thi đấu');
+    }
   }
 
   return {

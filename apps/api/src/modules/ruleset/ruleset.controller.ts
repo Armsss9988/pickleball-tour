@@ -34,6 +34,6 @@ export class RulesetController {
     @Param('tournamentId') tournamentId: string,
     @Body() dto: CreateRulesetDto
   ) {
-    return this.rulesetService.validateRuleset(dto);
+    return this.rulesetService.validateRuleset(tournamentId, dto);
   }
 }

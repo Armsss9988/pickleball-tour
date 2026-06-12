@@ -882,6 +882,13 @@ function transitionSeedSlots(
                   <p className="text-[10px] text-slate-500 mt-1">
                     Số bảng đấu hiện tại dùng để chia đội/entry (ví dụ: 1 bảng đấu, 2 bảng A/B, 4 bảng A/B/C/D...). Mặc định là 2 bảng.
                   </p>
+                  {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && (
+                    <p className="text-xs text-amber-500 font-semibold mt-2 bg-amber-500/5 border border-amber-500/15 rounded-lg p-2 max-w-[500px]">
+                      💡 Yêu cầu tối thiểu: {groupCount * 2} đội (tương đương {groupCount * 2 * currentTeamSize} VĐV
+                      {genderFormat === 'strict' && ` gồm ${groupCount * 2 * maleCount} Nam và ${groupCount * 2 * femaleCount} Nữ`}
+                      ) để đảm bảo ít nhất 2 đội mỗi bảng.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -986,6 +993,8 @@ function transitionSeedSlots(
                 allMustPlay={allMustPlay}
                 setAllMustPlay={setAllMustPlay}
                 disabled={saving}
+                groupCount={groupCount}
+                competitionFormat={competitionFormat}
               />
               )}
 
@@ -1151,6 +1160,8 @@ function transitionSeedSlots(
                 competitionFormat={competitionFormat}
                 groupCount={groupCount}
                 advancePerGroup={advancePerGroup}
+                teamsCount={dependencyStats.teamsCount}
+                eventType={eventType}
                 onValidationChange={setIsValid}
               />
 

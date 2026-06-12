@@ -61,11 +61,29 @@ export class RulesetService {
   }
 
   /**
-   * Validates a ruleset payload using pure domain logic.
+   * Validates a ruleset payload using pure domain logic and database constraint checks.
    */
-  validateRuleset(dto: CreateRulesetDto) {
+  async validateRuleset(tournamentId: string, dto: CreateRulesetDto) {
     try {
       new DomainRuleset(dto);
+
+      // Validate group count compared to registered teams if using a group stage format
+      const isGroupStage = (dto.competitionFormat || 'GROUP_STAGE_KNOCKOUT') === 'GROUP_STAGE_KNOCKOUT';
+      if (isGroupStage) {
+        const teamsCount = await this.prisma.team.count({
+          where: { tournamentId },
+        });
+        const groupCount = dto.groupCount ?? 2;
+        if (teamsCount >= 2 && groupCount > Math.floor(teamsCount / 2)) {
+          return {
+            valid: false,
+            errors: [
+              `Số bảng đấu (${groupCount}) không thể lớn hơn một nửa số đội hiện tại (${teamsCount}) để đảm bảo mỗi bảng có ít nhất 2 đội.`,
+            ],
+          };
+        }
+      }
+
       return { valid: true, errors: [] };
     } catch (err: any) {
       return { valid: false, errors: [err.message] };
@@ -91,8 +109,8 @@ export class RulesetService {
       );
     }
 
-    // Validate using domain
-    const validation = this.validateRuleset(dto);
+    // Validate using domain and database
+    const validation = await this.validateRuleset(tournamentId, dto);
     if (!validation.valid) {
       throw new BadRequestException(`Cấu hình luật không hợp lệ: ${validation.errors.join(', ')}`);
     }

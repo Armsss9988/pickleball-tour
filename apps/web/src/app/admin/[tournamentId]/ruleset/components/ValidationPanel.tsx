@@ -1,7 +1,7 @@
 'use client';
 
 import { CheckCircle2, XCircle, Info, Loader2 } from '@/components/icons';
-import { MatchFormat } from '@golab/contracts';
+import { MatchFormat, EventType } from '@golab/contracts';
 import { useEffect, useState, useMemo } from 'react';
 import { apiFetch } from '@/lib/api-client';
 
@@ -23,6 +23,7 @@ interface ValidationPanelProps {
   tournamentId: string;
   name: string;
   matchFormat: MatchFormat;
+  eventType: EventType;
   competitionFormat: string;
   groupCount: number;
   advancePerGroup: number;
@@ -49,6 +50,7 @@ interface ValidationPanelProps {
   requireLineup: boolean;
   knockoutBracketSize: number | null;
   knockoutSeedSlots: { slotNo: number; sourceKey: string | null }[];
+  teamsCount?: number;
   onValidationChange?: (isValid: boolean) => void;
 }
 
@@ -63,6 +65,7 @@ export function ValidationPanel({
   tournamentId,
   name,
   matchFormat,
+  eventType,
   competitionFormat,
   groupCount,
   advancePerGroup,
@@ -89,6 +92,7 @@ export function ValidationPanel({
   requireLineup,
   knockoutBracketSize,
   knockoutSeedSlots,
+  teamsCount = 0,
   onValidationChange,
 }: ValidationPanelProps) {
   const [apiLoading, setApiLoading] = useState(false);
@@ -305,6 +309,20 @@ export function ValidationPanel({
       });
     }
 
+    // V19: Minimum 2 teams/entries per group if competition format is GROUP_STAGE_KNOCKOUT and tournament has registered teams
+    if (competitionFormat === 'GROUP_STAGE_KNOCKOUT' && typeof teamsCount === 'number' && teamsCount >= 2) {
+      const maxAllowedGroups = Math.floor(teamsCount / 2);
+      const isGroupCountValid = groupCount <= maxAllowedGroups;
+      items.push({
+        id: 'V19',
+        label: `Đảm bảo mỗi bảng có ít nhất 2 đội (Có ${teamsCount} đội, tối đa ${maxAllowedGroups} bảng)`,
+        status: isGroupCountValid ? 'passed' : 'failed',
+        reason: isGroupCountValid 
+          ? undefined 
+          : `Giải đấu hiện có ${teamsCount} đội. Số bảng tối đa là ${maxAllowedGroups} để đảm bảo mỗi bảng đấu có ít nhất 2 đội. Vui lòng giảm số bảng đấu xuống.`,
+      });
+    }
+
     return items;
   }, [
     matchFormat,
@@ -328,6 +346,8 @@ export function ValidationPanel({
     deuceMaxScore,
     knockoutBracketSize,
     knockoutSeedSlots,
+    teamsCount,
+    eventType,
   ]);
 
   // Determine if client validation passed
@@ -354,6 +374,10 @@ export function ValidationPanel({
       sport: 'pickleball',
       isTemplate: false,
       matchFormat: matchFormat,
+      eventType: eventType,
+      competitionFormat: competitionFormat,
+      groupCount: Number(groupCount),
+      advancePerGroup: Number(advancePerGroup),
       requireCourtConfig,
       requireScheduleConfig,
       thirdPlaceMatchEnabled,
@@ -468,6 +492,7 @@ export function ValidationPanel({
     requireLineup,
     knockoutBracketSize,
     knockoutSeedSlots,
+    eventType,
   ]);
 
   const failedItems = checklist.filter((item) => item.status === 'failed');

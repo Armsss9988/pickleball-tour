@@ -1,7 +1,7 @@
 'use client';
 
 import { Users } from '@/components/icons';
-import { MatchFormat } from '@golab/contracts';
+import { MatchFormat, CompetitionFormat } from '@golab/contracts';
 import { useEffect, useState } from 'react';
 
 interface TeamCompositionSectionProps {
@@ -17,6 +17,8 @@ interface TeamCompositionSectionProps {
   allMustPlay: boolean;
   setAllMustPlay: (val: boolean) => void;
   disabled?: boolean;
+  groupCount: number;
+  competitionFormat: CompetitionFormat;
 }
 
 export function TeamCompositionSection({
@@ -32,6 +34,8 @@ export function TeamCompositionSection({
   allMustPlay,
   setAllMustPlay,
   disabled,
+  groupCount,
+  competitionFormat,
 }: TeamCompositionSectionProps) {
   // Local UI states for single_game / best_of to make it extremely user-friendly
   const [playMode, setPlayMode] = useState<'singles' | 'doubles'>('doubles');
@@ -183,6 +187,14 @@ export function TeamCompositionSection({
           Quy mô lưu trữ: <span className="font-semibold text-slate-200">{currentTeamSize} VĐV</span> 
           {genderFormat === 'strict' ? ` (${maleCount} Nam, ${femaleCount} Nữ)` : ' (Không ràng buộc giới tính)'}
         </div>
+
+        {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && (
+          <div className="text-xs text-amber-500 font-semibold mt-2 bg-amber-500/5 border border-amber-500/15 rounded-lg p-2.5">
+            💡 Với {groupCount} bảng đấu, yêu cầu tối thiểu: {groupCount * 2} đội (tương đương {groupCount * 2 * currentTeamSize} VĐV
+            {genderFormat === 'strict' && ` gồm ${groupCount * 2 * maleCount} Nam và ${groupCount * 2 * femaleCount} Nữ`}
+            ) để giải đấu hợp lệ.
+          </div>
+        )}
       </div>
     );
   }
@@ -301,6 +313,14 @@ export function TeamCompositionSection({
           Tất cả {currentTeamSize} thành viên bắt buộc phải ra sân thi đấu ít nhất 1 lần
         </label>
       </div>
+
+      {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && (
+        <div className="text-xs text-amber-500 font-semibold mt-2 bg-amber-500/5 border border-amber-500/15 rounded-lg p-2.5">
+          💡 Với {groupCount} bảng đấu, yêu cầu tối thiểu: {groupCount * 2} đội (tương đương {groupCount * 2 * currentTeamSize} VĐV
+          {genderFormat === 'strict' && ` gồm ${groupCount * 2 * maleCount} Nam và ${groupCount * 2 * femaleCount} Nữ`}
+          ) để giải đấu hợp lệ.
+        </div>
+      )}
     </div>
   );
 }
