@@ -341,9 +341,7 @@ export default function BracketPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [seedCandidates, setSeedCandidates] = useState<SeedCandidate[]>([]);
   const [seedLoading, setSeedLoading] = useState(false);
-  const [bracketSize, setBracketSize] = useState<4 | 8>(4);
-  const [seedSlots, setSeedSlots] = useState<Record<number, string>>({});
-
+ 
   const loadBracket = async () => {
     if (!tournament) return;
     try {
@@ -357,7 +355,7 @@ export default function BracketPage() {
       setLoading(false);
     }
   };
-
+ 
   const loadSeedCandidates = async () => {
     if (!tournament) return;
     try {
@@ -371,12 +369,12 @@ export default function BracketPage() {
       setSeedLoading(false);
     }
   };
-
+ 
   useEffect(() => { loadBracket(); }, [tournament]);
   useEffect(() => {
     if (tournament && nodes.length === 0) void loadSeedCandidates();
   }, [tournament, nodes.length]);
-
+ 
   // WebSocket real-time updates
   useEffect(() => {
     if (!tournament) return;
@@ -388,25 +386,16 @@ export default function BracketPage() {
     if (socket.connected) joinRoom();
     return () => { socket.emit('leaveTournament', { tournamentId: tournament.id }); socket.disconnect(); };
   }, [tournament]);
-
-  const handleGenerateManualBracket = async () => {
+ 
+  const handleGenerateBracket = async () => {
     if (!tournament) return;
     setActionLoading(true);
     try {
       await apiFetch(`/tournaments/${tournament.id}/bracket/generate`, {
         method: 'POST',
-        body: {
-          bracketSize,
-          slots: Array.from({ length: bracketSize }, (_, idx) => {
-            const slotNo = idx + 1;
-            return {
-              slotNo,
-              teamId: seedSlots[slotNo] || null,
-            };
-          }),
-        },
+        body: {}, // Send empty body to trigger automatic ruleset-based seeding
       });
-      toast('Đã sinh thành công nhánh đấu Playoffs theo seed BTC chọn!', 'success');
+      toast('Đã khởi tạo thành công nhánh đấu Playoffs tự động!', 'success');
       setConfirmModalOpen(false);
       loadBracket();
       reloadTournament();
@@ -416,9 +405,9 @@ export default function BracketPage() {
       setActionLoading(false);
     }
   };
-
+ 
   if (tLoading || (loading && nodes.length === 0)) return <PageLoading />;
-
+ 
   /* Partition nodes */
   const finalNode = nodes.find(n => n.nodeKey === 'F');
   const leftR1 = nodes.filter(n => ['QF1', 'QF2', 'P1'].includes(n.nodeKey));
@@ -426,9 +415,8 @@ export default function BracketPage() {
   const rightSF = nodes.find(n => n.nodeKey === 'SF2');
   const rightR1 = nodes.filter(n => ['QF3', 'QF4', 'P2'].includes(n.nodeKey));
   const thirdPlaceNode = nodes.find(n => n.nodeKey === '3P');
-
+ 
   const hasBracket = nodes.length > 0;
-  const selectedTeamIds = new Set(Object.values(seedSlots).filter(Boolean));
 
   return (
     <div className="premium-container space-y-6 animate-scale-in">
@@ -457,7 +445,7 @@ export default function BracketPage() {
 
           {/* ── Bracket Tree ──────────────────────────── */}
           <div
-            className="flex items-center justify-center gap-0 mx-auto"
+            className="flex items-center justify-start xl:justify-center gap-0 mx-auto"
             style={{ minWidth: 1100 }}
           >
             {/* LEFT BRANCH */}
@@ -521,8 +509,8 @@ export default function BracketPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          <div className="card p-8 space-y-5 flex flex-col items-center text-center max-w-xl mx-auto border border-slate-800 bg-slate-900/30 rounded-2xl shadow-xl">
+        <div className="flex flex-col items-center gap-6 max-w-2xl mx-auto w-full">
+          <div className="card p-8 space-y-5 flex flex-col items-center text-center w-full border border-slate-800 bg-slate-900/30 rounded-2xl shadow-xl">
             <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shadow-lg shadow-amber-500/5 mb-2">
               <GitBranch className="w-8 h-8 text-amber-500" />
             </div>
@@ -545,6 +533,30 @@ export default function BracketPage() {
               </button>
             </div>
           </div>
+
+          {seedCandidates.length > 0 && (
+            <div className="w-full bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 space-y-4 shadow-xl">
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b border-slate-800 pb-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                Danh sách đội đi tiếp (Hạt giống vòng bảng)
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {seedCandidates.map((c) => (
+                  <div key={c.teamId} className="flex items-center justify-between p-3 bg-slate-950/40 border border-slate-850 rounded-xl hover:border-slate-700 transition-colors">
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-semibold text-slate-200 text-xs truncate max-w-[180px]">
+                        {c.teamName || `Đội #${c.teamId.slice(0, 4)}`}
+                      </span>
+                      {c.teamCode && <span className="text-[10px] text-slate-500 font-mono mt-0.5">{c.teamCode}</span>}
+                    </div>
+                    <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-mono font-bold">
+                      {c.sourceLabel}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -556,7 +568,7 @@ export default function BracketPage() {
         cancelLabel="Hủy"
         variant="warning"
         loading={actionLoading}
-        onConfirm={handleGenerateManualBracket}
+        onConfirm={handleGenerateBracket}
         onCancel={() => setConfirmModalOpen(false)}
       />
     </div>

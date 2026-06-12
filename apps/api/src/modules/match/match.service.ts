@@ -110,9 +110,6 @@ export class MatchService {
   async startMatch(matchId: string, userId: string) {
     const match = await this.findOne(matchId);
 
-    const domainMatch = MatchMapper.toDomain(match);
-    domainMatch.transitionTo('RUNNING');
-
     const lineups = await this.prisma.matchLineup.findMany({
       where: { matchId },
     });
@@ -127,6 +124,18 @@ export class MatchService {
         `Đội hình (lineup) chưa sẵn sàng. Cần phải khóa (lock) đội hình của cả 2 đội.`
       );
     }
+
+    const domainMatch = MatchMapper.toDomain(match);
+    
+    if (
+      domainMatch.status === 'SCHEDULED' ||
+      domainMatch.status === 'LINEUP_PENDING' ||
+      domainMatch.status === 'LINEUP_READY'
+    ) {
+      domainMatch.transitionTo('READY');
+    }
+    
+    domainMatch.transitionTo('RUNNING');
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const u = await tx.match.update({

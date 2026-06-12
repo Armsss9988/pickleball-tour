@@ -36,7 +36,7 @@ export interface ManualSeedSlot {
 }
 
 export interface ManualSeedBracketOptions {
-  bracketSize: 4 | 8 | 16;
+  bracketSize: 2 | 4 | 8 | 16;
   slots: ManualSeedSlot[];
   thirdPlaceMatchEnabled?: boolean;
 }
@@ -63,8 +63,8 @@ export class BracketGeneratorService {
     sourceMap: Map<number, string | null>;
   } {
     const expectedSlots = options.bracketSize;
-    if (expectedSlots !== 4 && expectedSlots !== 8 && expectedSlots !== 16) {
-      throw new ValidationError(`Kích thước bracket thủ công chỉ hỗ trợ 4, 8 hoặc 16 slot.`);
+    if (expectedSlots !== 2 && expectedSlots !== 4 && expectedSlots !== 8 && expectedSlots !== 16) {
+      throw new ValidationError(`Kích thước bracket thủ công chỉ hỗ trợ 2, 4, 8 hoặc 16 slot.`);
     }
 
     const slotMap = new Map<number, string | null>();
@@ -125,7 +125,20 @@ export class BracketGeneratorService {
       orderNo: number;
     }> = [];
 
-    if (options.bracketSize === 4) {
+    if (options.bracketSize === 2) {
+      // 2-team bracket: single Final match only, no 3rd place
+      nodeDefs.push({
+        key: 'F',
+        roundName: 'Chung Kết',
+        sourceA: this.slotSource(slotMap, sourceMap, 1),
+        sourceB: this.slotSource(slotMap, sourceMap, 2),
+        teamAId: this.slotTeam(slotMap, 1),
+        teamBId: this.slotTeam(slotMap, 2),
+        winnerToNodeKey: null,
+        loserAwardKey: 'RUNNER_UP',
+        orderNo: 1,
+      });
+    } else if (options.bracketSize === 4) {
       nodeDefs.push(
         {
           key: 'SF1',

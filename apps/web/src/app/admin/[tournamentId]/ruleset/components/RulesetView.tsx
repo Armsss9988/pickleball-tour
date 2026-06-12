@@ -47,6 +47,7 @@ interface RulesetViewProps {
   advancePerGroup?: number;
   knockoutBracketSize?: number | null;
   knockoutSeedSlots?: any[];
+  seedingMethod?: 'crossover' | 'crossover_reverse' | 'sequential' | 'manual';
 }
 
 export function RulesetView({
@@ -67,6 +68,7 @@ export function RulesetView({
   advancePerGroup = 1,
   knockoutBracketSize = null,
   knockoutSeedSlots = [],
+  seedingMethod = 'crossover',
 }: RulesetViewProps) {
   const isStrict = (teamComposition?.maleCount ?? 0) > 0 || (teamComposition?.femaleCount ?? 0) > 0;
 
@@ -195,37 +197,28 @@ export function RulesetView({
 
       {/* Knockout Bracket Seeding Preview */}
       {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && (
-        <div className="space-y-4">
-          {knockoutBracketSize && (
-            <div className="p-5 bg-slate-900/50 border border-slate-800 rounded-xl space-y-3">
-              <div className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                Cấu hình xếp hạt giống Knockout
-              </div>
-              <div className="text-xs text-slate-300 font-medium">
-                Quy mô nhánh đấu: <span className="text-amber-500 font-bold">{knockoutBracketSize} đội</span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                {(knockoutSeedSlots || []).map((slot: any) => (
-                  <div key={slot.slotNo} className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800/80 flex flex-col gap-1">
-                    <span className="text-[10px] text-slate-555 font-semibold uppercase">Slot {slot.slotNo}</span>
-                    <span className="text-xs text-slate-200 font-bold">
-                      {slot.sourceKey ? `${slot.sourceKey} (Hạng ${slot.sourceKey.slice(1)} Bảng ${slot.sourceKey[0]})` : 'Miễn đấu'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="p-5 bg-slate-900/50 border border-slate-800 rounded-xl">
-            <BracketPreview
-              knockoutBracketSize={knockoutBracketSize}
-              knockoutSeedSlots={knockoutSeedSlots}
-              groupCount={groupCount}
-              advancePerGroup={advancePerGroup}
-            />
+        <div className="p-5 bg-slate-900/50 border border-slate-800 rounded-xl space-y-3">
+          <div className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-amber-500" />
+            Sơ đồ nhánh đấu Playoffs
+            {knockoutBracketSize && (
+              <span className="text-amber-500 font-normal normal-case tracking-normal ml-1">
+                — {knockoutBracketSize} đội ({
+                  seedingMethod === 'crossover' ? 'Tự động chéo bảng' :
+                  seedingMethod === 'crossover_reverse' ? 'Tự động chéo bảng ngược' :
+                  seedingMethod === 'sequential' ? 'Tự động thẳng hàng' : 'Thủ công'
+                })
+              </span>
+            )}
           </div>
+          <BracketPreview
+            knockoutBracketSize={knockoutBracketSize}
+            knockoutSeedSlots={knockoutSeedSlots ?? []}
+            groupCount={groupCount}
+            advancePerGroup={advancePerGroup}
+            isEditing={false}
+            seedingMethod={seedingMethod}
+          />
         </div>
       )}
 

@@ -274,6 +274,30 @@ export default function RefereeScorerPage() {
     }
   };
 
+  // Start the match from READY or LINEUP_READY status
+  const handleStartMatch = async () => {
+    if (!match || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiFetch(`/matches/${matchId}/start`, {
+        method: 'POST',
+      });
+      playSound('complete');
+      setSuccess('Trận đấu đã bắt đầu thành công!');
+      loadMatchDetails(true);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || 'Lỗi bắt đầu trận đấu.');
+      playSound('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Confirm final result
   const handleConfirmResult = async () => {
     if (!match || isSubmitting) return;
@@ -484,6 +508,7 @@ export default function RefereeScorerPage() {
   const scoreA = latestEvent ? latestEvent.scoreAAfter : (match.result?.teamAScore ?? 0);
   const scoreB = latestEvent ? latestEvent.scoreBAfter : (match.result?.teamBScore ?? 0);
   const quickScoreEnabled = match.tournament?.ruleset?.quickScoreEntryEnabled === true;
+  const requireLineup = match.tournament?.ruleset?.requireLineup !== false;
 
   // Next target threshold visual mapping
   const activeTargetScore = activeSegment ? activeSegment.targetScore : 24;
@@ -532,6 +557,25 @@ export default function RefereeScorerPage() {
         </div>
 
         {/* Dynamic game flow cards */}
+        {(match.status === 'READY' || match.status === 'LINEUP_READY' || (!requireLineup && (match.status === 'SCHEDULED' || match.status === 'LINEUP_PENDING'))) && (
+          <div className="p-6 bg-emerald-500/5 border border-emerald-500/20 rounded-3xl text-center space-y-4 max-w-xl mx-auto backdrop-blur-md shadow-2xl">
+            <span className="text-3xl text-emerald-400 animate-pulse-soft block">🏁 TRẬN ĐẤU SẴN SÀNG</span>
+            <h3 className="text-base font-bold text-slate-200">
+              {!requireLineup ? 'Trận đấu đã sẵn sàng bắt đầu (không yêu cầu đội hình).' : 'Đội hình thi đấu đã sẵn sàng để bắt đầu trận đấu.'}
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Vui lòng kiểm tra lại sân đấu và hai đội bóng. Khi mọi thứ đã sẵn sàng, hãy nhấn nút bên dưới để bắt đầu tính điểm.
+            </p>
+            <button
+              onClick={handleStartMatch}
+              disabled={isSubmitting}
+              className="w-full btn btn-primary bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold border-none py-3 shadow-lg shadow-emerald-500/10 text-sm transition-all cursor-pointer"
+            >
+              🚀 BẮT ĐẦU TRẬN ĐẤU
+            </button>
+          </div>
+        )}
+
         {match.status === 'SEGMENT_BREAK' && activeSegment && (
           <div className="p-6 bg-amber-500/5 border border-amber-500/20 rounded-3xl text-center space-y-4 max-w-xl mx-auto backdrop-blur-md shadow-2xl">
             <span className="text-3xl text-amber-400 animate-bounce block">⏸️ ĐỔI SÂN & NGHỈ CHẶNG</span>
@@ -648,112 +692,120 @@ export default function RefereeScorerPage() {
         ) : (
         <>
         {/* Large Score panels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 items-stretch">
           
           {/* Team A (SKY BLUE ACCENT) */}
-          <div className="flex flex-col justify-between p-6 rounded-3xl border border-slate-800 bg-slate-900/40 relative overflow-hidden group">
+          <div className="flex flex-col justify-between p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-800 bg-slate-900/40 relative overflow-hidden group">
             {/* Ambient Background glow */}
             <div className="absolute -top-12 -left-12 w-48 h-48 bg-sky-500/5 rounded-full blur-3xl group-hover:bg-sky-500/10 transition-all duration-700" />
             
-            <div className="relative space-y-4">
-              <span className="text-[10px] tracking-widest text-sky-400 font-bold uppercase block">ĐỘI A</span>
-              <h2 className="text-2xl font-black text-slate-100">{match.teamA?.name || '—'}</h2>
+            <div className="relative space-y-2.5 sm:space-y-4">
+              <span className="text-[8px] sm:text-[10px] tracking-widest text-sky-400 font-bold uppercase block">ĐỘI A</span>
+              <h2 className="text-base sm:text-2xl font-black text-slate-100 truncate" title={match.teamA?.name || ''}>
+                {match.teamA?.name || '—'}
+              </h2>
               
               {/* Active lineup profile */}
-              <div className="py-2.5 px-3 bg-slate-950/50 rounded-xl border border-slate-900">
-                <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">VĐV Đang Ra Sân</span>
-                <div className="mt-1 space-y-1">
+              <div className="py-1.5 px-2 sm:py-2.5 sm:px-3 bg-slate-950/50 rounded-lg sm:rounded-xl border border-slate-900">
+                <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-slate-500 font-bold block">VĐV Ra Sân</span>
+                <div className="mt-1 space-y-0.5 sm:space-y-1">
                   {activePlayers.teamA.length > 0 ? (
                     activePlayers.teamA.map((p: any) => (
-                      <div key={p.id} className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                        <span>🎾 {p.playerProfile?.fullName}</span>
-                        <span className="text-[9px] px-1.5 py-0.2 bg-slate-850 rounded text-slate-400 font-mono">
+                      <div key={p.id} className="text-[10px] sm:text-xs font-semibold text-slate-350 flex items-center justify-between gap-1">
+                        <span className="truncate">🎾 {p.playerProfile?.fullName}</span>
+                        <span className="hidden xs:inline text-[8px] px-1 bg-slate-850 rounded text-slate-400 font-mono">
                           {p.playerProfile?.gender === 'MALE' ? 'Nam' : 'Nữ'}
                         </span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-xs text-slate-500 italic">Chưa khai báo đội hình chặng</div>
+                    <div className="text-[10px] sm:text-xs text-slate-500 italic">Chưa khai báo</div>
                   )}
                 </div>
               </div>
             </div>
 
             {/* Score digit */}
-            <div className="my-8 text-center relative select-none">
-              <div className="text-[120px] sm:text-[150px] font-black tracking-tighter leading-none text-sky-400 font-mono drop-shadow-[0_10px_35px_rgba(56,189,248,0.25)]">
+            <div className="my-4 sm:my-8 text-center relative select-none">
+              <div className="text-6xl xs:text-7xl sm:text-[120px] md:text-[150px] font-black tracking-tighter leading-none text-sky-400 font-mono drop-shadow-[0_10px_25px_rgba(56,189,248,0.25)]">
                 {scoreA}
               </div>
             </div>
 
             {/* Big Tap to score button */}
-            <button
-              onClick={() => handleScorePoint(match.teamAId)}
-              disabled={match.status !== 'RUNNING' || isSubmitting}
-              className="relative w-full py-5 bg-sky-500 text-slate-950 font-black rounded-2xl hover:bg-sky-400 active:scale-98 transition-all shadow-lg shadow-sky-500/10 text-sm tracking-wide disabled:opacity-30 disabled:pointer-events-none uppercase"
-            >
-              ➕ Ghi Điểm Đội A
-            </button>
-            <button
-              onClick={() => handleUndoTeamPoint(match.teamAId)}
-              disabled={match.status !== 'RUNNING' || isSubmitting || scoreA === 0}
-              className="w-full mt-2.5 py-3 bg-slate-800 text-sky-400 border border-sky-500/20 rounded-xl hover:bg-slate-750 active:scale-98 transition-all text-xs font-bold disabled:opacity-20 disabled:pointer-events-none uppercase"
-            >
-              ➖ Giảm Điểm Đội A
-            </button>
+            <div>
+              <button
+                onClick={() => handleScorePoint(match.teamAId)}
+                disabled={match.status !== 'RUNNING' || isSubmitting}
+                className="relative w-full py-3 sm:py-5 bg-sky-500 text-slate-950 font-black rounded-xl sm:rounded-2xl hover:bg-sky-400 active:scale-98 transition-all shadow-lg shadow-sky-500/10 text-xs sm:text-sm tracking-wide disabled:opacity-30 disabled:pointer-events-none uppercase flex items-center justify-center gap-1"
+              >
+                ➕ <span className="hidden sm:inline">Ghi Điểm Đội A</span><span className="sm:hidden">ĐIỂM A</span>
+              </button>
+              <button
+                onClick={() => handleUndoTeamPoint(match.teamAId)}
+                disabled={match.status !== 'RUNNING' || isSubmitting || scoreA === 0}
+                className="w-full mt-1.5 sm:mt-2.5 py-2 sm:py-3 bg-slate-800 text-sky-400 border border-sky-500/20 rounded-lg sm:rounded-xl hover:bg-slate-750 active:scale-98 transition-all text-[10px] sm:text-xs font-bold disabled:opacity-20 disabled:pointer-events-none uppercase flex items-center justify-center gap-1"
+              >
+                ➖ <span className="hidden sm:inline">Giảm Điểm Đội A</span><span className="sm:hidden">GIẢM A</span>
+              </button>
+            </div>
           </div>
 
           {/* Team B (ROSE/PINK ACCENT) */}
-          <div className="flex flex-col justify-between p-6 rounded-3xl border border-slate-800 bg-slate-900/40 relative overflow-hidden group">
+          <div className="flex flex-col justify-between p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-800 bg-slate-900/40 relative overflow-hidden group">
             {/* Ambient Background glow */}
             <div className="absolute -top-12 -right-12 w-48 h-48 bg-pink-500/5 rounded-full blur-3xl group-hover:bg-pink-500/10 transition-all duration-700" />
             
-            <div className="relative space-y-4">
-              <span className="text-[10px] tracking-widest text-pink-400 font-bold uppercase block">ĐỘI B</span>
-              <h2 className="text-2xl font-black text-slate-100">{match.teamB?.name || '—'}</h2>
+            <div className="relative space-y-2.5 sm:space-y-4">
+              <span className="text-[8px] sm:text-[10px] tracking-widest text-pink-400 font-bold uppercase block">ĐỘI B</span>
+              <h2 className="text-base sm:text-2xl font-black text-slate-100 truncate" title={match.teamB?.name || ''}>
+                {match.teamB?.name || '—'}
+              </h2>
               
               {/* Active lineup profile */}
-              <div className="py-2.5 px-3 bg-slate-950/50 rounded-xl border border-slate-900">
-                <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">VĐV Đang Ra Sân</span>
-                <div className="mt-1 space-y-1">
+              <div className="py-1.5 px-2 sm:py-2.5 sm:px-3 bg-slate-950/50 rounded-lg sm:rounded-xl border border-slate-900">
+                <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-slate-500 font-bold block">VĐV Ra Sân</span>
+                <div className="mt-1 space-y-0.5 sm:space-y-1">
                   {activePlayers.teamB.length > 0 ? (
                     activePlayers.teamB.map((p: any) => (
-                      <div key={p.id} className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                        <span>🎾 {p.playerProfile?.fullName}</span>
-                        <span className="text-[9px] px-1.5 py-0.2 bg-slate-850 rounded text-slate-400 font-mono">
+                      <div key={p.id} className="text-[10px] sm:text-xs font-semibold text-slate-350 flex items-center justify-between gap-1">
+                        <span className="truncate">🎾 {p.playerProfile?.fullName}</span>
+                        <span className="hidden xs:inline text-[8px] px-1 bg-slate-850 rounded text-slate-400 font-mono">
                           {p.playerProfile?.gender === 'MALE' ? 'Nam' : 'Nữ'}
                         </span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-xs text-slate-500 italic">Chưa khai báo đội hình chặng</div>
+                    <div className="text-[10px] sm:text-xs text-slate-500 italic">Chưa khai báo</div>
                   )}
                 </div>
               </div>
             </div>
 
             {/* Score digit */}
-            <div className="my-8 text-center relative select-none">
-              <div className="text-[120px] sm:text-[150px] font-black tracking-tighter leading-none text-pink-400 font-mono drop-shadow-[0_10px_35px_rgba(244,63,94,0.25)]">
+            <div className="my-4 sm:my-8 text-center relative select-none">
+              <div className="text-6xl xs:text-7xl sm:text-[120px] md:text-[150px] font-black tracking-tighter leading-none text-pink-400 font-mono drop-shadow-[0_10px_25px_rgba(244,63,94,0.25)]">
                 {scoreB}
               </div>
             </div>
 
             {/* Big Tap to score button */}
-            <button
-              onClick={() => handleScorePoint(match.teamBId)}
-              disabled={match.status !== 'RUNNING' || isSubmitting}
-              className="relative w-full py-5 bg-pink-500 text-slate-950 font-black rounded-2xl hover:bg-pink-400 active:scale-98 transition-all shadow-lg shadow-pink-500/10 text-sm tracking-wide disabled:opacity-30 disabled:pointer-events-none uppercase"
-            >
-              ➕ Ghi Điểm Đội B
-            </button>
-            <button
-              onClick={() => handleUndoTeamPoint(match.teamBId)}
-              disabled={match.status !== 'RUNNING' || isSubmitting || scoreB === 0}
-              className="w-full mt-2.5 py-3 bg-slate-800 text-pink-400 border border-pink-500/20 rounded-xl hover:bg-slate-750 active:scale-98 transition-all text-xs font-bold disabled:opacity-20 disabled:pointer-events-none uppercase"
-            >
-              ➖ Giảm Điểm Đội B
-            </button>
+            <div>
+              <button
+                onClick={() => handleScorePoint(match.teamBId)}
+                disabled={match.status !== 'RUNNING' || isSubmitting}
+                className="relative w-full py-3 sm:py-5 bg-pink-500 text-slate-950 font-black rounded-xl sm:rounded-2xl hover:bg-pink-400 active:scale-98 transition-all shadow-lg shadow-pink-500/10 text-xs sm:text-sm tracking-wide disabled:opacity-30 disabled:pointer-events-none uppercase flex items-center justify-center gap-1"
+              >
+                ➕ <span className="hidden sm:inline">Ghi Điểm Đội B</span><span className="sm:hidden">ĐIỂM B</span>
+              </button>
+              <button
+                onClick={() => handleUndoTeamPoint(match.teamBId)}
+                disabled={match.status !== 'RUNNING' || isSubmitting || scoreB === 0}
+                className="w-full mt-1.5 sm:mt-2.5 py-2 sm:py-3 bg-slate-800 text-pink-400 border border-pink-500/20 rounded-lg sm:rounded-xl hover:bg-slate-750 active:scale-98 transition-all text-[10px] sm:text-xs font-bold disabled:opacity-20 disabled:pointer-events-none uppercase flex items-center justify-center gap-1"
+              >
+                ➖ <span className="hidden sm:inline">Giảm Điểm Đội B</span><span className="sm:hidden">GIẢM B</span>
+              </button>
+            </div>
           </div>
 
         </div>

@@ -23,6 +23,9 @@ interface ValidationPanelProps {
   tournamentId: string;
   name: string;
   matchFormat: MatchFormat;
+  competitionFormat: string;
+  groupCount: number;
+  advancePerGroup: number;
   teamSize: number;
   maleCount: number;
   femaleCount: number;
@@ -60,6 +63,9 @@ export function ValidationPanel({
   tournamentId,
   name,
   matchFormat,
+  competitionFormat,
+  groupCount,
+  advancePerGroup,
   teamSize,
   maleCount,
   femaleCount,
@@ -248,9 +254,63 @@ export function ValidationPanel({
       });
     }
 
+    // V17: Knockout bracket seeding check
+    if (competitionFormat === 'GROUP_STAGE_KNOCKOUT' && knockoutBracketSize !== null) {
+      const maxQualified = groupCount * advancePerGroup;
+      
+      // Calculate available group seeds that MUST be placed
+      const availableSources: string[] = [];
+      const alphabet = 'ABCDEFGH';
+      for (let g = 0; g < groupCount; g++) {
+        const groupCode = alphabet[g] || String.fromCharCode(65 + g);
+        for (let r = 1; r <= advancePerGroup; r++) {
+          availableSources.push(`${groupCode}${r}`);
+        }
+      }
+
+      // Check which available sources are placed in the slots
+      const placedSources = knockoutSeedSlots
+        .map(slot => slot.sourceKey)
+        .filter((key): key is string => key !== null && key !== undefined && key !== '__BYE__' && availableSources.includes(key));
+
+      const missingSources = availableSources.filter(src => !placedSources.includes(src));
+      
+      const uniquePlaced = new Set(placedSources);
+      const hasDuplicates = placedSources.length !== uniquePlaced.size;
+
+      const isSeedingComplete = missingSources.length === 0 && !hasDuplicates;
+      const filledCount = placedSources.length;
+
+      items.push({
+        id: 'V17',
+        label: `Cấu hình hạt giống Playoffs đầy đủ (${filledCount}/${maxQualified} hạt giống)`,
+        status: isSeedingComplete ? 'passed' : 'failed',
+        reason: isSeedingComplete 
+          ? undefined 
+          : hasDuplicates 
+            ? 'Có hạt giống bị xếp trùng lặp nhiều lần.' 
+            : `Còn thiếu hạt giống chưa được xếp vào sơ đồ: ${missingSources.join(', ')}.`,
+      });
+    }
+
+    // V18: Bracket size compared to qualified teams
+    if (competitionFormat === 'GROUP_STAGE_KNOCKOUT' && knockoutBracketSize !== null) {
+      const maxQualified = groupCount * advancePerGroup;
+      const isSizeOk = knockoutBracketSize >= maxQualified;
+      items.push({
+        id: 'V18',
+        label: `Quy mô sơ đồ Playoffs (${knockoutBracketSize} đội) không nhỏ hơn số đội đi tiếp (${maxQualified} đội)`,
+        status: isSizeOk ? 'passed' : 'failed',
+        reason: isSizeOk ? undefined : `Quy mô sơ đồ (${knockoutBracketSize} đội) quá nhỏ để xếp hết ${maxQualified} đội đi tiếp.`,
+      });
+    }
+
     return items;
   }, [
     matchFormat,
+    competitionFormat,
+    groupCount,
+    advancePerGroup,
     teamSize,
     maleCount,
     femaleCount,
@@ -266,6 +326,8 @@ export function ValidationPanel({
     lastSetPointScore,
     noDeuce,
     deuceMaxScore,
+    knockoutBracketSize,
+    knockoutSeedSlots,
   ]);
 
   // Determine if client validation passed

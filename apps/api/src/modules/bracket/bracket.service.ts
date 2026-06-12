@@ -6,7 +6,7 @@ import { BracketGeneratorService, BracketNode, ManualSeedBracketOptions } from '
 import { StageType, MatchStatus, SegmentStatus } from '@golab/contracts';
 
 export interface GenerateBracketOptions {
-  bracketSize?: 4 | 8;
+  bracketSize?: 2 | 4 | 8 | 16;
   slots?: { slotNo: number; teamId: string | null }[];
 }
 
@@ -365,7 +365,7 @@ export class BracketService {
 
     if (useManualSeeds) {
       manualOptions = {
-        bracketSize: options!.bracketSize! as 4 | 8 | 16,
+        bracketSize: options!.bracketSize! as 2 | 4 | 8 | 16,
         slots: options!.slots!,
         thirdPlaceMatchEnabled: ruleset.thirdPlaceMatchEnabled ?? false,
       };
@@ -419,7 +419,7 @@ export class BracketService {
       }
 
       manualOptions = {
-        bracketSize: ruleset.knockoutBracketSize as 4 | 8 | 16,
+        bracketSize: ruleset.knockoutBracketSize as 2 | 4 | 8 | 16,
         slots,
         thirdPlaceMatchEnabled: ruleset.thirdPlaceMatchEnabled ?? false,
       };

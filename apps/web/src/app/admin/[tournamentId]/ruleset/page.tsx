@@ -52,6 +52,211 @@ interface OverlapRuleUI {
   gender: 'MALE' | 'FEMALE';
 }
 
+const ALPHABET = 'ABCDEFGH';
+
+function getQualifiedTeamsList(groupCount: number, advancePerGroup: number, preferHighGroupBye: boolean) {
+  const teams: string[] = [];
+  for (let r = 1; r <= advancePerGroup; r++) {
+    const groupIndices: number[] = [];
+    if (preferHighGroupBye) {
+      for (let g = groupCount - 1; g >= 0; g--) {
+        groupIndices.push(g);
+      }
+    } else {
+      for (let g = 0; g < groupCount; g++) {
+        groupIndices.push(g);
+      }
+    }
+
+    for (const gIdx of groupIndices) {
+      const groupCode = ALPHABET[gIdx] || String.fromCharCode(65 + gIdx);
+      teams.push(`${groupCode}${r}`);
+    }
+  }
+  return teams;
+}
+
+function getFirstRoundPairs(size: number): [number, number][] {
+  if (size === 2) return [[1, 2]];
+  if (size === 4) return [[1, 4], [2, 3]];
+  if (size === 8) return [[1, 8], [4, 5], [2, 7], [3, 6]];
+  if (size === 16) return [[1, 16], [4, 13], [5, 12], [8, 9], [2, 15], [7, 10], [3, 14], [6, 11]];
+  return [];
+}
+
+function calculateAutomaticSeeds(
+  method: 'crossover' | 'crossover_reverse' | 'sequential' | 'manual',
+  groupCount: number,
+  advancePerGroup: number,
+  bracketSize: number
+): { slotNo: number; sourceKey: string | null }[] {
+  const slots = Array.from({ length: bracketSize }, (_, i) => ({ slotNo: i + 1, sourceKey: null as string | null }));
+  const totalQualified = groupCount * advancePerGroup;
+  
+  if (bracketSize < totalQualified) {
+    return slots;
+  }
+
+  if (method === 'manual') {
+    return slots;
+  }
+
+  const firstRoundPairs = getFirstRoundPairs(bracketSize);
+
+  // 1. Linear / sequential seeding
+  if (method === 'sequential') {
+    const seeds: string[] = [];
+    for (let g = 0; g < groupCount; g++) {
+      const groupCode = ALPHABET[g] || String.fromCharCode(65 + g);
+      for (let r = 1; r <= advancePerGroup; r++) {
+        seeds.push(`${groupCode}${r}`);
+      }
+    }
+    for (let i = 0; i < seeds.length; i++) {
+      slots[i].sourceKey = seeds[i];
+    }
+    return slots;
+  }
+
+  // 2. Crossover Seeding Algorithm
+  if (method === 'crossover' || method === 'crossover_reverse') {
+    if (groupCount === 1) {
+      for (let i = 0; i < advancePerGroup; i++) {
+        slots[i].sourceKey = `T${i + 1}`;
+      }
+      return slots;
+    }
+
+    const preferHighGroupBye = method === 'crossover_reverse';
+    const priorityTeams = getQualifiedTeamsList(groupCount, advancePerGroup, preferHighGroupBye);
+    const byeCount = bracketSize - totalQualified;
+    
+    const byeSlots = new Set<number>();
+    for (let i = 0; i < byeCount; i++) {
+      const pair = firstRoundPairs[i];
+      if (pair) {
+        byeSlots.add(pair[1]);
+      }
+    }
+
+    const remainingTeams = [...priorityTeams];
+    const pairsAssigned: [string, string][] = [];
+
+    for (const [slotA, slotB] of firstRoundPairs) {
+      if (byeSlots.has(slotB)) {
+        const teamA = remainingTeams.length > 0 ? remainingTeams.shift()! : '__BYE__';
+        pairsAssigned.push([teamA, '__BYE__']);
+      } else {
+        if (remainingTeams.length === 0) continue;
+
+        const teamA = remainingTeams.shift()!;
+        const groupA = teamA.charAt(0);
+        const rankA = parseInt(teamA.match(/\d+/)![0], 10);
+        let opponentIndex = -1;
+        
+        // Step 1: Find a team with different group AND different rank
+        for (let i = 0; i < remainingTeams.length; i++) {
+          const cand = remainingTeams[i];
+          const groupCand = cand.charAt(0);
+          const rankCand = parseInt(cand.match(/\d+/)![0], 10);
+          if (groupCand !== groupA && rankCand !== rankA) {
+            opponentIndex = i;
+            break;
+          }
+        }
+
+        // Step 2: Fallback to different group (any rank)
+        if (opponentIndex === -1) {
+          for (let i = 0; i < remainingTeams.length; i++) {
+            const cand = remainingTeams[i];
+            const groupCand = cand.charAt(0);
+            if (groupCand !== groupA) {
+              opponentIndex = i;
+              break;
+            }
+          }
+        }
+
+        // Step 3: Absolute fallback
+        if (opponentIndex === -1) {
+          opponentIndex = 0;
+        }
+
+        if (remainingTeams.length > 0) {
+          const teamB = remainingTeams.splice(opponentIndex, 1)[0];
+          pairsAssigned.push([teamA, teamB]);
+        } else {
+          pairsAssigned.push([teamA, '__BYE__']);
+        }
+      }
+    }
+
+    // Sort assigned pairs so that pairs containing higher priority seeds come first
+    const getTeamPriorityIndex = (team: string) => {
+      if (team === '__BYE__') return 999;
+      return priorityTeams.indexOf(team);
+    };
+
+    pairsAssigned.sort((pA, pB) => {
+      const minA = Math.min(getTeamPriorityIndex(pA[0]), getTeamPriorityIndex(pA[1]));
+      const minB = Math.min(getTeamPriorityIndex(pB[0]), getTeamPriorityIndex(pB[1]));
+      return minA - minB;
+    });
+
+    // Place them in firstRoundPairs
+    for (let i = 0; i < firstRoundPairs.length; i++) {
+      const pair = firstRoundPairs[i];
+      if (!pair) continue;
+      const [slotA, slotB] = pair;
+      const assigned = pairsAssigned[i] || ['__BYE__', '__BYE__'];
+
+      const tA = assigned[0];
+      const tB = assigned[1];
+      
+      const idxA = getTeamPriorityIndex(tA);
+      const idxB = getTeamPriorityIndex(tB);
+
+      if (idxA <= idxB) {
+        slots[slotA - 1].sourceKey = tA === '__BYE__' ? null : tA;
+        slots[slotB - 1].sourceKey = tB === '__BYE__' ? null : tB;
+      } else {
+        slots[slotA - 1].sourceKey = tB === '__BYE__' ? null : tB;
+        slots[slotB - 1].sourceKey = tA === '__BYE__' ? null : tA;
+      }
+    }
+
+    return slots;
+  }
+
+  return slots;
+}
+
+function detectSeedingMethod(
+  slots: { slotNo: number; sourceKey: string | null }[],
+  groupCount: number,
+  advancePerGroup: number,
+  bracketSize: number | null
+): 'crossover' | 'crossover_reverse' | 'sequential' | 'manual' {
+  if (!bracketSize || !slots || slots.length === 0) return 'manual';
+  
+  const crossoverSlots = calculateAutomaticSeeds('crossover', groupCount, advancePerGroup, bracketSize);
+  const crossoverReverseSlots = calculateAutomaticSeeds('crossover_reverse', groupCount, advancePerGroup, bracketSize);
+  const sequentialSlots = calculateAutomaticSeeds('sequential', groupCount, advancePerGroup, bracketSize);
+
+  const isMatch = (a: any[], b: any[]) => {
+    if (a.length !== b.length) return false;
+    return a.every((slot, idx) => {
+      const bSlot = b[idx];
+      return slot.slotNo === bSlot.slotNo && slot.sourceKey === bSlot.sourceKey;
+    });
+  };
+
+  if (isMatch(slots, crossoverSlots)) return 'crossover';
+  if (isMatch(slots, crossoverReverseSlots)) return 'crossover_reverse';
+  if (isMatch(slots, sequentialSlots)) return 'sequential';
+  return 'manual';
+}
+
 export default function RulesetSettingsPage() {
   const { tournament, loading: tLoading, reload } = useActiveTournament();
   const [dependencyStats, setDependencyStats] = useState<DependencyStats>(emptyDependencyStats);
@@ -76,6 +281,8 @@ export default function RulesetSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [groupCount, setGroupCount] = useState(2);
   const [advancePerGroup, setAdvancePerGroup] = useState(1);
+  const [groupCountInput, setGroupCountInput] = useState('2');
+  const [advancePerGroupInput, setAdvancePerGroupInput] = useState('1');
 
   const [winScore, setWinScore] = useState(24);
   const [gamePointScore, setGamePointScore] = useState(11);
@@ -94,6 +301,58 @@ export default function RulesetSettingsPage() {
   // Knockout Bracket Config State
   const [knockoutBracketSize, setKnockoutBracketSize] = useState<number | null>(null);
   const [knockoutSeedSlots, setKnockoutSeedSlots] = useState<{ slotNo: number; sourceKey: string | null }[]>([]);
+  const [seedingMethod, setSeedingMethod] = useState<'crossover' | 'crossover_reverse' | 'sequential' | 'manual'>('crossover');
+
+function transitionSeedSlots(
+  prevSlots: { slotNo: number; sourceKey: string | null }[],
+  oldSize: number,
+  newSize: number
+) {
+  if (oldSize === newSize) return prevSlots;
+
+  if (newSize > oldSize) {
+    let currentSlots = prevSlots.map((s) => ({ ...s }));
+    let currentSize = oldSize;
+    while (currentSize < newSize) {
+      const nextSize = currentSize * 2;
+      const tempSlots = Array.from({ length: nextSize }, (_, i) => ({
+        slotNo: i + 1,
+        sourceKey: null as string | null,
+      }));
+      for (const slot of currentSlots) {
+        if (slot.sourceKey) {
+          const x = slot.slotNo;
+          if (x <= currentSize / 2) {
+            tempSlots[x - 1].sourceKey = slot.sourceKey;
+          } else {
+            tempSlots[currentSize + x - 1].sourceKey = slot.sourceKey;
+          }
+        }
+      }
+      currentSlots = tempSlots;
+      currentSize = nextSize;
+    }
+    return currentSlots;
+  } else {
+    let currentSlots = prevSlots.map((s) => ({ ...s }));
+    let currentSize = oldSize;
+    while (currentSize > newSize) {
+      const nextSize = currentSize / 2;
+      const tempSlots = Array.from({ length: nextSize }, (_, i) => ({
+        slotNo: i + 1,
+        sourceKey: null as string | null,
+      }));
+      for (let x = 1; x <= nextSize; x++) {
+        const keyA = currentSlots.find((s) => s.slotNo === x)?.sourceKey;
+        const keyB = currentSlots.find((s) => s.slotNo === nextSize + x)?.sourceKey;
+        tempSlots[x - 1].sourceKey = keyA || keyB || null;
+      }
+      currentSlots = tempSlots;
+      currentSize = nextSize;
+    }
+    return currentSlots;
+  }
+}
 
   const handleBracketSizeChange = (size: number | null) => {
     setKnockoutBracketSize(size);
@@ -103,14 +362,11 @@ export default function RulesetSettingsPage() {
     }
 
     setKnockoutSeedSlots((prev) => {
-      const nextSlots = [...prev];
-      if (nextSlots.length > size) {
-        return nextSlots.slice(0, size);
+      const oldSize = prev.length;
+      if (oldSize === 0) {
+        return Array.from({ length: size }, (_, i) => ({ slotNo: i + 1, sourceKey: null }));
       }
-      while (nextSlots.length < size) {
-        nextSlots.push({ slotNo: nextSlots.length + 1, sourceKey: null });
-      }
-      return nextSlots.map((slot, idx) => ({ ...slot, slotNo: idx + 1 }));
+      return transitionSeedSlots(prev, oldSize, size);
     });
   };
 
@@ -250,8 +506,12 @@ export default function RulesetSettingsPage() {
         setThirdPlaceMatchEnabled(data.thirdPlaceMatchEnabled ?? false);
         setQuickScoreEntryEnabled(data.quickScoreEntryEnabled ?? false);
         setRequireLineup(data.requireLineup ?? true);
-        setKnockoutBracketSize(data.knockoutBracketSize ?? null);
-        setKnockoutSeedSlots(data.knockoutSeedSlots || []);
+        const bracketSize = data.knockoutBracketSize ?? null;
+        const slots = data.knockoutSeedSlots || [];
+        setKnockoutBracketSize(bracketSize);
+        setKnockoutSeedSlots(slots);
+        const method = detectSeedingMethod(slots, data.groupCount ?? 2, data.advancePerGroup ?? 1, bracketSize);
+        setSeedingMethod(method);
       }
     } catch (error) {
       console.error('Failed to load ruleset:', error);
@@ -267,6 +527,38 @@ export default function RulesetSettingsPage() {
   useEffect(() => {
     loadRuleset();
   }, [loadRuleset]);
+
+  useEffect(() => {
+    setGroupCountInput(groupCount.toString());
+  }, [groupCount]);
+
+  useEffect(() => {
+    setAdvancePerGroupInput(advancePerGroup.toString());
+  }, [advancePerGroup]);
+
+  // Synchronize knockoutBracketSize with maxQualified
+  useEffect(() => {
+    if (competitionFormat === 'GROUP_STAGE_KNOCKOUT') {
+      const maxQualified = groupCount * advancePerGroup;
+      const expectedSize = maxQualified <= 2 ? 2 : maxQualified <= 4 ? 4 : maxQualified <= 8 ? 8 : 16;
+      if (knockoutBracketSize !== expectedSize) {
+        handleBracketSizeChange(expectedSize);
+      }
+    } else {
+      if (knockoutBracketSize !== null) {
+        setKnockoutBracketSize(null);
+        setKnockoutSeedSlots([]);
+      }
+    }
+  }, [groupCount, advancePerGroup, competitionFormat, knockoutBracketSize]);
+
+  // Automatically calculate seed slots when seedingMethod or related settings change
+  useEffect(() => {
+    if (competitionFormat === 'GROUP_STAGE_KNOCKOUT' && knockoutBracketSize && seedingMethod !== 'manual') {
+      const newSlots = calculateAutomaticSeeds(seedingMethod, groupCount, advancePerGroup, knockoutBracketSize);
+      setKnockoutSeedSlots(newSlots);
+    }
+  }, [seedingMethod, groupCount, advancePerGroup, knockoutBracketSize, competitionFormat]);
 
   if (tLoading || statsLoading || rulesetLoading || !tournament) {
     return <PageLoading />;
@@ -467,7 +759,7 @@ export default function RulesetSettingsPage() {
 
         {!editAccess.allowed && (
           editAccess.locked ? (
-            <div className="rounded-xl border border-rose-500/25 bg-rose-500/8 px-4 py-3 text-sm text-rose-350 flex items-start justify-between gap-4">
+            <div className="rounded-xl border border-rose-500/25 bg-rose-500/8 px-4 py-3 text-sm text-rose-350 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div className="flex items-start gap-2.5">
                 <Lock className="w-4 h-4 text-rose-500 mt-0.5 flex-shrink-0" />
                 <div>
@@ -482,7 +774,7 @@ export default function RulesetSettingsPage() {
                 type="button"
                 onClick={() => setResetModalOpen(true)}
                 disabled={resetLoading}
-                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-550/10 border border-rose-500/25 text-rose-400 hover:bg-rose-550/20 transition-all cursor-pointer"
+                className="w-full sm:w-auto flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-550/10 border border-rose-500/25 text-rose-400 hover:bg-rose-550/20 transition-all cursor-pointer text-center"
               >
                 Mở khóa / Đặt lại
               </button>
@@ -498,7 +790,7 @@ export default function RulesetSettingsPage() {
         )}
 
         <div className="card p-6 space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
             <div>
               <h3 className="font-bold text-lg text-amber-500">
                 {isEditing ? 'Chỉnh sửa Luật thi đấu' : (name || 'Thể thức GOLAB Standard')}
@@ -513,7 +805,7 @@ export default function RulesetSettingsPage() {
                   setIsEditing(!isEditing);
                   if (!isEditing) void loadRuleset();
                 }}
-                className={`btn btn-sm flex items-center gap-1.5 ${
+                className={`btn btn-sm flex items-center justify-center gap-1.5 w-full sm:w-auto ${
                   isEditing
                     ? 'bg-slate-800 hover:bg-slate-700 text-slate-350 border border-slate-700'
                     : 'bg-amber-550/10 text-amber-400 hover:bg-amber-550/20 border border-amber-500/30'
@@ -577,8 +869,13 @@ export default function RulesetSettingsPage() {
                     type="number"
                     min="1"
                     max="8"
-                    value={groupCount}
-                    onChange={(e) => setGroupCount(Math.max(1, Math.min(8, parseInt(e.target.value, 10) || 1)))}
+                    value={groupCountInput}
+                    onChange={(e) => setGroupCountInput(e.target.value)}
+                    onBlur={() => {
+                      const val = Math.max(1, Math.min(8, parseInt(groupCountInput, 10) || 2));
+                      setGroupCount(val);
+                      setGroupCountInput(val.toString());
+                    }}
                     className="w-full premium-input max-w-[200px]"
                     disabled={saving}
                   />
@@ -596,8 +893,13 @@ export default function RulesetSettingsPage() {
                     type="number"
                     min="1"
                     max="8"
-                    value={advancePerGroup}
-                    onChange={(e) => setAdvancePerGroup(Math.max(1, Math.min(8, parseInt(e.target.value, 10) || 1)))}
+                    value={advancePerGroupInput}
+                    onChange={(e) => setAdvancePerGroupInput(e.target.value)}
+                    onBlur={() => {
+                      const val = Math.max(1, Math.min(8, parseInt(advancePerGroupInput, 10) || 1));
+                      setAdvancePerGroup(val);
+                      setAdvancePerGroupInput(val.toString());
+                    }}
                     className="w-full premium-input max-w-[200px]"
                     disabled={saving}
                   />
@@ -608,82 +910,51 @@ export default function RulesetSettingsPage() {
               )}
 
               {/* Bước 2.7: Cấu hình vòng Knockout (Playoffs) */}
-              {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && (
-                <div className="space-y-4 border-t border-slate-800 pt-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400">Cấu hình sơ đồ Knockout (Playoffs)</label>
-                      <span className="text-[10px] text-slate-500 mt-0.5 block">
-                        Chọn quy mô sơ đồ đấu loại trực tiếp và gán nguồn hạt giống từ vòng bảng.
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 bg-slate-950/30 p-4 rounded-xl border border-slate-800/80">
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-slate-400">Quy mô sơ đồ (Bracket Size)</label>
-                      <select
-                        value={knockoutBracketSize === null ? '' : knockoutBracketSize}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          handleBracketSizeChange(val === '' ? null : parseInt(val, 10));
-                        }}
-                        className="w-full premium-input max-w-[200px]"
-                        disabled={saving}
-                      >
-                        <option value="">Tự động (Automatic)</option>
-                        <option value="4">4 Đội (Bán Kết → Chung Kết)</option>
-                        <option value="8">8 Đội (Tứ Kết → Chung Kết)</option>
-                        <option value="16">16 Đội (Vòng 1/8 → Chung Kết)</option>
-                      </select>
-                    </div>
-
-                    {knockoutBracketSize !== null && (
-                      <div className="space-y-3 pt-2">
-                        <label className="block text-xs font-semibold text-slate-300">Phân bổ nguồn hạt giống</label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {knockoutSeedSlots.map((slot) => {
-                            const availableSources = getAvailableSourceKeys();
-                            return (
-                              <div key={slot.slotNo} className="flex items-center justify-between bg-slate-900/50 p-2.5 rounded-lg border border-slate-800/60">
-                                <span className="text-xs font-medium text-slate-400">Slot {slot.slotNo}</span>
-                                <select
-                                  value={slot.sourceKey || 'Miễn đấu'}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    const sourceKey = val === 'Miễn đấu' ? null : val;
-                                    setKnockoutSeedSlots((prev) =>
-                                      prev.map((s) =>
-                                        s.slotNo === slot.slotNo ? { ...s, sourceKey } : s
-                                      )
-                                    );
-                                  }}
-                                  className="premium-input text-xs py-1 px-2 max-w-[150px]"
-                                  disabled={saving}
-                                >
-                                  <option value="Miễn đấu">Miễn đấu (Bye)</option>
-                                  {availableSources.map((key) => (
-                                    <option key={key} value={key}>
-                                      {key} (Hạng {key.slice(1)} Bảng {key[0]})
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            );
-                          })}
-                        </div>
+              {competitionFormat === 'GROUP_STAGE_KNOCKOUT' && (() => {
+                const maxQualified = groupCount * advancePerGroup;
+                return (
+                  <div className="space-y-4 border-t border-slate-800 pt-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400">Cấu hình sơ đồ Knockout (Playoffs)</label>
+                        <span className="text-[10px] text-slate-500 mt-0.5 block">
+                          Sơ đồ được tự động sinh dựa trên số đội đi tiếp từ vòng bảng.
+                        </span>
                       </div>
-                    )}
-                  </div>
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                        <span className="text-xs font-semibold text-slate-400 whitespace-nowrap self-start sm:self-auto">Phương thức xếp hạt:</span>
+                        <select
+                          value={seedingMethod}
+                          onChange={(e) => setSeedingMethod(e.target.value as any)}
+                          className="premium-input text-xs py-1.5 px-2 pr-8 w-full sm:w-auto sm:max-w-[240px]"
+                          disabled={saving}
+                        >
+                          <option value="crossover">Tự động chéo bảng (Mặc định)</option>
+                          <option value="crossover_reverse">Tự động chéo bảng (Ngược C-B-A)</option>
+                          <option value="sequential">Tự động thẳng hàng (Linear)</option>
+                          <option value="manual">Tự xếp thủ công (Kéo thả)</option>
+                        </select>
+                      </div>
+                    </div>
 
-                  <BracketPreview
-                    knockoutBracketSize={knockoutBracketSize}
-                    knockoutSeedSlots={knockoutSeedSlots}
-                    groupCount={groupCount}
-                    advancePerGroup={advancePerGroup}
-                  />
-                </div>
-              )}
+                    <div className="space-y-3 bg-slate-950/30 p-4 rounded-xl border border-slate-800/80">
+
+                      {/* Interactive BracketPreview with DnD */}
+                      <BracketPreview
+                        knockoutBracketSize={knockoutBracketSize}
+                        knockoutSeedSlots={knockoutSeedSlots}
+                        groupCount={groupCount}
+                        advancePerGroup={advancePerGroup}
+                        isEditing={true}
+                        onSeedSlotsChange={setKnockoutSeedSlots}
+                        onBracketSizeChange={handleBracketSizeChange}
+                        seedingMethod={seedingMethod}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Bước 3: Thể thức tính điểm trận đấu */}
               {/* relay chỉ hiển thị khi TEAM_EVENT */}
@@ -877,6 +1148,9 @@ export default function RulesetSettingsPage() {
                 requireLineup={requireLineup}
                 knockoutBracketSize={knockoutBracketSize}
                 knockoutSeedSlots={knockoutSeedSlots}
+                competitionFormat={competitionFormat}
+                groupCount={groupCount}
+                advancePerGroup={advancePerGroup}
                 onValidationChange={setIsValid}
               />
 
@@ -926,6 +1200,7 @@ export default function RulesetSettingsPage() {
               requireLineup={requireLineup}
               knockoutBracketSize={knockoutBracketSize}
               knockoutSeedSlots={knockoutSeedSlots}
+              seedingMethod={seedingMethod}
             />
           )}
         </div>

@@ -87,8 +87,8 @@ export class Match extends Entity<string> {
    */
   public canTransitionTo(target: MatchProps['status']): boolean {
     const transitions: Record<MatchProps['status'], MatchProps['status'][]> = {
-      SCHEDULED: ['LINEUP_PENDING', 'CANCELLED'],
-      LINEUP_PENDING: ['LINEUP_READY', 'SCHEDULED', 'CANCELLED'],
+      SCHEDULED: ['LINEUP_PENDING', 'READY', 'CANCELLED'],
+      LINEUP_PENDING: ['LINEUP_READY', 'READY', 'SCHEDULED', 'CANCELLED'],
       LINEUP_READY: ['READY', 'LINEUP_PENDING', 'CANCELLED'],
       READY: ['RUNNING', 'LINEUP_READY', 'CANCELLED'],
       RUNNING: ['SEGMENT_BREAK', 'COMPLETED', 'CANCELLED'],
