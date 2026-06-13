@@ -259,13 +259,55 @@ export default function PlayersPage() {
   const males = players.filter(p => p.gender?.toUpperCase() === 'MALE').length;
   const females = players.filter(p => p.gender?.toUpperCase() === 'FEMALE').length;
 
+  // Tính số lượng yêu cầu tối thiểu động từ ruleset
+  const ruleset = tournament?.ruleset;
+  const competitionFormat = (ruleset as any)?.competitionFormat ?? 'GROUP_STAGE_KNOCKOUT';
+  const groupCount: number = (ruleset as any)?.groupCount ?? 2;
+  const teamCompositionRule = (ruleset as any)?.teamCompositionRule;
+  const ruleTeamSize: number = teamCompositionRule?.teamSize ?? 0;
+  const ruleMaleCount: number = teamCompositionRule?.maleCount ?? 0;
+  const ruleFemaleCount: number = teamCompositionRule?.femaleCount ?? 0;
+  const hasStrictGender = ruleMaleCount > 0 || ruleFemaleCount > 0;
+
+  const minTeams = competitionFormat === 'GROUP_STAGE_KNOCKOUT' ? groupCount * 2 : 2;
+  const minPlayers = ruleTeamSize > 0 ? minTeams * ruleTeamSize : null;
+  const minMales = hasStrictGender ? minTeams * ruleMaleCount : null;
+  const minFemales = hasStrictGender ? minTeams * ruleFemaleCount : null;
+
+  const requiredText = minPlayers !== null
+    ? `Giải yêu cầu tối thiểu ${minPlayers} VĐV${
+        minMales !== null ? ` (${minMales} Nam + ${minFemales} Nữ)` : ''
+      } cho ${minTeams} đội / ${groupCount} bảng.`
+    : 'Chưa cấu hình ruleset — chưa xác định được số VĐV yêu cầu.';
+
   return (
     <div className="premium-container space-y-6">
       <PageHeader
         title="Quản lý Vận Động Viên"
-        description={`Tổng cộng: ${players.length} VĐV (${males} Nam + ${females} Nữ) — Quy mô giải yêu cầu tối thiểu 40 VĐV (24 Nam + 16 Nữ).`}
+        description={`Tổng cộng: ${players.length} VĐV (${males} Nam + ${females} Nữ)`}
         icon={Users}
       />
+
+      {/* Dynamic requirement indicator */}
+      <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border px-4 py-3 text-xs ${
+        minPlayers !== null && players.length >= minPlayers && (minMales === null || (males >= minMales && females >= (minFemales ?? 0)))
+          ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-400'
+          : 'border-amber-500/20 bg-amber-500/5 text-amber-400'
+      }`}>
+        <span className="font-semibold">
+          {minPlayers !== null && players.length >= minPlayers && (minMales === null || (males >= minMales && females >= (minFemales ?? 0)))
+            ? '✅'
+            : '💡'} {requiredText}
+        </span>
+        {minPlayers !== null && (
+          <span className="text-slate-400">
+            Hiện có: <strong className="text-slate-200">{players.length} VĐV</strong>
+            {hasStrictGender && (
+              <> ({<strong className={males >= (minMales ?? 0) ? 'text-sky-300' : 'text-rose-400'}>{males} Nam</strong>} + <strong className={females >= (minFemales ?? 0) ? 'text-rose-300' : 'text-rose-400'}>{females} Nữ</strong>)</>
+            )}
+          </span>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Player List */}
