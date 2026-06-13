@@ -1209,6 +1209,7 @@ export default function RefereeScorerPage() {
               </button>
             </div>
           </div>
+        </div>
         </Portal>
       )}
     </div>
