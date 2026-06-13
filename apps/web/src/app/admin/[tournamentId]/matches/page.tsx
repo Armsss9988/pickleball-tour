@@ -8,6 +8,7 @@ import { io } from 'socket.io-client';
 import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/components/toast';
 import { ConfirmModal } from '@/components/confirm-modal';
+import { Portal } from '@/components/portal';
 import { PageLoading } from '@/components/loading-skeleton';
 import {
   Trophy,
@@ -1815,140 +1816,144 @@ export default function MatchesPage() {
 
       {/* Generate group schedule modal (custom - has form fields) */}
       {generateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setGenerateModalOpen(false)} />
-          <div className="relative bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-in">
-            <button
-              onClick={() => setGenerateModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="w-12 h-12 rounded-xl bg-amber-500/15 flex items-center justify-center mb-4">
-              <AlertTriangle className="w-6 h-6 text-amber-400" />
-            </div>
-
-            <h3 className="text-lg font-semibold text-slate-100 mb-2">Sinh lịch thi đấu vòng bảng?</h3>
-            <p className="text-sm text-slate-400 leading-relaxed mb-4">
-              Thao tác này sẽ tạo lại toàn bộ lịch vòng bảng hiện tại. Lịch cũ nếu có sẽ bị ghi đè.
-            </p>
-
-            <div className="space-y-3 mb-6">
-              {requireScheduleConfig && (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-400 block">Thời gian bắt đầu</label>
-                  <input
-                    type="datetime-local"
-                    value={scheduleForm.startTime}
-                    onChange={(e) => setScheduleForm((f) => ({ ...f, startTime: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-amber-500/50 [color-scheme:dark]"
-                  />
-                </div>
-              )}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-400 block">Thời lượng mỗi trận (phút)</label>
-                <input
-                  type="number"
-                  min="10"
-                  max="180"
-                  value={scheduleForm.durationMinutes}
-                  onChange={(e) => setScheduleForm((f) => ({ ...f, durationMinutes: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-amber-500/50"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3">
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setGenerateModalOpen(false)} />
+            <div className="relative bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-in">
               <button
                 onClick={() => setGenerateModalOpen(false)}
-                className="btn btn-ghost btn-sm"
-                disabled={actionLoading}
+                className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 transition-colors"
               >
-                Hủy
+                <X className="w-5 h-5" />
               </button>
-              <button
-                onClick={handleGenerateGroupSchedule}
-                className="btn btn-primary btn-sm"
-                disabled={actionLoading}
-              >
-                {actionLoading ? (
-                  <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-                ) : 'Sinh lịch'}
-              </button>
+
+              <div className="w-12 h-12 rounded-xl bg-amber-500/15 flex items-center justify-center mb-4">
+                <AlertTriangle className="w-6 h-6 text-amber-400" />
+              </div>
+
+              <h3 className="text-lg font-semibold text-slate-100 mb-2">Sinh lịch thi đấu vòng bảng?</h3>
+              <p className="text-sm text-slate-400 leading-relaxed mb-4">
+                Thao tác này sẽ tạo lại toàn bộ lịch vòng bảng hiện tại. Lịch cũ nếu có sẽ bị ghi đè.
+              </p>
+
+              <div className="space-y-3 mb-6">
+                {requireScheduleConfig && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-400 block">Thời gian bắt đầu</label>
+                    <input
+                      type="datetime-local"
+                      value={scheduleForm.startTime}
+                      onChange={(e) => setScheduleForm((f) => ({ ...f, startTime: e.target.value }))}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-amber-500/50 [color-scheme:dark]"
+                    />
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400 block">Thời lượng mỗi trận (phút)</label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="180"
+                    value={scheduleForm.durationMinutes}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, durationMinutes: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-amber-500/50"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setGenerateModalOpen(false)}
+                  className="btn btn-ghost btn-sm"
+                  disabled={actionLoading}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleGenerateGroupSchedule}
+                  className="btn btn-primary btn-sm"
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                  ) : 'Sinh lịch'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Publish gate modal — shown when starting a match but tournament is not yet public */}
       {publishGateModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-emerald-500/20 bg-slate-900 shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="flex items-start gap-4 p-6 pb-4">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-2xl">
-                🌐
+        <Portal>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md rounded-2xl border border-emerald-500/20 bg-slate-900 shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="flex items-start gap-4 p-6 pb-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-2xl">
+                  🌐
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-bold text-slate-100">
+                    Giải chưa được công khai
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-400">
+                    Để bắt đầu trận đấu, giải cần được công khai trước để khán giả và hệ thống có thể theo dõi realtime.
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-lg font-bold text-slate-100">
-                  Giải chưa được công khai
-                </h3>
-                <p className="mt-1 text-sm leading-relaxed text-slate-400">
-                  Để bắt đầu trận đấu, giải cần được công khai trước để khán giả và hệ thống có thể theo dõi realtime.
+
+              {/* Match info */}
+              {pendingStartMatch && (
+                <div className="mx-6 mb-4 rounded-xl border border-slate-700/60 bg-slate-800/50 px-4 py-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                    Trận chờ bắt đầu
+                  </div>
+                  <div className="text-sm font-semibold text-slate-200">
+                    {pendingStartMatch.teamA?.name ?? 'Đội A'} vs {pendingStartMatch.teamB?.name ?? 'Đội B'}
+                  </div>
+                </div>
+              )}
+
+              {/* Note */}
+              <div className="mx-6 mb-5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                <p className="text-xs leading-relaxed text-amber-300">
+                  Công khai giải cho phép khán giả xem lịch thi đấu và theo dõi điểm số theo thời gian thực. Bạn vẫn có thể quản lý giải sau khi đã công khai.
                 </p>
               </div>
-            </div>
 
-            {/* Match info */}
-            {pendingStartMatch && (
-              <div className="mx-6 mb-4 rounded-xl border border-slate-700/60 bg-slate-800/50 px-4 py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                  Trận chờ bắt đầu
-                </div>
-                <div className="text-sm font-semibold text-slate-200">
-                  {pendingStartMatch.teamA?.name ?? 'Đội A'} vs {pendingStartMatch.teamB?.name ?? 'Đội B'}
-                </div>
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 border-t border-slate-800 px-6 py-4">
+                <button
+                  type="button"
+                  onClick={cancelPublishGate}
+                  disabled={publishGateLoading}
+                  className="btn btn-ghost btn-sm"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePublishAndContinue}
+                  disabled={publishGateLoading}
+                  className="btn btn-sm inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-sm font-bold text-white hover:from-emerald-400 hover:to-teal-400 disabled:opacity-60 transition-all"
+                >
+                  {publishGateLoading ? (
+                    <>
+                      <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      Đang công khai...
+                    </>
+                  ) : (
+                    <>
+                      🌐 Công khai &amp; Bắt đầu trận
+                    </>
+                  )}
+                </button>
               </div>
-            )}
-
-            {/* Note */}
-            <div className="mx-6 mb-5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-              <p className="text-xs leading-relaxed text-amber-300">
-                Công khai giải cho phép khán giả xem lịch thi đấu và theo dõi điểm số theo thời gian thực. Bạn vẫn có thể quản lý giải sau khi đã công khai.
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-3 border-t border-slate-800 px-6 py-4">
-              <button
-                type="button"
-                onClick={cancelPublishGate}
-                disabled={publishGateLoading}
-                className="btn btn-ghost btn-sm"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handlePublishAndContinue}
-                disabled={publishGateLoading}
-                className="btn btn-sm inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-sm font-bold text-white hover:from-emerald-400 hover:to-teal-400 disabled:opacity-60 transition-all"
-              >
-                {publishGateLoading ? (
-                  <>
-                    <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                    Đang công khai...
-                  </>
-                ) : (
-                  <>
-                    🌐 Công khai &amp; Bắt đầu trận
-                  </>
-                )}
-              </button>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Start match modal */}

@@ -10,6 +10,7 @@ import { getActionAccess } from '@/lib/tournament-ux-policy';
 import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/components/toast';
 import { ConfirmModal } from '@/components/confirm-modal';
+import { Portal } from '@/components/portal';
 import { EmptyState } from '@/components/empty-state';
 import { PageLoading } from '@/components/loading-skeleton';
 import { Target, ExternalLink, CheckCircle2, AlertTriangle, AlertCircle, Loader2 } from '@/components/icons';
@@ -356,7 +357,8 @@ export default function AdminScoringPage() {
 
       {/* Result Override Dialog (Ban Tổ Chức) */}
       {overrideModalOpen && matchToOverride && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
           <form
             onSubmit={handleOverrideResult}
             className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-2xl animate-scale-in"
@@ -442,7 +444,8 @@ export default function AdminScoringPage() {
               </button>
             </div>
           </form>
-        </div>
+          </div>
+        </Portal>
       )}
     </div>
   );

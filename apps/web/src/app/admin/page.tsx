@@ -8,6 +8,7 @@ import { getCurrentUser } from '@/lib/current-user';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { PageLoading } from '@/components/loading-skeleton';
+import { Portal } from '@/components/portal';
 import { EmptyState } from '@/components/empty-state';
 import { useToast } from '@/components/toast';
 import {
@@ -254,7 +255,8 @@ export default function TournamentListPage() {
 
       {/* Creation Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => !submitting && setModalOpen(false)}
@@ -374,6 +376,7 @@ export default function TournamentListPage() {
             </form>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

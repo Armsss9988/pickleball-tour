@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/components/toast';
 import { ConfirmModal } from '@/components/confirm-modal';
+import { Portal } from '@/components/portal';
 import { EmptyState } from '@/components/empty-state';
 import { PageLoading, SkeletonTable } from '@/components/loading-skeleton';
 import { Users, Plus, Trash2, Upload, AlertCircle, Download, FileSpreadsheet, FileDown, X } from '@/components/icons';
@@ -563,7 +564,8 @@ export default function PlayersPage() {
 
       {/* Preview Import Modal */}
       {previewModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="w-full max-w-3xl card bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
             {/* Header */}
             <div className="p-6 border-b border-slate-800 flex items-center justify-between">
@@ -694,6 +696,7 @@ export default function PlayersPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

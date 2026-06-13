@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
+import { Portal } from '@/components/portal';
 
 function getMatchStatusLabel(status: string): string {
   const map: Record<string, string> = {
@@ -965,7 +966,8 @@ export default function RefereeScorerPage() {
 
       {/* Override Result Modal */}
       {showOverrideModal && match && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="bg-slate-900 border border-amber-500/30 rounded-3xl shadow-2xl shadow-amber-500/10 w-full max-w-md overflow-hidden">
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
@@ -1081,11 +1083,13 @@ export default function RefereeScorerPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* Segment Score Edit Modal */}
       {showSegmentEditModal && editingSegment && match && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className="bg-slate-900 border border-sky-500/20 rounded-3xl shadow-2xl shadow-sky-500/5 w-full max-w-md overflow-hidden">
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
@@ -1205,7 +1209,7 @@ export default function RefereeScorerPage() {
               </button>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );
