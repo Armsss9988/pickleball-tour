@@ -33,6 +33,7 @@ import {
   ClipboardList,
   Info,
   RefreshCw,
+  PenLine,
 } from '@/components/icons';
 import { getCurrentUser } from '@/lib/current-user';
 import { buildTournamentUxContext } from '@/lib/tournament-ux-context';
@@ -340,6 +341,23 @@ export default function MatchesPage() {
   // Feature flags from ruleset
   const requireCourtConfig = tournament?.ruleset?.requireCourtConfig !== false;
   const requireScheduleConfig = tournament?.ruleset?.requireScheduleConfig !== false;
+  const quickScoreEntryEnabled = !!(tournament?.ruleset as any)?.quickScoreEntryEnabled;
+
+  // ── Inline quick-score state ──
+  // matchId => { scoreA: string; scoreB: string; submitting: boolean }
+  const [quickScoreMap, setQuickScoreMap] = useState<Record<string, { scoreA: string; scoreB: string; open: boolean; submitting: boolean }>>({});
+
+  const openQuickScore = (matchId: string) => {
+    setQuickScoreMap(prev => ({
+      ...prev,
+      [matchId]: prev[matchId] ?? { scoreA: '', scoreB: '', open: true, submitting: false },
+      ...(!prev[matchId] ? {} : { [matchId]: { ...prev[matchId], open: !prev[matchId].open } }),
+    }));
+  };
+
+  const closeQuickScore = (matchId: string) => {
+    setQuickScoreMap(prev => ({ ...prev, [matchId]: { ...(prev[matchId] ?? { scoreA: '', scoreB: '', submitting: false }), open: false } }));
+  };
 
   // ── Data state ──
   const [matches, setMatches] = useState<MatchListItem[]>([]);
@@ -836,6 +854,52 @@ export default function MatchesPage() {
   };
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Quick result handler — nhập nhanh tỷ số chung cuộc
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleQuickResult = async (matchId: string) => {
+    const qs = quickScoreMap[matchId];
+    if (!qs) return;
+    const scoreA = parseInt(qs.scoreA, 10);
+    const scoreB = parseInt(qs.scoreB, 10);
+    if (isNaN(scoreA) || isNaN(scoreB) || scoreA < 0 || scoreB < 0) {
+      toast('Vui lòng nhập điểm số hợp lệ (số nguyên không âm).', 'warning');
+      return;
+    }
+    if (scoreA === scoreB) {
+      toast('Tỷ số chung cuộc không được hoà.', 'warning');
+      return;
+    }
+    setQuickScoreMap(prev => ({ ...prev, [matchId]: { ...prev[matchId], submitting: true } }));
+    try {
+      await apiFetch(`/matches/${matchId}/quick-result`, {
+        method: 'POST',
+        body: { teamAScore: scoreA, teamBScore: scoreB },
+      });
+      toast('Đã lưu kết quả nhanh! Xác nhận để hoàn tất.', 'success');
+      closeQuickScore(matchId);
+      fetchMatches();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Không thể lưu kết quả.', 'error');
+    } finally {
+      setQuickScoreMap(prev => ({ ...prev, [matchId]: { ...prev[matchId], submitting: false } }));
+    }
+  };
+
+  const handleConfirmResult = async (matchId: string) => {
+    setActionLoading(true);
+    try {
+      await apiFetch(`/matches/${matchId}/confirm-result`, { method: 'POST' });
+      toast('Kết quả đã được xác nhận! BXH cập nhật ngay.', 'success');
+      fetchMatches();
+      fetchStandings();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Không thể xác nhận kết quả.', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
   const filteredMatches = matches.filter((m) => {
     if (selectedPhase === 'playoff') {
       if (m.group) return false;
@@ -975,8 +1039,38 @@ export default function MatchesPage() {
                 </button>
               )}
 
-              {/* Link to scoring */}
-              {['READY', 'RUNNING', 'SEGMENT_BREAK', 'COMPLETED', 'RESULT_CONFIRMED'].includes(m.status) && (
+              {/* Quick score button (inline mode) */}
+              {quickScoreEntryEnabled && !['RUNNING', 'SEGMENT_BREAK', 'RESULT_CONFIRMED', 'CANCELLED', 'WALKOVER'].includes(m.status) && isBtcAdmin && (
+                <button
+                  onClick={() => openQuickScore(m.id)}
+                  className={`text-xs font-bold px-2 py-0.5 rounded border flex items-center gap-1 transition-all ${
+                    quickScoreMap[m.id]?.open
+                      ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+                      : 'bg-violet-500/10 border-violet-500/20 text-violet-400 hover:text-violet-300'
+                  }`}
+                  title="Nhập nhanh tỷ số chung cuộc"
+                >
+                  <PenLine className="w-3.5 h-3.5" />
+                  {m.status === 'COMPLETED' ? 'Sửa KQ' : 'Nhập KQ'}
+                </button>
+              )}
+
+              {/* Confirm result quick button */}
+              {quickScoreEntryEnabled && m.status === 'COMPLETED' && isBtcAdmin && (
+                <button
+                  onClick={() => handleConfirmResult(m.id)}
+                  disabled={actionLoading}
+                  className="text-xs font-bold px-2 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-all disabled:opacity-50"
+                  title="Xác nhận kết quả"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Xác nhận
+                </button>
+              )}
+
+              {/* Link to full scoring page (when quick mode off, or RUNNING) */}
+              {(!quickScoreEntryEnabled || ['RUNNING', 'SEGMENT_BREAK'].includes(m.status)) &&
+                ['READY', 'RUNNING', 'SEGMENT_BREAK', 'COMPLETED', 'RESULT_CONFIRMED'].includes(m.status) && (
                 <Link
                   href={`/score/${m.id}`}
                   target="_blank"
@@ -1096,6 +1190,76 @@ export default function MatchesPage() {
                   Hủy
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Inline Quick Score Entry Form */}
+          {quickScoreEntryEnabled && quickScoreMap[m.id]?.open && isBtcAdmin && (
+            <div className="mx-3.5 mb-3 rounded-xl border border-violet-500/25 bg-violet-500/5 p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-violet-300 flex items-center gap-1.5">
+                  <PenLine className="w-3.5 h-3.5" />
+                  Nhập nhanh tỷ số chung cuộc
+                </span>
+                <button onClick={() => closeQuickScore(m.id)} className="text-slate-500 hover:text-slate-300 p-0.5 rounded">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Team A */}
+                <div className="flex-1 space-y-1">
+                  <div className="text-[10px] font-semibold text-sky-400 truncate">{m.teamA?.name ?? 'Đội A'}</div>
+                  <input
+                    type="number"
+                    min="0"
+                    value={quickScoreMap[m.id]?.scoreA ?? ''}
+                    onChange={e => setQuickScoreMap(prev => ({ ...prev, [m.id]: { ...prev[m.id], scoreA: e.target.value } }))}
+                    placeholder="0"
+                    className="w-full rounded-lg border border-sky-500/30 bg-slate-950/60 px-2.5 py-2 text-center text-lg font-bold text-sky-300 outline-none focus:border-sky-500/60"
+                  />
+                </div>
+
+                <div className="text-slate-500 font-bold text-lg pt-5">–</div>
+
+                {/* Team B */}
+                <div className="flex-1 space-y-1">
+                  <div className="text-[10px] font-semibold text-rose-400 truncate">{m.teamB?.name ?? 'Đội B'}</div>
+                  <input
+                    type="number"
+                    min="0"
+                    value={quickScoreMap[m.id]?.scoreB ?? ''}
+                    onChange={e => setQuickScoreMap(prev => ({ ...prev, [m.id]: { ...prev[m.id], scoreB: e.target.value } }))}
+                    placeholder="0"
+                    className="w-full rounded-lg border border-rose-500/30 bg-slate-950/60 px-2.5 py-2 text-center text-lg font-bold text-rose-300 outline-none focus:border-rose-500/60"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => handleQuickResult(m.id)}
+                  disabled={quickScoreMap[m.id]?.submitting}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-bold py-2 transition-all"
+                >
+                  {quickScoreMap[m.id]?.submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Lưu kết quả
+                </button>
+                {m.status === 'COMPLETED' && (
+                  <button
+                    onClick={() => handleConfirmResult(m.id)}
+                    disabled={actionLoading}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold py-2 transition-all"
+                  >
+                    {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    Xác nhận KQ
+                  </button>
+                )}
+              </div>
+
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                Lưu kết quả sẽ đưa trận về trạng thái <strong className="text-slate-300">Chờ xác nhận</strong>. Bấm <strong className="text-emerald-400">Xác nhận KQ</strong> để cập nhật BXH và bracket.
+              </p>
             </div>
           )}
         </div>
@@ -1286,9 +1450,62 @@ export default function MatchesPage() {
                   </div>
                 )}
 
-                {/* Scoring link */}
+                {/* Scoring link (full scoring page) */}
                 {['READY', 'RUNNING', 'SEGMENT_BREAK', 'COMPLETED', 'RESULT_CONFIRMED'].includes(m.status) && (
-                  <div className="pt-2 border-t border-slate-800">
+                  <div className="pt-2 border-t border-slate-800 space-y-2">
+                    {/* Quick score entry inside expanded panel */}
+                    {quickScoreEntryEnabled && isBtcAdmin && !['RUNNING', 'SEGMENT_BREAK', 'RESULT_CONFIRMED', 'CANCELLED', 'WALKOVER'].includes(m.status) && (
+                      <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-3 space-y-2.5">
+                        <div className="text-[11px] font-bold text-violet-300 flex items-center gap-1.5">
+                          <PenLine className="w-3.5 h-3.5" />
+                          Nhập nhanh tỷ số chung cuộc
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 space-y-1">
+                            <div className="text-[10px] font-semibold text-sky-400 truncate">{matchDetails?.teamA?.name ?? 'Đội A'}</div>
+                            <input
+                              type="number" min="0"
+                              value={quickScoreMap[m.id]?.scoreA ?? ''}
+                              onChange={e => setQuickScoreMap(prev => ({ ...prev, [m.id]: { ...(prev[m.id] ?? { scoreB: '', open: true, submitting: false }), scoreA: e.target.value } }))}
+                              placeholder="0"
+                              className="w-full rounded-lg border border-sky-500/30 bg-slate-950/60 px-2.5 py-2 text-center text-base font-bold text-sky-300 outline-none focus:border-sky-500/60"
+                            />
+                          </div>
+                          <div className="text-slate-500 font-bold text-base pt-5">–</div>
+                          <div className="flex-1 space-y-1">
+                            <div className="text-[10px] font-semibold text-rose-400 truncate">{matchDetails?.teamB?.name ?? 'Đội B'}</div>
+                            <input
+                              type="number" min="0"
+                              value={quickScoreMap[m.id]?.scoreB ?? ''}
+                              onChange={e => setQuickScoreMap(prev => ({ ...prev, [m.id]: { ...(prev[m.id] ?? { scoreA: '', open: true, submitting: false }), scoreB: e.target.value } }))}
+                              placeholder="0"
+                              className="w-full rounded-lg border border-rose-500/30 bg-slate-950/60 px-2.5 py-2 text-center text-base font-bold text-rose-300 outline-none focus:border-rose-500/60"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleQuickResult(m.id)}
+                            disabled={quickScoreMap[m.id]?.submitting}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-bold py-2 transition-all"
+                          >
+                            {quickScoreMap[m.id]?.submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            Lưu kết quả
+                          </button>
+                          {m.status === 'COMPLETED' && (
+                            <button
+                              onClick={() => handleConfirmResult(m.id)}
+                              disabled={actionLoading}
+                              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold py-2 transition-all"
+                            >
+                              {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                              Xác nhận KQ
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <Link
                       href={`/score/${m.id}`}
                       target="_blank"

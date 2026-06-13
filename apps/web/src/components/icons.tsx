@@ -64,6 +64,7 @@ export {
   RotateCcw,
   Layers,
   Swords,
+  PenLine,
 } from 'lucide-react';
 
 export type { LucideIcon } from 'lucide-react';
